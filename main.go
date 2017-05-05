@@ -2,177 +2,211 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"strings"
+	"path/filepath"
+	"time"
 
-	"github.com/oleksandr/bonjour"
+	MQTT "github.com/eclipse/paho.mqtt.golang"
 	uuid "github.com/satori/go.uuid"
-	"github.com/yosssi/gmq/mqtt"
-	"github.com/yosssi/gmq/mqtt/client"
 )
+
+type ConfigFile struct {
+	Username string
+	Token    string
+}
+
+type RegistrationInfo struct {
+	Username string
+	Token    string
+	Uuid     string
+	Host     string
+	MACs     []string
+}
+
+type exposedFunctions struct {
+	Name      string
+	Arguments string
+}
+
+type sketchStatus struct {
+	Name      string
+	PID       int
+	Status    string // could be bool if we don't allow Pause
+	Endpoints []exposedFunctions
+}
+
+type StatusInfo struct {
+	IP       []string
+	Sketches []sketchStatus
+}
 
 func main() {
 	// Set up channel on which to send signal notifications.
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill)
 
-	// Create an MQTT Client.
-	cli := client.New(&client.Options{
-		// Define the processing of the error handler.
-		ErrorHandler: func(err error) {
-			fmt.Println(err)
-		},
-	})
-
-	// Terminate the Client.
-	defer cli.Terminate()
-
-	//roots, _ := x509.SystemCertPool()
-	roots := x509.NewCertPool()
-
-	// Read the certificate file.
-	b, err := ioutil.ReadFile("mosquitto.org.crt")
-	if err != nil {
-		panic(err)
-	}
-
-	if ok := roots.AppendCertsFromPEM(b); !ok {
-		panic("failed to parse root certificate")
-	}
-
-	tlsConfig := &tls.Config{
-		RootCAs: roots,
-	}
-
-	var u1 uuid.UUID
 	registering := false
 
-	b, err = ioutil.ReadFile("uuid")
+	u1, err := getUUID()
 	if err != nil {
-		u1 = uuid.NewV4()
-		ioutil.WriteFile("uuid", []byte(u1.String()), 0600)
 		registering = true
-	} else {
-		u1, _ = uuid.FromString(string(b))
 	}
-
-	// Connect to the MQTT Server.
-	err = cli.Connect(&client.ConnectOptions{
-		Network:   "tcp",
-		Address:   "test.mosquitto.org:8883", //"cloud.arduino.cc:8883",
-		TLSConfig: tlsConfig,
-		ClientID:  []byte(u1.String()),
-	})
-	if err != nil {
-		fmt.Println("Unable to connect") //panic(err)
-	}
-
 	fmt.Println("Using UID " + u1.String())
 
-	// Setup our service export
-	host, _ := os.Hostname()
-	info := []string{"Arduino Connector Gateway Service"}
-
-	_, err = bonjour.Register(host, "_arduino._tcp", "", 5335, []string{"type=" + info[0], "app=test"}, nil)
+	config, err := readConfig("arduino_connector.config")
 	if err != nil {
-		log.Fatalln(err.Error())
+		os.Exit(1)
 	}
-	// Subscribe to topics.
-	err = cli.Subscribe(&client.SubscribeOptions{
-		SubReqs: []*client.SubReq{
-			&client.SubReq{
-				TopicFilter: []byte(u1.String() + "/update"),
-				QoS:         mqtt.QoS0,
-				// Define the processing of the message handler.
-				Handler: func(topicName, message []byte) {
-					fmt.Println(string(topicName), string(message))
-				},
-			},
-		},
-	})
+	fmt.Printf("%+v", config)
+
+	user := config[0].Username
+	token := config[0].Token
+	host, _ := os.Hostname()
+
+	var regInfo RegistrationInfo
+	regInfo.Host = host
+	regInfo.MACs = getMACAddress()
+	regInfo.Token = token
+	regInfo.Username = user
+
+	client, err := setupMQTTConnection(".", "ClientID", "myawsioturl.iot.us-west-2.amazonaws.com")
 	if err != nil {
-		panic(err)
+		os.Exit(2)
 	}
 
 	if registering {
-
-		// Publish a message.
-		err = cli.Publish(&client.PublishOptions{
-			QoS:       mqtt.QoS0,
-			TopicName: []byte("register/" + u1.String()),
-			Message:   []byte(strings.Join(getMACAddress(), ",")),
-		})
-		if err != nil {
-			panic(err)
-		}
+		// publish our data (UUID, username and token) on /register endpoint
+		client.Publish("/register", 1, true, regInfo)
 	}
+
+	// Subscribe to /upload endpoint
+	client.Subscribe("/upload", 1, uploadCB)
+
+	// Subscribe to /sketch endpoint
+	// Sketches are identified by their name
+	// The status should be retrieved by the NATS internal channel
+	client.Subscribe("/sketch", 1, sketchCB)
+
+	// loop forever until we get a KILL signal
+
+	// Publish on /status endpoint
+	// Status should contain : IP addresses, running processes, some diagnostic info
+
+	go func() {
+		// collect Status info
+		var status StatusInfo
+		status.IP = getIPAddress()
+		// status.Sketches = something
+		client.Publish("/status", 1, false, status)
+		time.Sleep(5 * time.Second)
+	}()
 
 	// Wait for receiving a signal.
 	<-sigc
-
-	// Disconnect the Network Connection.
-	if err := cli.Disconnect(); err != nil {
-		panic(err)
-	}
 }
 
-func getMACAddress() []string {
+func uploadCB(MQTT.Client, MQTT.Message) {
 
-	//----------------------
-	// Get the local machine IP address
-	// https://www.socketloop.com/tutorials/golang-how-do-I-get-the-local-ip-non-loopback-address
-	//----------------------
+}
 
-	var macAddresses []string
+func sketchCB(MQTT.Client, MQTT.Message) {
 
+}
+
+func readConfig(configPath string) ([]ConfigFile, error) {
+	// Read config file
+	var config []ConfigFile
+	b, err := ioutil.ReadFile("arduino_connector.conf")
+	err = json.Unmarshal(b, &config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func setupMQTTConnection(certificateLocation, clientID, awsHost string) (MQTT.Client, error) {
+	cer, err := tls.LoadX509KeyPair(filepath.Join(certificateLocation, "cert.pem"), filepath.Join(certificateLocation, "private.key"))
+	if err != nil {
+		return nil, err
+	}
+
+	cid := clientID
+
+	// AutoReconnect option is true by default
+	// CleanSession option is true by default
+	// KeepAlive option is 30 seconds by default
+	connOpts := MQTT.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
+	connOpts.SetClientID(cid)
+	connOpts.SetMaxReconnectInterval(1 * time.Second)
+	connOpts.SetTLSConfig(&tls.Config{Certificates: []tls.Certificate{cer}})
+
+	host := awsHost
+	port := 8883
+	path := "/mqtt"
+
+	brokerURL := fmt.Sprintf("tcps://%s:%d%s", host, port, path)
+	connOpts.AddBroker(brokerURL)
+
+	mqttClient := MQTT.NewClient(connOpts)
+	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		return nil, token.Error()
+	}
+	log.Println("[MQTT] Connected")
+
+	return mqttClient, nil
+}
+
+func getUUID() (uuid.UUID, error) {
+	var u1 uuid.UUID
+
+	b, err := ioutil.ReadFile("uuid")
+	if err != nil {
+		u1 = uuid.NewV4()
+		ioutil.WriteFile("uuid", []byte(u1.String()), 0600)
+	} else {
+		u1, _ = uuid.FromString(string(b))
+	}
+	return u1, err
+}
+
+func getIPAddress() []string {
+
+	var ipAddresses []string
 	addrs, err := net.InterfaceAddrs()
-
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	for _, address := range addrs {
-
-		// check the address type and if it is not a loopback the display it
-		// = GET LOCAL IP ADDRESS
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				fmt.Println("Current IP address : ", ipnet.IP.String())
+				ipAddresses = append(ipAddresses, ipnet.IP.String())
 			}
 		}
 	}
+	return ipAddresses
+}
 
-	fmt.Println("------------------------------")
-	fmt.Println("We want the interface name that has the current IP address")
-	fmt.Println("MUST NOT be binded to 127.0.0.1 ")
-	fmt.Println("------------------------------")
+func getMACAddress() []string {
 
-	// get all the system's or local machine's network interfaces
-
+	var macAddresses []string
 	interfaces, _ := net.Interfaces()
 	for _, netInterface := range interfaces {
 
-		name := netInterface.Name
+		//name := netInterface.Name
 		macAddress := netInterface.HardwareAddr
-
-		fmt.Println("Hardware name : ", name)
-		fmt.Println("MAC address : ", macAddress)
-
-		// verify if the MAC address can be parsed properly
 		hwAddr, err := net.ParseMAC(macAddress.String())
 
 		if err != nil {
-			fmt.Println("No able to parse MAC address : ", err)
 			continue
 		}
-
-		fmt.Printf("Physical hardware address : %s \n", hwAddr.String())
 		macAddresses = append(macAddresses, hwAddr.String())
 	}
 	return macAddresses
