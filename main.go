@@ -13,6 +13,8 @@ import (
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	logger "github.com/nats-io/gnatsd/logger"
+	server "github.com/nats-io/gnatsd/server"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -74,19 +76,37 @@ func main() {
 	regInfo.MACs = getMACAddress()
 	regInfo.Token = token
 	regInfo.Username = user
+	regInfo.Uuid = u1.String()
 
-	client, err := setupMQTTConnection(".", "ClientID", "myawsioturl.iot.us-west-2.amazonaws.com")
+	fmt.Println(regInfo)
+
+	// The token represents the name of the thing in AWS
+	// The URL can be found as REST API endpoint (maybe there are smarter ways) -> a19g5nbe27wn47.iot.us-east-1.amazonaws.com
+	client, err := setupMQTTConnection(".", token, URL)
 	if err != nil {
 		os.Exit(2)
 	}
 
 	if registering {
+		fmt.Println("Registering new device")
 		// publish our data (UUID, username and token) on /register endpoint
-		client.Publish("/register", 1, true, regInfo)
+		msg, _ := json.Marshal(regInfo)
+		client.Publish("/register", 1, false, msg)
 	}
 
 	// Subscribe to /upload endpoint
 	client.Subscribe("/upload", 1, uploadCB)
+
+	// Start nats-server on localhost:4222
+	opts := server.Options{}
+	opts.Port = 4222
+	opts.Host = "127.0.0.1"
+	// Remove any host/ip that points to itself in Route
+	newroutes, err := server.RemoveSelfReference(opts.Cluster.Port, opts.Routes)
+	opts.Routes = newroutes
+	s := server.New(&opts)
+	configureLogger(s, &opts)
+	go s.Start()
 
 	// Subscribe to /sketch endpoint
 	// Sketches are identified by their name
