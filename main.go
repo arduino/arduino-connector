@@ -1,18 +1,26 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"syscall"
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	"github.com/kardianos/osext"
 	logger "github.com/nats-io/gnatsd/logger"
 	server "github.com/nats-io/gnatsd/server"
 	uuid "github.com/satori/go.uuid"
@@ -50,6 +58,19 @@ type StatusInfo struct {
 	IP       []string
 	Sketches []sketchStatus
 }
+
+type UploadSketchInfo struct {
+	URL  string
+	Name string
+}
+
+type SketchAction struct {
+	PID    int
+	Name   string
+	Action string
+}
+
+var globalStatus StatusInfo
 
 func main() {
 	// Set up channel on which to send signal notifications.
@@ -124,15 +145,15 @@ func main() {
 	go func() {
 		for true {
 			// collect Status info
-			var status StatusInfo
-			status.IP = getIPAddress()
+			globalStatus.IP = getIPAddress()
 			// status.Sketches = something
-			msg, err := json.Marshal(status)
+			msg, err := json.Marshal(globalStatus)
 			if err != nil {
 				fmt.Println(err)
 			}
-			tk := client.Publish("/status", 1, false, msg)
-			fmt.Printf("%+v\n", tk)
+			client.Publish("/status", 1, false, msg)
+			//tk := client.Publish("/status", 1, false, msg)
+			//fmt.Printf("%+v\n", tk)
 			time.Sleep(5 * time.Second)
 		}
 	}()
@@ -141,12 +162,117 @@ func main() {
 	<-sigc
 }
 
-func uploadCB(MQTT.Client, MQTT.Message) {
+func uploadCB(client MQTT.Client, msg MQTT.Message) {
+	// upload channel should receive an URL pointing to the sketch,
+	// - download the binary,
+	// - chmod +x it
+	// - execute redirecting stdout and sterr to a proper logger
 
+	var info UploadSketchInfo
+	err := json.Unmarshal(msg.Payload(), &info)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	folder, _ := osext.ExecutableFolder()
+	name := filepath.Join(folder, info.Name)
+	downloadFile(name, info.URL)
+	os.Chmod(name, 0744)
+	pid, stdout, err := spawnProcess(name)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Println("Sketch started with PID " + strconv.Itoa(pid))
+	var status sketchStatus
+	status.PID = pid
+	status.Name = info.Name
+	status.Status = "RUNNING"
+	status.Endpoints = nil
+	globalStatus.Sketches = append(globalStatus.Sketches, status)
+	go func(stdout io.ReadCloser) {
+		in := bufio.NewScanner(stdout)
+		for {
+			for in.Scan() {
+				fmt.Printf(in.Text()) // write each line to your log, or anything you need
+			}
+		}
+	}(stdout)
 }
 
-func sketchCB(MQTT.Client, MQTT.Message) {
+func sketchCB(client MQTT.Client, msg MQTT.Message) {
+	var action SketchAction
+	json.Unmarshal(msg.Payload(), &action)
+	sketch, err := findSketch(action.Name, action.PID)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	applyAction(sketch, action.Action)
+}
 
+func applyAction(sketch *sketchStatus, action string) error {
+	process, err := os.FindProcess(sketch.PID)
+	if err != nil {
+		return err
+	}
+	switch action {
+	case "START":
+		err = process.Signal(syscall.SIGCONT)
+		sketch.Status = "RUNNING"
+		break
+	case "STOP":
+		err = process.Kill()
+		sketch.Status = "STOPPED"
+		break
+	case "PAUSE":
+		err = process.Signal(syscall.SIGTSTP)
+		sketch.Status = "PAUSED"
+		break
+	}
+	return err
+}
+
+func findSketch(name string, pid int) (*sketchStatus, error) {
+	for i, element := range globalStatus.Sketches {
+		if element.Name == name || element.PID == pid {
+			return &globalStatus.Sketches[i], nil
+		}
+	}
+	return nil, errors.New("Sketch not found")
+}
+
+func downloadFile(filepath string, url string) (err error) {
+	// Create the file - remove the existing one if it exists
+	if _, err := os.Stat(filepath); err == nil {
+		os.Remove(filepath)
+	}
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Writer the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func spawnProcess(filepath string) (int, io.ReadCloser, error) {
+	cmd := exec.Command(filepath)
+	stdout, err := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		return 0, stdout, err
+	}
+	return cmd.Process.Pid, stdout, err
 }
 
 func configureLogger(s *server.Server, opts *server.Options) {
@@ -236,7 +362,7 @@ func getIPAddress() []string {
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				fmt.Println("Current IP address : ", ipnet.IP.String())
+				//fmt.Println("Current IP address : ", ipnet.IP.String())
 				ipAddresses = append(ipAddresses, ipnet.IP.String())
 			}
 		}
