@@ -18,9 +18,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+const CONFIG_FILE = "arduino_connector.cfg"
+
 type ConfigFile struct {
 	Username string
 	Token    string
+	URL      string
 }
 
 type RegistrationInfo struct {
@@ -61,14 +64,14 @@ func main() {
 	}
 	fmt.Println("Using UID " + u1.String())
 
-	config, err := readConfig("arduino_connector.config")
+	config, err := readConfig(CONFIG_FILE)
 	if err != nil {
 		os.Exit(1)
 	}
-	fmt.Printf("%+v", config)
 
-	user := config[0].Username
-	token := config[0].Token
+	user := config.Username
+	token := config.Token
+	URL := config.URL
 	host, _ := os.Hostname()
 
 	var regInfo RegistrationInfo
@@ -119,12 +122,19 @@ func main() {
 	// Status should contain : IP addresses, running processes, some diagnostic info
 
 	go func() {
-		// collect Status info
-		var status StatusInfo
-		status.IP = getIPAddress()
-		// status.Sketches = something
-		client.Publish("/status", 1, false, status)
-		time.Sleep(5 * time.Second)
+		for true {
+			// collect Status info
+			var status StatusInfo
+			status.IP = getIPAddress()
+			// status.Sketches = something
+			msg, err := json.Marshal(status)
+			if err != nil {
+				fmt.Println(err)
+			}
+			tk := client.Publish("/status", 1, false, msg)
+			fmt.Printf("%+v\n", tk)
+			time.Sleep(5 * time.Second)
+		}
 	}()
 
 	// Wait for receiving a signal.
@@ -139,13 +149,32 @@ func sketchCB(MQTT.Client, MQTT.Message) {
 
 }
 
-func readConfig(configPath string) ([]ConfigFile, error) {
+func configureLogger(s *server.Server, opts *server.Options) {
+	var log server.Logger
+	colors := true
+	// Check to see if stderr is being redirected and if so turn off color
+	// Also turn off colors if we're running on Windows where os.Stderr.Stat() returns an invalid handle-error
+	stat, err := os.Stderr.Stat()
+	if err != nil || (stat.Mode()&os.ModeCharDevice) == 0 {
+		colors = false
+	}
+	log = logger.NewStdLogger(opts.Logtime, opts.Debug, opts.Trace, colors, true)
+
+	s.SetLogger(log, opts.Debug, opts.Trace)
+}
+
+func readConfig(configPath string) (ConfigFile, error) {
 	// Read config file
-	var config []ConfigFile
-	b, err := ioutil.ReadFile("arduino_connector.conf")
+	var config ConfigFile
+	b, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		fmt.Println(err)
+		return config, err
+	}
 	err = json.Unmarshal(b, &config)
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		return config, err
 	}
 	return config, nil
 }
@@ -187,6 +216,7 @@ func getUUID() (uuid.UUID, error) {
 
 	b, err := ioutil.ReadFile("uuid")
 	if err != nil {
+		fmt.Println("Genarating brand-new UUID")
 		u1 = uuid.NewV4()
 		ioutil.WriteFile("uuid", []byte(u1.String()), 0600)
 	} else {
