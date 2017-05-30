@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	configFile = "./arduino_connector.cfg"
+	configFile = "./arduino-connector.cfg"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 	iniflags.Parse()
 
 	// Setup MQTT connection
-	client, err := setupMQTTConnection("cert.pem", "private.key", *id, *url)
+	client, err := setupMQTTConnection("certificate.pem", "certificate.key", *id, *url)
 	check(err)
 	log.Println("Connected to MQTT")
 
