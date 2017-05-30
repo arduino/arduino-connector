@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -25,14 +24,19 @@ import (
 	"github.com/vharitonsky/iniflags"
 )
 
+const (
+	configFile = "./arduino_connector.cfg"
+)
+
 func main() {
 	var (
-		id  = flag.String("id", "", "id of the thing in aws iot")
-		url = flag.String("url", "", "url of the thing in aws iot")
+		id   = flag.String("id", "", "id of the thing in aws iot")
+		uuid = flag.String("uuid", "", "A uuid generated the first time the connector is started")
+		url  = flag.String("url", "", "url of the thing in aws iot")
 	)
 
 	// Read configuration
-	iniflags.SetConfigFile("./arduino_connector.cfg")
+	iniflags.SetConfigFile(configFile)
 	iniflags.Parse()
 
 	// Setup MQTT connection
@@ -40,16 +44,15 @@ func main() {
 	check(err)
 	log.Println("Connected to MQTT")
 
-	// Get uuid
-	uid, _, err := getUUID()
-	check(err)
-
 	// Register
-	// if created {
-	err = registerDevice(*id, uid, client)
-	check(err)
-	log.Println("Registered device")
-	// }
+	if *uuid == "" {
+		*uuid, err = createUUID()
+		check(err)
+
+		err = registerDevice(*id, *uuid, client)
+		check(err)
+		log.Println("Registered device")
+	}
 
 	// Create global status
 	status := NewStatus(*id, client)
@@ -221,30 +224,25 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 	return mqttClient, nil
 }
 
-// getUUID get a previously created uuid or creates a new one, and returns it along with a flag that says if it's been created
+// createUUID creates a new uuid and updates the options file
 // Can fail if the file is corrupted or there are missing permissions
-func getUUID() (uuid.UUID, bool, error) {
-	var id uuid.UUID
+func createUUID() (string, error) {
+	id := uuid.NewV4()
 
-	idFile, err := ioutil.ReadFile("uuid")
+	f, err := os.OpenFile(configFile, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		id = uuid.NewV4()
-		err := ioutil.WriteFile("uuid", []byte(id.String()), 0600)
-		if err != nil {
-			return id, true, errors.Wrap(err, "save the uuid on file")
-		}
-		return id, true, nil
+		return "", errors.Wrap(err, "open conf file")
 	}
 
-	id, err = uuid.FromString(string(idFile))
+	_, err = f.WriteString("uuid=" + id.String())
 	if err != nil {
-		return id, false, errors.Wrap(err, "decode uuid file")
+		return "", errors.Wrap(err, "write conf")
 	}
-	return id, false, nil
+	return id.String(), nil
 }
 
 // registerDevice publishes on the topic /register with info about the device itself
-func registerDevice(id string, uid uuid.UUID, client mqtt.Client) error {
+func registerDevice(id, uuid string, client mqtt.Client) error {
 	// get host
 	host, err := os.Hostname()
 	if err != nil {
@@ -255,11 +253,11 @@ func registerDevice(id string, uid uuid.UUID, client mqtt.Client) error {
 	macs, err := getMACs()
 
 	data := struct {
-		ID   uuid.UUID
+		ID   string
 		Host string
 		MACs []string
 	}{
-		ID:   uid,
+		ID:   uuid,
 		Host: host,
 		MACs: macs,
 	}
