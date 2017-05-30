@@ -234,10 +234,13 @@ func createUUID() (string, error) {
 		return "", errors.Wrap(err, "open conf file")
 	}
 
+	defer f.Close()
+
 	_, err = f.WriteString("uuid=" + id.String())
 	if err != nil {
 		return "", errors.Wrap(err, "write conf")
 	}
+
 	return id.String(), nil
 }
 
