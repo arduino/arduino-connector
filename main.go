@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
@@ -58,7 +59,7 @@ func main() {
 	status := NewStatus(*id, client)
 
 	// Subscribe to /upload endpoint
-	client.Subscribe("$aws/things/"+*id+"/upload", 1, UploadCB(status))
+	client.Subscribe("$aws/things/"+*id+"/upload/post", 1, UploadCB(status))
 	client.Subscribe("$aws/things/"+*id+"/sketch", 1, SketchCB(status))
 
 	select {}
@@ -72,8 +73,9 @@ func check(err error) {
 
 // UploadPayload contains the name and url of the sketch to upload on the device
 type UploadPayload struct {
-	URL  string
-	Name string
+	URL   string `json:"url"`
+	Name  string `json:"name"`
+	Token string `json:"token"`
 }
 
 // SketchActionPayload contains the name of the sketch and the action to perform
@@ -92,40 +94,43 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		var info UploadPayload
 		err := json.Unmarshal(msg.Payload(), &info)
 		if err != nil {
-			status.Error(errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+			status.Error("/upload/get", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 			return
 		}
+
+		spew.Dump(msg.Payload())
+		spew.Dump(info)
 
 		// create folder
 		folder, err := osext.ExecutableFolder()
 		if err != nil {
-			status.Error(errors.Wrapf(err, "create sketch folder %s", msg.Payload()))
+			status.Error("/upload/get", errors.Wrapf(err, "create sketch folder %s", msg.Payload()))
 			return
 		}
 
 		// download the binary
 		name := filepath.Join(folder, info.Name)
-		err = downloadFile(name, info.URL)
+		err = downloadFile(name, info.URL, info.Token)
 		if err != nil {
-			status.Error(errors.Wrapf(err, "download file %s", info.URL))
+			status.Error("/upload/get", errors.Wrapf(err, "download file %s", info.URL))
 			return
 		}
 
 		// chmod it
 		err = os.Chmod(name, 0744)
 		if err != nil {
-			status.Error(errors.Wrapf(err, "chmod 744 %s", name))
+			status.Error("/upload/get", errors.Wrapf(err, "chmod 744 %s", name))
 			return
 		}
 
 		// spawn process
 		pid, stdout, err := spawnProcess(name)
 		if err != nil {
-			status.Error(errors.Wrapf(err, "spawn %s", name))
+			status.Error("/upload/get", errors.Wrapf(err, "spawn %s", name))
 			return
 		}
 
-		status.Info("Sketch started with PID " + strconv.Itoa(pid))
+		status.Info("/upload/get", "Sketch started with PID "+strconv.Itoa(pid))
 
 		s := SketchStatus{
 			PID:    pid,
@@ -152,19 +157,19 @@ func SketchCB(status *Status) mqtt.MessageHandler {
 		var payload SketchActionPayload
 		err := json.Unmarshal(msg.Payload(), &payload)
 		if err != nil {
-			status.Error(errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+			status.Error("/sketch/get", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 			return
 		}
 
 		if sketch, ok := status.Sketches[payload.Name]; ok {
 			err = applyAction(sketch, payload.Action)
 			if err != nil {
-				status.Error(errors.Wrapf(err, "applying %s to %s", payload.Action, payload.Name))
+				status.Error("/sketch/get", errors.Wrapf(err, "applying %s to %s", payload.Action, payload.Name))
 				return
 			}
 		}
 
-		status.Error(errors.New("sketch " + payload.Name + " not found"))
+		status.Error("/sketch/get", errors.New("sketch "+payload.Name+" not found"))
 	}
 }
 
@@ -295,7 +300,7 @@ func getMACs() ([]string, error) {
 }
 
 // downloadfile substitute a file with something that downloads from an url
-func downloadFile(filepath string, url string) error {
+func downloadFile(filepath, url, token string) error {
 	// Create the file - remove the existing one if it exists
 	if _, err := os.Stat(filepath); err == nil {
 		err := os.Remove(filepath)
@@ -309,11 +314,24 @@ func downloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 	// Get the data
-	resp, err := http.Get(url)
+	client := http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.New("Expected OK, got " + resp.Status)
+	}
+
 	// Writer the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
