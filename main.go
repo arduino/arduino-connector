@@ -10,10 +10,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,14 +33,20 @@ const (
 
 func main() {
 	var (
-		id   = flag.String("id", "", "id of the thing in aws iot")
-		uuid = flag.String("uuid", "", "A uuid generated the first time the connector is started")
-		url  = flag.String("url", "", "url of the thing in aws iot")
+		id          = flag.String("id", "", "id of the thing in aws iot")
+		uuid        = flag.String("uuid", "", "A uuid generated the first time the connector is started")
+		url         = flag.String("url", "", "url of the thing in aws iot")
+		http_proxy  = flag.String("http_proxy", "", "URL of HTTP proxy to use")
+		https_proxy = flag.String("https_proxy", "", "URL of HTTPS proxy to use")
+		all_proxy   = flag.String("all_proxy", "", "URL of SOCKS proxy to use")
 	)
 
 	// Read configuration
 	iniflags.SetConfigFile(configFile)
 	iniflags.Parse()
+
+	// Export the proxy info
+	exportProxyEnvVars(http_proxy, https_proxy, all_proxy)
 
 	// Setup MQTT connection
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", *id, *url)
@@ -314,7 +322,10 @@ func downloadFile(filepath, url, token string) error {
 	}
 	defer out.Close()
 	// Get the data
-	client := http.Client{}
+	client, err := proxiedHttpClient(url)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -340,6 +351,39 @@ func downloadFile(filepath, url, token string) error {
 	return nil
 }
 
+func proxiedHttpClient(downloadUrl string) (http.Client, error) {
+	client := http.Client{}
+
+	httpProxy := os.Getenv("http_proxy")
+	httpsProxy := os.Getenv("https_proxy")
+	allProxy := os.Getenv("all_proxy")
+
+	var rawProxyURL string = ""
+
+	if strings.HasPrefix(downloadUrl, "https://") && httpsProxy != "" {
+		rawProxyURL = httpsProxy
+	} else if strings.HasPrefix(downloadUrl, "http://") && httpProxy != "" {
+		rawProxyURL = httpProxy
+	} else if allProxy != "" {
+		rawProxyURL = allProxy
+	}
+
+	if rawProxyURL != "" {
+		proxyURL, err := url.Parse(rawProxyURL)
+		if err != nil {
+			return client, err
+		}
+		transport := http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+		client = http.Client{
+			Transport: &transport,
+		}
+	}
+
+	return client, nil
+}
+
 // spawn Process creates a new process from a file
 func spawnProcess(filepath string) (int, io.ReadCloser, error) {
 	cmd := exec.Command(filepath)
@@ -348,4 +392,18 @@ func spawnProcess(filepath string) (int, io.ReadCloser, error) {
 		return 0, stdout, err
 	}
 	return cmd.Process.Pid, stdout, err
+}
+
+func exportProxyEnvVars(httpproxy, httpsproxy, allproxy *string) {
+	if httpproxy != nil && *httpproxy != "" {
+		os.Setenv("http_proxy", *httpproxy)
+	}
+
+	if httpsproxy != nil && *httpsproxy != "" {
+		os.Setenv("https_proxy", *httpsproxy)
+	}
+
+	if allproxy != nil && *allproxy != "" {
+		os.Setenv("all_proxy", *allproxy)
+	}
 }
