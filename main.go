@@ -29,7 +29,7 @@ const (
 	configFile = "./arduino-connector.cfg"
 )
 
-func main() {
+func (p *Program) run() {
 	var (
 		id          = flag.String("id", "", "id of the thing in aws iot")
 		uuid        = flag.String("uuid", "", "A uuid generated the first time the connector is started")
