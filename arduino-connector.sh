@@ -1,5 +1,8 @@
 #/bin/bash -e
 
+logfile=arduino-connector-download.log
+exec > $logfile 2>&1
+
 has() {
 	type "$1" > /dev/null 2>&1
 	return $?
@@ -16,8 +19,8 @@ download() {
 	fi
 }
 
-cd ~
-mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key ~
+cd $HOME
+mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
 rm -f arduino-connector
 download https://downloads.arduino.cc/tools/arduino-connector
 chmod +x arduino-connector
