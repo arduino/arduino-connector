@@ -218,7 +218,10 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
 	opts.SetClientID(id)
 	opts.SetMaxReconnectInterval(1 * time.Second)
-	opts.SetTLSConfig(&tls.Config{Certificates: []tls.Certificate{cer}})
+	opts.SetTLSConfig(&tls.Config{
+		Certificates: []tls.Certificate{cer},
+		ServerName:   url,
+	})
 
 	port := 8883
 	path := "/mqtt"
