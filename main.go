@@ -10,12 +10,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -45,7 +43,10 @@ func main() {
 	iniflags.SetConfigFile(configFile)
 	iniflags.Parse()
 
-	// Export the proxy info
+	// Export the proxy info as environments variables, so that:
+	// - http.DefaultTransport can use the proxy settings
+	// - any spawned sketch process'es also have access to them
+	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
 	exportProxyEnvVars(http_proxy, https_proxy, all_proxy)
 
 	// Setup MQTT connection
@@ -322,10 +323,7 @@ func downloadFile(filepath, url, token string) error {
 	}
 	defer out.Close()
 	// Get the data
-	client, err := proxiedHttpClient(url)
-	if err != nil {
-		return err
-	}
+	client := http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -349,39 +347,6 @@ func downloadFile(filepath, url, token string) error {
 		return err
 	}
 	return nil
-}
-
-func proxiedHttpClient(downloadUrl string) (http.Client, error) {
-	client := http.Client{}
-
-	httpProxy := os.Getenv("http_proxy")
-	httpsProxy := os.Getenv("https_proxy")
-	allProxy := os.Getenv("all_proxy")
-
-	var rawProxyURL string = ""
-
-	if strings.HasPrefix(downloadUrl, "https://") && httpsProxy != "" {
-		rawProxyURL = httpsProxy
-	} else if strings.HasPrefix(downloadUrl, "http://") && httpProxy != "" {
-		rawProxyURL = httpProxy
-	} else if allProxy != "" {
-		rawProxyURL = allProxy
-	}
-
-	if rawProxyURL != "" {
-		proxyURL, err := url.Parse(rawProxyURL)
-		if err != nil {
-			return client, err
-		}
-		transport := http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-		}
-		client = http.Client{
-			Transport: &transport,
-		}
-	}
-
-	return client, nil
 }
 
 // spawn Process creates a new process from a file
