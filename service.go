@@ -10,21 +10,20 @@ import (
 
 var logger service.Logger
 
-type Program struct{}
+type program struct{}
 
-func (p *Program) Start(s service.Service) error {
-	// Start should not block. Do the actual work async.
+// Start run the program asynchronously
+func (p *program) Start(s service.Service) error {
 	go p.run()
 	return nil
 }
 
-func (p *Program) Stop(s service.Service) error {
-	// Stop should not block. Return with a few seconds.
+// Stop doesn nothing
+func (p *program) Stop(s service.Service) error {
 	return nil
 }
 
 func main() {
-
 	workingDirectory, _ := osext.ExecutableFolder()
 
 	svcConfig := &service.Config{
