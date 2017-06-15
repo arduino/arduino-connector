@@ -1,6 +1,6 @@
 #/bin/bash -e
 
-logfile=arduino-connector-download.log
+logfile=download.log
 exec > $logfile 2>&1
 
 has() {
@@ -20,8 +20,20 @@ download() {
 }
 
 cd $HOME
+echo home folder
+echo ---------
+ls
+echo remove old files: rm -f arduino-connector* certificate*
+echo ----------
+rm -f arduino-connector* certificate*
+ls
+echo move files: mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
+echo ----------
 mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-rm -f arduino-connector
+ls
+echo download connector
+echo ----------
 download https://downloads.arduino.cc/tools/arduino-connector
+ls
 chmod +x arduino-connector
 ./arduino-connector > arduino-connector.log 2>&1 &
