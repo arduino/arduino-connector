@@ -1,4 +1,4 @@
-#/bin/bash -e
+#!/bin/bash -e
 
 logfile=download.log
 exec > $logfile 2>&1
