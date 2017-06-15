@@ -31,14 +31,23 @@ const (
 
 func main() {
 	var (
-		id   = flag.String("id", "", "id of the thing in aws iot")
-		uuid = flag.String("uuid", "", "A uuid generated the first time the connector is started")
-		url  = flag.String("url", "", "url of the thing in aws iot")
+		id          = flag.String("id", "", "id of the thing in aws iot")
+		uuid        = flag.String("uuid", "", "A uuid generated the first time the connector is started")
+		url         = flag.String("url", "", "url of the thing in aws iot")
+		http_proxy  = flag.String("http_proxy", "", "URL of HTTP proxy to use")
+		https_proxy = flag.String("https_proxy", "", "URL of HTTPS proxy to use")
+		all_proxy   = flag.String("all_proxy", "", "URL of SOCKS proxy to use")
 	)
 
 	// Read configuration
 	iniflags.SetConfigFile(configFile)
 	iniflags.Parse()
+
+	// Export the proxy info as environments variables, so that:
+	// - http.DefaultTransport can use the proxy settings
+	// - any spawned sketch process'es also have access to them
+	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
+	exportProxyEnvVars(http_proxy, https_proxy, all_proxy)
 
 	// Setup MQTT connection
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", *id, *url)
@@ -209,7 +218,10 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
 	opts.SetClientID(id)
 	opts.SetMaxReconnectInterval(1 * time.Second)
-	opts.SetTLSConfig(&tls.Config{Certificates: []tls.Certificate{cer}})
+	opts.SetTLSConfig(&tls.Config{
+		Certificates: []tls.Certificate{cer},
+		ServerName:   url,
+	})
 
 	port := 8883
 	path := "/mqtt"
@@ -348,4 +360,18 @@ func spawnProcess(filepath string) (int, io.ReadCloser, error) {
 		return 0, stdout, err
 	}
 	return cmd.Process.Pid, stdout, err
+}
+
+func exportProxyEnvVars(httpproxy, httpsproxy, allproxy *string) {
+	if httpproxy != nil && *httpproxy != "" {
+		os.Setenv("http_proxy", *httpproxy)
+	}
+
+	if httpsproxy != nil && *httpsproxy != "" {
+		os.Setenv("https_proxy", *httpsproxy)
+	}
+
+	if allproxy != nil && *allproxy != "" {
+		os.Setenv("all_proxy", *allproxy)
+	}
 }
