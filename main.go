@@ -374,4 +374,9 @@ func exportProxyEnvVars(httpproxy, httpsproxy, allproxy *string) {
 	if allproxy != nil && *allproxy != "" {
 		os.Setenv("all_proxy", *allproxy)
 	}
+
+	if os.Getenv("no_proxy") == "" {
+		// export the no_proxy env var, if empty
+		os.Setenv("no_proxy", "localhost,127.0.0.1,localaddress,.localdomain.com")
+	}
 }
