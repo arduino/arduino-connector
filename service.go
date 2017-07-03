@@ -14,7 +14,7 @@ type program struct{}
 
 // Start run the program asynchronously
 func (p *program) Start(s service.Service) error {
-	go p.run()
+	// go p.run()
 	return nil
 }
 
@@ -23,7 +23,8 @@ func (p *program) Stop(s service.Service) error {
 	return nil
 }
 
-func main() {
+// createService returns the servcie to be installed
+func createService() service.Service {
 	workingDirectory, _ := osext.ExecutableFolder()
 
 	svcConfig := &service.Config{
@@ -35,19 +36,16 @@ func main() {
 
 	prg := &program{}
 	s, err := service.New(prg, svcConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	logger, err = s.Logger(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if service.Interactive() {
-		log.Println("Installing service")
-		s.Install()
-	}
-	err = s.Run()
-	if err != nil {
-		logger.Error(err)
-	}
+	check(err)
+
+	return s
+}
+
+func setup(token string) {}
+
+// install creates a devices with the arduino api, along with a key and certificate, and it installs itself as a service
+func install(s service.Service) {
+	log.Println("Install as a service")
+	err := s.Install()
+	check(err)
 }

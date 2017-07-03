@@ -29,8 +29,14 @@ const (
 	configFile = "./arduino-connector.cfg"
 )
 
-func (p *program) run() {
+func main() {
 	var (
+		// Setup flags
+		doSetup   = flag.Bool("setup", false, "Create a new device before starting the application")
+		doInstall = flag.Bool("install", false, "Install the application as a service before starting it")
+		token     = flag.String("token", "", "An authentication token to use instead of the username and password")
+
+		// Configuration flags
 		id          = flag.String("id", "", "id of the thing in aws iot")
 		uuid        = flag.String("uuid", "", "A uuid generated the first time the connector is started")
 		url         = flag.String("url", "", "url of the thing in aws iot")
@@ -42,6 +48,17 @@ func (p *program) run() {
 	// Read configuration
 	iniflags.SetConfigFile(configFile)
 	iniflags.Parse()
+
+	// Create service
+	if *doSetup {
+		setup(*token)
+	}
+
+	s := createService()
+
+	if *doInstall {
+		install(s)
+	}
 
 	// Export the proxy info as environments variables, so that:
 	// - http.DefaultTransport can use the proxy settings
@@ -76,7 +93,7 @@ func (p *program) run() {
 
 func check(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatal("- ", err)
 	}
 }
 
