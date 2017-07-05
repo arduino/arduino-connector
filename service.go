@@ -33,7 +33,7 @@ func main() {
 		WorkingDirectory: workingDirectory,
 	}
 
-	prg := &Program{}
+	prg := &program{}
 	s, err := service.New(prg, svcConfig)
 	if err != nil {
 		log.Fatal(err)
