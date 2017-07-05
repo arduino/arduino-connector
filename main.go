@@ -56,6 +56,7 @@ func main() {
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 
+	flag.DefaultConfigFlagname = configFile
 	flag.Parse()
 
 	fmt.Println(config.String())
