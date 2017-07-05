@@ -19,21 +19,29 @@ download() {
 	fi
 }
 
+# Replicate env variables in uppercase format
+export ID=$id
+export TOKEN=$token
+export HTTP_PROXY=$http_proxy
+export HTTPS_PROXY=$https_proxy
+export ALL_PROXY=$all_proxy
+
 cd $HOME
 echo home folder
 echo ---------
 ls
 echo remove old files: rm -f arduino-connector* certificate*
-echo ----------
+echo ---------
 rm -f arduino-connector* certificate*
 ls
 echo move files: mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-echo ----------
+echo ---------
 mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
 ls
 echo download connector
-echo ----------
+echo ---------
 download https://downloads.arduino.cc/tools/arduino-connector
 ls
 chmod +x arduino-connector
-./arduino-connector > arduino-connector.log 2>&1 &
+./arduino-connector -install > arduino-connector.log 2>&1
+service ArduinoConnector start

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -19,8 +18,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
+	"github.com/namsral/flag"
 	"github.com/pkg/errors"
-	"github.com/vharitonsky/iniflags"
 )
 
 const (
@@ -36,6 +35,15 @@ type Config struct {
 	ALLProxy   string
 }
 
+func (c Config) String() string {
+	out := "id=\"" + c.ID + "\"\r\n"
+	out += "url=\"" + c.URL + "\"\r\n"
+	out += "http_proxy=\"" + c.HTTPProxy + "\"\r\n"
+	out += "https_proxy=\"" + c.HTTPSProxy + "\"\r\n"
+	out += "all_proxy=\"" + c.ALLProxy + "\"\r\n"
+	return out
+}
+
 func main() {
 	config := Config{}
 
@@ -48,14 +56,17 @@ func main() {
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 
-	iniflags.Parse()
+	flag.Parse()
+
+	fmt.Println(config.String())
 
 	// Create service and install
 	s, err := createService(config)
 	check(err, "CreateService")
 
 	if *doInstall {
-		install(s, config.ID, *token)
+		install(s, config, *token)
+		return
 	}
 
 	err = s.Run()

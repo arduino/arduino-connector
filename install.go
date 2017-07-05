@@ -31,7 +31,7 @@ const (
 )
 
 // Install creates the necessary certificates and configuration files and installs the program as a service
-func install(s service.Service, id, token string) {
+func install(s service.Service, config Config, token string) {
 	// Create a private key
 	fmt.Println("Generate private key")
 	key, err := generateKey("P256")
@@ -51,7 +51,7 @@ func install(s service.Service, id, token string) {
 
 	// Request a certificate
 	fmt.Println("Request certificate")
-	pem, err := requestCert(id, token, csr)
+	pem, err := requestCert(config.ID, token, csr)
 	check(err, "requestCert")
 
 	err = ioutil.WriteFile("certificate.pem", []byte(pem), 0600)
@@ -59,12 +59,12 @@ func install(s service.Service, id, token string) {
 
 	// Request URL
 	fmt.Println("Request mqtt url")
-	url, err := requestURL(token)
+	config.URL, err = requestURL(token)
 	check(err, "requestURL")
 
 	// Write the configuration
 	fmt.Println("Write conf to arduino-connector.cfg")
-	data := "id=\"" + id + "\"\r\nurl=\"" + url + "\"\r\n"
+	data := config.String()
 	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0600)
 	check(err, "WriteConf")
 
@@ -74,10 +74,10 @@ func install(s service.Service, id, token string) {
 
 	// Connect to MQTT and communicate back
 	fmt.Println("Check successful mqtt connection")
-	client, err := setupMQTTConnection("certificate.pem", "certificate.key", id, url)
+	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL)
 	check(err, "ConnectMQTT")
 
-	err = registerDevice(client, id)
+	err = registerDevice(client, config.ID)
 	check(err, "RegisterDevice")
 
 	client.Disconnect(0)
