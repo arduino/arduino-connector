@@ -39,9 +39,24 @@ rm -f arduino-connector* certificate*
 
 echo download connector
 echo ---------
-download https://downloads.arduino.cc/tools/arduino-connector
+download https://downloads.arduino.cc/tools/arduino-connector-dev
 
-chmod +x arduino-connector
+chmod +x arduino-connector-dev
 
-echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
-echo $password | sudo -kS service ArduinoConnector start
+if [ "$password" == "" ]
+then
+	echo "password"
+	echo $password
+	sudo -E ./arduino-connector-dev -install > arduino-connector.log
+else
+	echo "password"
+	echo $password
+	echo $password | sudo -kS -E ./arduino-connector-dev -install > arduino-connector.log 2>&1
+fi
+
+if [ "$password" == "" ]
+then
+	sudo service ArduinoConnector start
+else
+	echo $password | sudo -kS service ArduinoConnector start
+fi
