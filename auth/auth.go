@@ -44,7 +44,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -291,8 +290,6 @@ func (c *Config) requestToken(client *http.Client, code string) (*Token, error) 
 		json.Unmarshal(body, &data)
 		return nil, errors.New(data.Error)
 	}
-
-	fmt.Println(string(body))
 
 	data := Token{}
 
