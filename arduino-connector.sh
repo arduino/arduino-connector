@@ -47,7 +47,7 @@ if [ "$password" == "" ]
 then
 	echo "password"
 	echo $password
-	sudo -E ./arduino-connector-dev -install > arduino-connector.log
+	sudo -E ./arduino-connector-dev -install
 else
 	echo "password"
 	echo $password

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/bcmi-labs/arduino-connector/auth"
-
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/kardianos/service"
@@ -35,12 +34,10 @@ const (
 // Install creates the necessary certificates and configuration files and installs the program as a service
 func install(s service.Service, config Config, token string) {
 	// Request token
+	var err error
 	if token == "" {
-		username, password := askCredentials()
-		auth := auth.New()
-		tok, err := auth.Token(username, password)
-		check(err, "requestToken")
-		token = tok.Access
+		token, err = askCredentials()
+		check(err, "AskCredentials")
 	}
 
 	// Create a private key
@@ -96,13 +93,22 @@ func install(s service.Service, config Config, token string) {
 	fmt.Println("Setup completed")
 }
 
-func askCredentials() (user, password string) {
+func askCredentials() (token string, err error) {
+	var user, pass string
 	fmt.Println("Insert your arduino username")
 	fmt.Scanln(&user)
 	fmt.Println("Insert your arduino password")
-	fmt.Scanln(&password)
+	fmt.Scanln(&pass)
 
-	return user, password
+	auth := auth.New()
+	auth.ClientID = "connector"
+	auth.Scopes = "iot:devices"
+	tok, err := auth.Token(user, pass)
+	if err != nil {
+		return "", err
+	}
+
+	return tok.Access, nil
 }
 
 func generateKey(ecdsaCurve string) (interface{}, error) {
@@ -193,7 +199,7 @@ func requestCert(id, token string, csr []byte) (string, error) {
 	}
 
 	if res.StatusCode != 200 {
-		return "", errors.New("Expected OK, got " + res.Status)
+		return "", errors.New("POST " + "/" + id + ": expected 200 OK, got " + res.Status)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
