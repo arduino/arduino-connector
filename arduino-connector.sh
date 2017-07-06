@@ -42,5 +42,6 @@ echo ---------
 download https://downloads.arduino.cc/tools/arduino-connector
 
 chmod +x arduino-connector
-sudo -E ./arduino-connector -install > arduino-connector.log 2>&1
-sudo service ArduinoConnector start
+
+echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
+echo $password | sudo -kS service ArduinoConnector start
