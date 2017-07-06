@@ -44,6 +44,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -272,7 +273,7 @@ func (c *Config) requestToken(client *http.Client, code string) (*Token, error) 
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth("cli", "")
+	req.SetBasicAuth(c.ClientID, "")
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -282,6 +283,16 @@ func (c *Config) requestToken(client *http.Client, code string) (*Token, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	if res.StatusCode != 200 {
+		data := struct {
+			Error string `json:"error_description"`
+		}{}
+		json.Unmarshal(body, &data)
+		return nil, errors.New(data.Error)
+	}
+
+	fmt.Println(string(body))
 
 	data := Token{}
 

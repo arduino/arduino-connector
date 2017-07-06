@@ -1,8 +1,5 @@
 #!/bin/bash -e
 
-# logfile=download.log
-# exec > $logfile 2>&1
-
 has() {
 	type "$1" > /dev/null 2>&1
 	return $?
@@ -33,27 +30,42 @@ echo ---------
 echo home folder
 echo ---------
 
-echo remove old files: rm -f arduino-connector* certificate*
+echo remove old files
 echo ---------
 rm -f arduino-connector* certificate*
+
+echo uninstall previous installations of connector
+echo ---------
+if [ "$password" == "" ]
+then
+	sudo service ArduinoConnector stop
+else
+	echo $password | sudo -kS service ArduinoConnector stop
+fi
+
+if [ "$password" == "" ]
+then
+	sudo rm -f /etc/systemd/system/ArduinoConnector.service
+else
+	echo $password | sudo rm -f /etc/systemd/system/ArduinoConnector.service
+fi
 
 echo download connector
 echo ---------
 download https://downloads.arduino.cc/tools/arduino-connector-dev
-
 chmod +x arduino-connector-dev
 
+echo install connector
+echo ---------
 if [ "$password" == "" ]
 then
-	echo "password"
-	echo $password
 	sudo -E ./arduino-connector-dev -install
 else
-	echo "password"
-	echo $password
 	echo $password | sudo -kS -E ./arduino-connector-dev -install > arduino-connector.log 2>&1
 fi
 
+echo start connector service
+echo ---------
 if [ "$password" == "" ]
 then
 	sudo service ArduinoConnector start
