@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bcmi-labs/arduino-connector/auth"
+
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/kardianos/service"
@@ -32,6 +34,15 @@ const (
 
 // Install creates the necessary certificates and configuration files and installs the program as a service
 func install(s service.Service, config Config, token string) {
+	// Request token
+	if token == "" {
+		username, password := askCredentials()
+		auth := auth.New()
+		tok, err := auth.Token(username, password)
+		check(err, "requestToken")
+		token = tok.Access
+	}
+
 	// Create a private key
 	fmt.Println("Generate private key")
 	key, err := generateKey("P256")
@@ -83,6 +94,15 @@ func install(s service.Service, config Config, token string) {
 	client.Disconnect(0)
 
 	fmt.Println("Setup completed")
+}
+
+func askCredentials() (user, password string) {
+	fmt.Println("Insert your arduino username")
+	fmt.Scanln(&user)
+	fmt.Println("Insert your arduino password")
+	fmt.Scanln(&password)
+
+	return user, password
 }
 
 func generateKey(ecdsaCurve string) (interface{}, error) {
