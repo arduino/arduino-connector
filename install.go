@@ -247,6 +247,7 @@ func createService(config Config) (service.Service, error) {
 		Name:             "ArduinoConnector",
 		DisplayName:      "Arduino Connector Service",
 		Description:      "Cloud connector and launcher for Intel IoT devices.",
+		Arguments:        []string{"-config", configFile},
 		WorkingDirectory: workingDirectory,
 	}
 

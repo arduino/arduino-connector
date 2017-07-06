@@ -36,11 +36,11 @@ type Config struct {
 }
 
 func (c Config) String() string {
-	out := "id=\"" + c.ID + "\"\r\n"
-	out += "url=\"" + c.URL + "\"\r\n"
-	out += "http_proxy=\"" + c.HTTPProxy + "\"\r\n"
-	out += "https_proxy=\"" + c.HTTPSProxy + "\"\r\n"
-	out += "all_proxy=\"" + c.ALLProxy + "\"\r\n"
+	out := "id " + c.ID + "\r\n"
+	out += "url " + c.URL + "\r\n"
+	out += "http_proxy " + c.HTTPProxy + "\r\n"
+	out += "https_proxy " + c.HTTPSProxy + "\r\n"
+	out += "all_proxy" + c.ALLProxy + "\r\n"
 	return out
 }
 
@@ -49,17 +49,14 @@ func main() {
 
 	var doInstall = flag.Bool("install", false, "Install as a service")
 	var token = flag.String("token", "", "an authentication token")
-
+	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
 	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 
-	flag.DefaultConfigFlagname = configFile
 	flag.Parse()
-
-	fmt.Println(config.String())
 
 	// Create service and install
 	s, err := createService(config)
@@ -268,7 +265,6 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 
 	mqttClient := mqtt.NewClient(opts)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
 		return nil, errors.Wrap(token.Error(), "connect to mqtt")
 	}
 	return mqttClient, nil

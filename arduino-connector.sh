@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-logfile=download.log
-exec > $logfile 2>&1
+# logfile=download.log
+# exec > $logfile 2>&1
 
 has() {
 	type "$1" > /dev/null 2>&1
@@ -26,22 +26,21 @@ export HTTP_PROXY=$http_proxy
 export HTTPS_PROXY=$https_proxy
 export ALL_PROXY=$all_proxy
 
-cd $HOME
+echo printenv
+echo ---------
+
+# cd $HOME
 echo home folder
 echo ---------
-ls
+
 echo remove old files: rm -f arduino-connector* certificate*
 echo ---------
 rm -f arduino-connector* certificate*
-ls
-echo move files: mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-echo ---------
-mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-ls
+
 echo download connector
 echo ---------
 download https://downloads.arduino.cc/tools/arduino-connector
-ls
+
 chmod +x arduino-connector
-./arduino-connector -install > arduino-connector.log 2>&1
-service ArduinoConnector start
+sudo -E ./arduino-connector -install > arduino-connector.log 2>&1
+sudo service ArduinoConnector start
