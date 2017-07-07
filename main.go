@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,63 +18,95 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
+	"github.com/namsral/flag"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
-	"github.com/vharitonsky/iniflags"
 )
 
 const (
 	configFile = "./arduino-connector.cfg"
 )
 
-func (p *program) run() {
-	var (
-		id          = flag.String("id", "", "id of the thing in aws iot")
-		uuid        = flag.String("uuid", "", "A uuid generated the first time the connector is started")
-		url         = flag.String("url", "", "url of the thing in aws iot")
-		http_proxy  = flag.String("http_proxy", "", "URL of HTTP proxy to use")
-		https_proxy = flag.String("https_proxy", "", "URL of HTTPS proxy to use")
-		all_proxy   = flag.String("all_proxy", "", "URL of SOCKS proxy to use")
-	)
+// Config holds the configuration needed by the application
+type Config struct {
+	ID         string
+	URL        string
+	HTTPProxy  string
+	HTTPSProxy string
+	ALLProxy   string
+}
 
-	// Read configuration
-	iniflags.SetConfigFile(configFile)
-	iniflags.Parse()
+func (c Config) String() string {
+	out := "id " + c.ID + "\r\n"
+	out += "url " + c.URL + "\r\n"
+	out += "http_proxy " + c.HTTPProxy + "\r\n"
+	out += "https_proxy " + c.HTTPSProxy + "\r\n"
+	out += "all_proxy" + c.ALLProxy + "\r\n"
+	return out
+}
 
+func main() {
+	config := Config{}
+
+	var doInstall = flag.Bool("install", false, "Install as a service")
+	var token = flag.String("token", "", "an authentication token")
+	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
+	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
+	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
+	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
+	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
+
+	flag.Parse()
+
+	// Create service and install
+	s, err := createService(config)
+	check(err, "CreateService")
+
+	if *doInstall {
+		install(s, config, *token)
+		return
+	}
+
+	err = s.Run()
+	check(err, "RunService")
+}
+
+func (p program) run() {
 	// Export the proxy info as environments variables, so that:
 	// - http.DefaultTransport can use the proxy settings
 	// - any spawned sketch process'es also have access to them
 	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
-	exportProxyEnvVars(http_proxy, https_proxy, all_proxy)
+	p.exportProxyEnvVars()
 
 	// Setup MQTT connection
-	client, err := setupMQTTConnection("certificate.pem", "certificate.key", *id, *url)
-	check(err)
+	client, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
+	check(err, "ConnectMQTT")
 	log.Println("Connected to MQTT")
 
-	// Register
-	if *uuid == "" {
-		*uuid, err = createUUID()
-		check(err)
-
-		err = registerDevice(*id, *uuid, client)
-		check(err)
-		log.Println("Registered device")
-	}
-
 	// Create global status
-	status := NewStatus(*id, client)
+	status := NewStatus(p.Config.ID, client)
 
 	// Subscribe to /upload endpoint
-	client.Subscribe("$aws/things/"+*id+"/upload/post", 1, UploadCB(status))
-	client.Subscribe("$aws/things/"+*id+"/sketch", 1, SketchCB(status))
+	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
+	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
 
 	select {}
 }
 
-func check(err error) {
+func (p program) exportProxyEnvVars() {
+	os.Setenv("http_proxy", p.Config.HTTPProxy)
+	os.Setenv("https_proxy", p.Config.HTTPSProxy)
+	os.Setenv("all_proxy", p.Config.ALLProxy)
+
+	if os.Getenv("no_proxy") == "" {
+		// export the no_proxy env var, if empty
+		os.Setenv("no_proxy", "localhost,127.0.0.1,localaddress,.localdomain.com")
+	}
+}
+
+func check(err error, context string) {
 	if err != nil {
-		panic(err)
+		log.Fatal(context, " - ", err)
 	}
 }
 
@@ -235,80 +265,9 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 
 	mqttClient := mqtt.NewClient(opts)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
 		return nil, errors.Wrap(token.Error(), "connect to mqtt")
 	}
 	return mqttClient, nil
-}
-
-// createUUID creates a new uuid and updates the options file
-// Can fail if the file is corrupted or there are missing permissions
-func createUUID() (string, error) {
-	id := uuid.NewV4()
-
-	f, err := os.OpenFile(configFile, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return "", errors.Wrap(err, "open conf file")
-	}
-
-	defer f.Close()
-
-	_, err = f.WriteString("uuid=" + id.String())
-	if err != nil {
-		return "", errors.Wrap(err, "write conf")
-	}
-
-	return id.String(), nil
-}
-
-// registerDevice publishes on the topic /register with info about the device itself
-func registerDevice(id, uuid string, client mqtt.Client) error {
-	// get host
-	host, err := os.Hostname()
-	if err != nil {
-		return errors.Wrap(err, "get hostname")
-	}
-
-	// get Macs
-	macs, err := getMACs()
-
-	data := struct {
-		ID   string
-		Host string
-		MACs []string
-	}{
-		ID:   uuid,
-		Host: host,
-		MACs: macs,
-	}
-	msg, err := json.Marshal(data)
-	if err != nil {
-		return errors.Wrapf(err, "marshal %+v to json", data)
-	}
-
-	if token := client.Publish("$aws/things/"+id+"/register", 1, false, msg); token.Wait() && token.Error() != nil {
-		return errors.Wrap(token.Error(), "publish to /register")
-	}
-
-	return nil
-}
-
-// getMACs returns a list of MAC addresses found on the device
-func getMACs() ([]string, error) {
-	var macAddresses []string
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return nil, errors.Wrap(err, "get net interfaces")
-	}
-	for _, netInterface := range interfaces {
-		macAddress := netInterface.HardwareAddr
-		hwAddr, err := net.ParseMAC(macAddress.String())
-		if err != nil {
-			continue
-		}
-		macAddresses = append(macAddresses, hwAddr.String())
-	}
-	return macAddresses, nil
 }
 
 // downloadfile substitute a file with something that downloads from an url
@@ -360,23 +319,4 @@ func spawnProcess(filepath string) (int, io.ReadCloser, error) {
 		return 0, stdout, err
 	}
 	return cmd.Process.Pid, stdout, err
-}
-
-func exportProxyEnvVars(httpproxy, httpsproxy, allproxy *string) {
-	if httpproxy != nil && *httpproxy != "" {
-		os.Setenv("http_proxy", *httpproxy)
-	}
-
-	if httpsproxy != nil && *httpsproxy != "" {
-		os.Setenv("https_proxy", *httpsproxy)
-	}
-
-	if allproxy != nil && *allproxy != "" {
-		os.Setenv("all_proxy", *allproxy)
-	}
-
-	if os.Getenv("no_proxy") == "" {
-		// export the no_proxy env var, if empty
-		os.Setenv("no_proxy", "localhost,127.0.0.1,localaddress,.localdomain.com")
-	}
 }

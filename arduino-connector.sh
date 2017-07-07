@@ -1,8 +1,5 @@
 #!/bin/bash -e
 
-logfile=download.log
-exec > $logfile 2>&1
-
 has() {
 	type "$1" > /dev/null 2>&1
 	return $?
@@ -19,21 +16,59 @@ download() {
 	fi
 }
 
+# Replicate env variables in uppercase format
+export ID=$id
+export TOKEN=$token
+export HTTP_PROXY=$http_proxy
+export HTTPS_PROXY=$https_proxy
+export ALL_PROXY=$all_proxy
+
+echo printenv
+echo ---------
+
 cd $HOME
 echo home folder
 echo ---------
-ls
-echo remove old files: rm -f arduino-connector* certificate*
-echo ----------
+
+echo remove old files
+echo ---------
 rm -f arduino-connector* certificate*
-ls
-echo move files: mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-echo ----------
-mv /tmp/arduino-connector.cfg /tmp/certificate.pem /tmp/certificate.key $HOME
-ls
+
+echo uninstall previous installations of connector
+echo ---------
+if [ "$password" == "" ]
+then
+	sudo service ArduinoConnector stop
+else
+	echo $password | sudo -kS service ArduinoConnector stop
+fi
+
+if [ "$password" == "" ]
+then
+	sudo rm -f /etc/systemd/system/ArduinoConnector.service
+else
+	echo $password | sudo rm -f /etc/systemd/system/ArduinoConnector.service
+fi
+
 echo download connector
-echo ----------
-download https://downloads.arduino.cc/tools/arduino-connector
-ls
-chmod +x arduino-connector
-./arduino-connector > arduino-connector.log 2>&1 &
+echo ---------
+download https://downloads.arduino.cc/tools/arduino-connector-dev
+chmod +x arduino-connector-dev
+
+echo install connector
+echo ---------
+if [ "$password" == "" ]
+then
+	sudo -E ./arduino-connector-dev -install
+else
+	echo $password | sudo -kS -E ./arduino-connector-dev -install > arduino-connector.log 2>&1
+fi
+
+echo start connector service
+echo ---------
+if [ "$password" == "" ]
+then
+	sudo service ArduinoConnector start
+else
+	echo $password | sudo -kS service ArduinoConnector start
+fi
