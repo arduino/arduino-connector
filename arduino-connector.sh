@@ -26,7 +26,7 @@ export ALL_PROXY=$all_proxy
 echo printenv
 echo ---------
 
-# cd $HOME
+cd $HOME
 echo home folder
 echo ---------
 
