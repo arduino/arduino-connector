@@ -38,16 +38,16 @@ echo uninstall previous installations of connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo service ArduinoConnector stop
+	sudo service ArduinoConnector stop || true
 else
-	echo $password | sudo -kS service ArduinoConnector stop
+	echo $password | sudo -kS service ArduinoConnector stop || true
 fi
 
 if [ "$password" == "" ]
 then
 	sudo rm -f /etc/systemd/system/ArduinoConnector.service
 else
-	echo $password | sudo rm -f /etc/systemd/system/ArduinoConnector.service
+	echo $password | sudo -kS rm -f /etc/systemd/system/ArduinoConnector.service
 fi
 
 echo download connector
