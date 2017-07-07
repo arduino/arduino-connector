@@ -2,11 +2,9 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"syscall"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -81,7 +79,7 @@ func (p program) run() {
 	// Subscribe to topics endpoint
 	client.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
 	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
-	// client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
+	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
 
 	select {}
 }
@@ -101,57 +99,6 @@ func check(err error, context string) {
 	if err != nil {
 		log.Fatal(context, " - ", err)
 	}
-}
-
-// SketchActionPayload contains the name of the sketch and the action to perform
-type SketchActionPayload struct {
-	Name   string
-	Action string
-}
-
-// SketchCB listens to commands to start and stop sketches
-func SketchCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		// unmarshal
-		var payload SketchActionPayload
-		err := json.Unmarshal(msg.Payload(), &payload)
-		if err != nil {
-			status.Error("/sketch/get", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-
-		if sketch, ok := status.Sketches[payload.Name]; ok {
-			err = applyAction(sketch, payload.Action)
-			if err != nil {
-				status.Error("/sketch/get", errors.Wrapf(err, "applying %s to %s", payload.Action, payload.Name))
-				return
-			}
-		}
-
-		status.Error("/sketch/get", errors.New("sketch "+payload.Name+" not found"))
-	}
-}
-
-func applyAction(sketch SketchStatus, action string) error {
-	process, err := os.FindProcess(sketch.PID)
-	if err != nil {
-		return err
-	}
-	switch action {
-	case "START":
-		err = process.Signal(syscall.SIGCONT)
-		sketch.Status = "RUNNING"
-		break
-	case "STOP":
-		err = process.Kill()
-		sketch.Status = "STOPPED"
-		break
-	case "PAUSE":
-		err = process.Signal(syscall.SIGTSTP)
-		sketch.Status = "PAUSED"
-		break
-	}
-	return err
 }
 
 // setupMQTTConnection establish a connection with aws iot

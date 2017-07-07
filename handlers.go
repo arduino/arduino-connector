@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
@@ -19,6 +19,7 @@ import (
 // StatusCB replies with the current status of the arduino-connector
 func StatusCB(status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("status reqs")
 		status.Publish()
 	}
 }
@@ -51,7 +52,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		// Stop and delete if existing
 		if sketch, ok := status.Sketches[info.ID]; ok {
-			err = applyAction(sketch, "STOP")
+			err = applyAction(&sketch, "STOP")
 			if err != nil {
 				status.Error("/upload", errors.Wrapf(err, "stop pid %d", sketch.PID))
 				return
@@ -87,7 +88,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		}
 
 		// spawn process
-		pid, stdout, err := spawnProcess(name)
+		pid, _, err := spawnProcess(name)
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "spawn %s", name))
 			return
@@ -104,15 +105,53 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		status.Set(info.ID, s)
 		status.Publish()
 
-		go func(stdout io.ReadCloser) {
-			in := bufio.NewScanner(stdout)
-			for {
-				for in.Scan() {
-					fmt.Printf(in.Text()) // write each line to your log, or anything you need
-				}
-				fmt.Println("finished")
+		// go func(stdout io.ReadCloser) {
+		// 	in := bufio.NewScanner(stdout)
+		// 	for {
+		// 		for in.Scan() {
+		// 			fmt.Printf(in.Text()) // write each line to your log, or anything you need
+		// 		}
+		// 	}
+		// }(stdout)
+	}
+}
+
+// SketchActionPayload contains the name of the sketch and the action to perform
+type SketchActionPayload struct {
+	ID     string
+	Name   string
+	Action string
+}
+
+// SketchCB listens to commands to start and stop sketches
+func SketchCB(status *Status) mqtt.MessageHandler {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		// unmarshal
+		var info SketchActionPayload
+		err := json.Unmarshal(msg.Payload(), &info)
+		if err != nil {
+			status.Error("/sketch", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+			return
+		}
+
+		if info.ID == "" {
+			info.ID = info.Name
+		}
+
+		if sketch, ok := status.Sketches[info.ID]; ok {
+			err := applyAction(&sketch, info.Action)
+			if err != nil {
+				status.Error("/sketch", errors.Wrapf(err, "applying %s to %s", info.Action, info.Name))
+				return
 			}
-		}(stdout)
+			status.Info("/sketch", "successfully performed "+info.Action+" on sketch "+info.ID)
+
+			status.Set(info.ID, sketch)
+			status.Publish()
+			return
+		}
+
+		status.Error("/sketch", errors.New("sketch "+info.ID+" not found"))
 	}
 }
 
@@ -165,4 +204,41 @@ func spawnProcess(filepath string) (int, io.ReadCloser, error) {
 		return 0, stdout, err
 	}
 	return cmd.Process.Pid, stdout, err
+}
+
+func applyAction(sketch *SketchStatus, action string) error {
+	process, err := os.FindProcess(sketch.PID)
+	if err != nil {
+		return err
+	}
+
+	switch action {
+	case "START":
+		if sketch.PID != 0 {
+			err = process.Signal(syscall.SIGCONT)
+		} else {
+			folder, err := osext.ExecutableFolder()
+			if err != nil {
+				return err
+			}
+			name := filepath.Join(folder, sketch.Name)
+			sketch.PID, _, err = spawnProcess(name)
+		}
+		if err != nil {
+			return err
+		}
+		sketch.Status = "RUNNING"
+		break
+
+	case "STOP":
+		err = process.Kill()
+		sketch.Status = "STOPPED"
+		sketch.PID = 0
+		break
+	case "PAUSE":
+		err = process.Signal(syscall.SIGTSTP)
+		sketch.Status = "PAUSED"
+		break
+	}
+	return err
 }
