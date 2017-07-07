@@ -64,15 +64,13 @@ func (s *Status) Info(topic, msg string) {
 	token.Wait()
 }
 
-// StatusCB replies with the current status of the arduino-connector
-func StatusCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		data, err := json.Marshal(status)
-		if err != nil {
-			status.Error("/status/error", errors.Wrap(err, "status request"))
-			return
-		}
-
-		status.Info("/status", string(data))
+// Publish sens on the /status topic a json representation of the connector
+func (s *Status) Publish() {
+	data, err := json.Marshal(s)
+	if err != nil {
+		s.Error("/status/error", errors.Wrap(err, "status request"))
+		return
 	}
+
+	s.Info("/status", string(data))
 }
