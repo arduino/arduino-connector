@@ -86,9 +86,10 @@ func (p program) run() {
 	// Create global status
 	status := NewStatus(p.Config.ID, client)
 
-	// Subscribe to /upload endpoint
-	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
-	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
+	// Subscribe to topics endpoint
+	client.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
+	// client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
+	// client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
 
 	select {}
 }

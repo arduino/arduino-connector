@@ -4,21 +4,23 @@ import (
 	"encoding/json"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/pkg/errors"
 )
 
 // Status contains info about the sketches running on the device
 type Status struct {
 	id       string
 	client   mqtt.Client
-	Sketches map[string]SketchStatus
+	Sketches map[string]SketchStatus `json:"sketches"`
 }
 
 // SketchStatus contains info about a single running sketch
 type SketchStatus struct {
-	Name      string
-	PID       int
-	Status    string // could be bool if we don't allow Pause
-	Endpoints []Endpoint
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	PID       int        `json:"pid"`
+	Status    string     `json:"status"`
+	Endpoints []Endpoint `json:"-"`
 }
 
 // Endpoint is an exposed function
@@ -60,4 +62,17 @@ func (s *Status) Error(topic string, err error) {
 func (s *Status) Info(topic, msg string) {
 	token := s.client.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg)
 	token.Wait()
+}
+
+// StatusCB replies with the current status of the arduino-connector
+func StatusCB(status *Status) mqtt.MessageHandler {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		data, err := json.Marshal(status)
+		if err != nil {
+			status.Error("/status/error", errors.Wrap(err, "status request"))
+			return
+		}
+
+		status.Info("/status", string(data))
+	}
 }
