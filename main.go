@@ -38,11 +38,11 @@ type Config struct {
 }
 
 func (c Config) String() string {
-	out := "id " + c.ID + "\r\n"
-	out += "url " + c.URL + "\r\n"
-	out += "http_proxy " + c.HTTPProxy + "\r\n"
-	out += "https_proxy " + c.HTTPSProxy + "\r\n"
-	out += "all_proxy" + c.ALLProxy + "\r\n"
+	out := "id=" + c.ID + "\r\n"
+	out += "url=" + c.URL + "\r\n"
+	out += "http_proxy=" + c.HTTPProxy + "\r\n"
+	out += "https_proxy=" + c.HTTPSProxy + "\r\n"
+	out += "all_proxy=" + c.ALLProxy + "\r\n"
 	return out
 }
 
@@ -50,6 +50,7 @@ func main() {
 	config := Config{}
 
 	var doInstall = flag.Bool("install", false, "Install as a service")
+	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
@@ -65,11 +66,12 @@ func main() {
 	s, err := createService(config, *listenFile)
 	check(err, "CreateService")
 
+	if *doRegister {
+		register(config, *token)
+	}
+
 	if *doInstall {
-		install(s, config, *token)
-		if len(*listenFile) == 0 {
-			return
-		}
+		install(s)
 	}
 
 	err = s.Run()
@@ -91,7 +93,7 @@ func (p program) run() {
 	// Create global status
 	status := NewStatus(p.Config.ID, client)
 
-	if len(p.listenFile) > 0 {
+	if p.listenFile != "" {
 		go tailAndReport(p.listenFile, status)
 	}
 

@@ -31,8 +31,16 @@ const (
 	devicesAPI = "https://api-dev.arduino.cc/devices/v1"
 )
 
-// Install creates the necessary certificates and configuration files and installs the program as a service
-func install(s service.Service, config Config, token string) {
+// Install installs the program as a service
+func install(s service.Service) {
+	// InstallService
+	err := s.Install()
+	// TODO: implement a fallback strtegy if service installation fails
+	check(err, "InstallService")
+}
+
+// Register creates the necessary certificates and configuration files
+func register(config Config, token string) {
 	// Request token
 	var err error
 	if token == "" {
@@ -75,10 +83,6 @@ func install(s service.Service, config Config, token string) {
 	data := config.String()
 	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0600)
 	check(err, "WriteConf")
-
-	// InstallService
-	err = s.Install()
-	check(err, "InstallService")
 
 	// Connect to MQTT and communicate back
 	fmt.Println("Check successful mqtt connection")
