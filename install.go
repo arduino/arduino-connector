@@ -251,7 +251,8 @@ func requestURL(token string) (string, error) {
 }
 
 type program struct {
-	Config Config
+	Config     Config
+	listenFile string
 }
 
 // Start run the program asynchronously
@@ -266,7 +267,7 @@ func (p *program) Stop(s service.Service) error {
 }
 
 // createService returns the servcie to be installed
-func createService(config Config) (service.Service, error) {
+func createService(config Config, listenFile string) (service.Service, error) {
 	workingDirectory, _ := osext.ExecutableFolder()
 
 	svcConfig := &service.Config{
@@ -277,7 +278,7 @@ func createService(config Config) (service.Service, error) {
 		WorkingDirectory: workingDirectory,
 	}
 
-	prg := &program{config}
+	prg := &program{config, listenFile}
 	s, err := service.New(prg, svcConfig)
 	if err != nil {
 		return nil, err

@@ -12,11 +12,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/hpcloud/tail"
 	"github.com/kardianos/osext"
 	"github.com/namsral/flag"
 	"github.com/pkg/errors"
@@ -48,6 +50,7 @@ func main() {
 	config := Config{}
 
 	var doInstall = flag.Bool("install", false, "Install as a service")
+	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
@@ -59,12 +62,14 @@ func main() {
 	flag.Parse()
 
 	// Create service and install
-	s, err := createService(config)
+	s, err := createService(config, *listenFile)
 	check(err, "CreateService")
 
 	if *doInstall {
 		install(s, config, *token)
-		return
+		if len(*listenFile) == 0 {
+			return
+		}
 	}
 
 	err = s.Run()
@@ -86,11 +91,29 @@ func (p program) run() {
 	// Create global status
 	status := NewStatus(p.Config.ID, client)
 
+	if len(p.listenFile) > 0 {
+		go tailAndReport(p.listenFile, status)
+	}
+
 	// Subscribe to /upload endpoint
 	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
 	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
 
 	select {}
+}
+
+func tailAndReport(listenFile string, status *Status) {
+	t, err := tail.TailFile(listenFile, tail.Config{Follow: true})
+	for err != nil {
+		// retry until the file appears
+		time.Sleep(1 * time.Second)
+		t, err = tail.TailFile(listenFile, tail.Config{Follow: true})
+	}
+	for line := range t.Lines {
+		if strings.Contains(line.Text, "$$$") {
+			status.Info("/install", line.Text)
+		}
+	}
 }
 
 func (p program) exportProxyEnvVars() {
