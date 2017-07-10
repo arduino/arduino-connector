@@ -28,7 +28,7 @@ import (
 
 const (
 	rsaBits    = 2048
-	devicesAPI = "https://api-dev.arduino.cc/devices/v1"
+	devicesAPI = "https://api.arduino.cc/devices/v1"
 )
 
 // Install creates the necessary certificates and configuration files and installs the program as a service

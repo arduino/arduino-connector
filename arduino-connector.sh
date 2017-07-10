@@ -52,16 +52,16 @@ fi
 
 echo download connector
 echo ---------
-download https://downloads.arduino.cc/tools/arduino-connector-dev
-chmod +x arduino-connector-dev
+download https://downloads.arduino.cc/tools/arduino-connector
+chmod +x arduino-connector
 
 echo install connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo -E ./arduino-connector-dev -install
+	sudo -E ./arduino-connector -install
 else
-	echo $password | sudo -kS -E ./arduino-connector-dev -install > arduino-connector.log 2>&1
+	echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
 fi
 
 echo start connector service
