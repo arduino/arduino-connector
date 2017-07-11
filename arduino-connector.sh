@@ -64,6 +64,14 @@ else
 	echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
 fi
 
+if [ "$password" == "" ]
+then
+	sudo chown $USER arduino-connector.cfg
+else
+	echo $password | sudo -kS chown $USER arduino-connector.cfg
+fi
+
+
 echo start connector service
 echo ---------
 if [ "$password" == "" ]

@@ -73,7 +73,7 @@ func install(s service.Service, config Config, token string) {
 	// Write the configuration
 	fmt.Println("Write conf to arduino-connector.cfg")
 	data := config.String()
-	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0600)
+	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
 	check(err, "WriteConf")
 
 	// InstallService
