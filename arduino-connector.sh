@@ -38,9 +38,9 @@ echo uninstall previous installations of connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo sysctl stop ArduinoConnector || true
+	sudo systemctl stop ArduinoConnector || true
 else
-	echo $password | sudo -kS sysctl stop ArduinoConnector || true
+	echo $password | sudo -kS systemctl stop ArduinoConnector || true
 fi
 
 if [ "$password" == "" ]
@@ -68,7 +68,7 @@ echo start connector service
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo sysctl start ArduinoConnector
+	sudo systemctl start ArduinoConnector
 else
-	echo $password | sudo -kS sysctl start ArduinoConnector
+	echo $password | sudo -kS systemctl start ArduinoConnector
 fi
