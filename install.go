@@ -21,8 +21,8 @@ import (
 
 	"github.com/bcmi-labs/arduino-connector/auth"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
-	"github.com/kardianos/service"
 	"github.com/pkg/errors"
 )
 
@@ -280,6 +280,7 @@ func createService(config Config, listenFile string) (service.Service, error) {
 		Description:      "Cloud connector and launcher for Intel IoT devices.",
 		Arguments:        []string{"-config", configFile},
 		WorkingDirectory: workingDirectory,
+		Dependencies:     []string{"network-online.target"},
 	}
 
 	prg := &program{config, listenFile}
