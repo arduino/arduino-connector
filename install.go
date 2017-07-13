@@ -28,7 +28,7 @@ import (
 
 const (
 	rsaBits    = 2048
-	devicesAPI = "https://api-dev.arduino.cc/devices/v1"
+	devicesAPI = "https://api.arduino.cc/devices/v1"
 )
 
 // Install installs the program as a service
@@ -81,7 +81,7 @@ func register(config Config, token string) {
 	// Write the configuration
 	fmt.Println("Write conf to arduino-connector.cfg")
 	data := config.String()
-	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0600)
+	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
 	check(err, "WriteConf")
 
 	// Connect to MQTT and communicate back

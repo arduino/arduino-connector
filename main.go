@@ -1,25 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hpcloud/tail"
-	"github.com/kardianos/osext"
 	"github.com/namsral/flag"
 	"github.com/pkg/errors"
 )
@@ -97,9 +87,10 @@ func (p program) run() {
 		go tailAndReport(p.listenFile, status)
 	}
 
-	// Subscribe to /upload endpoint
+	// Subscribe to topics endpoint
+	client.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
 	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
-	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch", 1, SketchCB(status))
+	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
 
 	select {}
 }
@@ -133,130 +124,6 @@ func check(err error, context string) {
 	if err != nil {
 		log.Fatal(context, " - ", err)
 	}
-}
-
-// UploadPayload contains the name and url of the sketch to upload on the device
-type UploadPayload struct {
-	URL   string `json:"url"`
-	Name  string `json:"name"`
-	Token string `json:"token"`
-}
-
-// SketchActionPayload contains the name of the sketch and the action to perform
-type SketchActionPayload struct {
-	Name   string
-	Action string
-}
-
-// UploadCB receives the url and name of the sketch binary, then it
-// - downloads the binary,
-// - chmods +x it
-// - executes redirecting stdout and sterr to a proper logger
-func UploadCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		// unmarshal
-		var info UploadPayload
-		err := json.Unmarshal(msg.Payload(), &info)
-		if err != nil {
-			status.Error("/upload/get", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-
-		spew.Dump(msg.Payload())
-		spew.Dump(info)
-
-		// create folder
-		folder, err := osext.ExecutableFolder()
-		if err != nil {
-			status.Error("/upload/get", errors.Wrapf(err, "create sketch folder %s", msg.Payload()))
-			return
-		}
-
-		// download the binary
-		name := filepath.Join(folder, info.Name)
-		err = downloadFile(name, info.URL, info.Token)
-		if err != nil {
-			status.Error("/upload/get", errors.Wrapf(err, "download file %s", info.URL))
-			return
-		}
-
-		// chmod it
-		err = os.Chmod(name, 0744)
-		if err != nil {
-			status.Error("/upload/get", errors.Wrapf(err, "chmod 744 %s", name))
-			return
-		}
-
-		// spawn process
-		pid, stdout, err := spawnProcess(name)
-		if err != nil {
-			status.Error("/upload/get", errors.Wrapf(err, "spawn %s", name))
-			return
-		}
-
-		status.Info("/upload/get", "Sketch started with PID "+strconv.Itoa(pid))
-
-		s := SketchStatus{
-			PID:    pid,
-			Name:   info.Name,
-			Status: "RUNNING",
-		}
-		status.Set(info.Name, s)
-
-		go func(stdout io.ReadCloser) {
-			in := bufio.NewScanner(stdout)
-			for {
-				for in.Scan() {
-					fmt.Printf(in.Text()) // write each line to your log, or anything you need
-				}
-			}
-		}(stdout)
-	}
-}
-
-// SketchCB listens to commands to start and stop sketches
-func SketchCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		// unmarshal
-		var payload SketchActionPayload
-		err := json.Unmarshal(msg.Payload(), &payload)
-		if err != nil {
-			status.Error("/sketch/get", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-
-		if sketch, ok := status.Sketches[payload.Name]; ok {
-			err = applyAction(sketch, payload.Action)
-			if err != nil {
-				status.Error("/sketch/get", errors.Wrapf(err, "applying %s to %s", payload.Action, payload.Name))
-				return
-			}
-		}
-
-		status.Error("/sketch/get", errors.New("sketch "+payload.Name+" not found"))
-	}
-}
-
-func applyAction(sketch SketchStatus, action string) error {
-	process, err := os.FindProcess(sketch.PID)
-	if err != nil {
-		return err
-	}
-	switch action {
-	case "START":
-		err = process.Signal(syscall.SIGCONT)
-		sketch.Status = "RUNNING"
-		break
-	case "STOP":
-		err = process.Kill()
-		sketch.Status = "STOPPED"
-		break
-	case "PAUSE":
-		err = process.Signal(syscall.SIGTSTP)
-		sketch.Status = "PAUSED"
-		break
-	}
-	return err
 }
 
 // setupMQTTConnection establish a connection with aws iot
@@ -293,55 +160,4 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 		return nil, errors.Wrap(token.Error(), "connect to mqtt")
 	}
 	return mqttClient, nil
-}
-
-// downloadfile substitute a file with something that downloads from an url
-func downloadFile(filepath, url, token string) error {
-	// Create the file - remove the existing one if it exists
-	if _, err := os.Stat(filepath); err == nil {
-		err := os.Remove(filepath)
-		if err != nil {
-			return errors.Wrap(err, "remove "+filepath)
-		}
-	}
-	out, err := os.Create(filepath)
-	if err != nil {
-		return errors.Wrap(err, "create "+filepath)
-	}
-	defer out.Close()
-	// Get the data
-	client := http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return errors.New("Expected OK, got " + resp.Status)
-	}
-
-	// Writer the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// spawn Process creates a new process from a file
-func spawnProcess(filepath string) (int, io.ReadCloser, error) {
-	cmd := exec.Command(filepath)
-	stdout, err := cmd.StdoutPipe()
-	if err := cmd.Start(); err != nil {
-		return 0, stdout, err
-	}
-	return cmd.Process.Pid, stdout, err
 }

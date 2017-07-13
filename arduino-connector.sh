@@ -38,37 +38,45 @@ echo uninstall previous installations of connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo service ArduinoConnector stop
+	sudo systemctl stop ArduinoConnector || true
 else
-	echo $password | sudo -kS service ArduinoConnector stop
+	echo $password | sudo -kS systemctl stop ArduinoConnector || true
 fi
 
 if [ "$password" == "" ]
 then
 	sudo rm -f /etc/systemd/system/ArduinoConnector.service
 else
-	echo $password | sudo rm -f /etc/systemd/system/ArduinoConnector.service
+	echo $password | sudo -kS rm -f /etc/systemd/system/ArduinoConnector.service
 fi
 
 echo download connector
 echo ---------
-download https://downloads.arduino.cc/tools/arduino-connector-dev
-chmod +x arduino-connector-dev
+download https://downloads.arduino.cc/tools/arduino-connector
+chmod +x arduino-connector
 
 echo install connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo -E ./arduino-connector-dev -install
+	sudo -E ./arduino-connector -install
 else
-	echo $password | sudo -kS -E ./arduino-connector-dev -install > arduino-connector.log 2>&1
+	echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
 fi
+
+if [ "$password" == "" ]
+then
+	sudo chown $USER arduino-connector.cfg
+else
+	echo $password | sudo -kS chown $USER arduino-connector.cfg
+fi
+
 
 echo start connector service
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo service ArduinoConnector start
+	sudo systemctl start ArduinoConnector
 else
-	echo $password | sudo -kS service ArduinoConnector start
+	echo $password | sudo -kS systemctl start ArduinoConnector
 fi
