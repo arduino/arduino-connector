@@ -65,8 +65,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 			}
 		}
 
-		// create folder
-		folder, err := osext.ExecutableFolder()
+		folder, err := GetSketchFolder()
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "create sketch folder %s", info.ID))
 			return
@@ -114,6 +113,16 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		// 	}
 		// }(stdout)
 	}
+}
+
+func GetSketchFolder() (string, error) {
+	// create folder if it doesn't exist
+	folder, err := osext.ExecutableFolder()
+	folder = filepath.Join(folder, "sketches")
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		err = os.Mkdir(folder, 0644)
+	}
+	return folder, err
 }
 
 // SketchActionPayload contains the name of the sketch and the action to perform
@@ -217,7 +226,7 @@ func applyAction(sketch *SketchStatus, action string) error {
 		if sketch.PID != 0 {
 			err = process.Signal(syscall.SIGCONT)
 		} else {
-			folder, err := osext.ExecutableFolder()
+			folder, err := GetSketchFolder()
 			if err != nil {
 				return err
 			}
