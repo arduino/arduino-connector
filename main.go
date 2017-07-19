@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -91,6 +93,29 @@ func (p program) run() {
 	client.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
 	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
 	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
+
+	sketchFolder, err := GetSketchFolder()
+	// Export LD_LIBRARY_PATH to local lib subfolder
+	// This way any external library can be safely copied there and the sketch should run anyway
+	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":$LD_LIBRARY_PATH")
+
+	files, err := ioutil.ReadDir(sketchFolder)
+	if err != nil {
+		for _, file := range files {
+			//add all files as sketches, stopped, without any PID
+			if file.IsDir() {
+				continue
+			}
+			s := SketchStatus{
+				ID:     file.Name(),
+				PID:    0,
+				Name:   file.Name(),
+				Status: "STOPPED",
+			}
+			status.Set(file.Name(), s)
+			status.Publish()
+		}
+	}
 
 	select {}
 }
