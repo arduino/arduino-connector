@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
@@ -34,17 +36,17 @@ func ExpandStatus(s *Status) *StatusTemp {
 
 // SketchStatus contains info about a single running sketch
 type SketchStatus struct {
-	Name      string
-	ID        string
-	PID       int
-	Status    string // could be bool if we don't allow Pause
-	Endpoints []Endpoint
+	Name      string     `json:"name"`
+	ID        string     `json:"id"`
+	PID       int        `json:"pid"`
+	Status    string     `json:"status"` // could be bool if we don't allow Pause
+	Endpoints []Endpoint `json:"endpoints"`
 }
 
 // Endpoint is an exposed function
 type Endpoint struct {
-	Name      string
-	Arguments string
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 // NewStatus creates a new status that publishes on a topic
@@ -60,7 +62,7 @@ func NewStatus(id string, client mqtt.Client) *Status {
 func (s *Status) Set(name string, sketch *SketchStatus) {
 	s.Sketches[name] = sketch
 
-	msg, err := json.Marshal(ExpandStatus(s))
+	msg, err := json.Marshal(s)
 	if err != nil {
 		panic(err) // Means that something went really wrong
 	}
@@ -84,7 +86,11 @@ func (s *Status) Info(topic, msg string) {
 
 // Publish sens on the /status topic a json representation of the connector
 func (s *Status) Publish() {
-	data, err := json.Marshal(ExpandStatus(s))
+	data, err := json.Marshal(s)
+	var out bytes.Buffer
+	json.Indent(&out, data, "", "  ")
+	fmt.Println(string(out.Bytes()))
+
 	if err != nil {
 		s.Error("/status/error", errors.Wrap(err, "status request"))
 		return

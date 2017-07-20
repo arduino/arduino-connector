@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
+	"github.com/kr/pty"
 	"github.com/pkg/errors"
 )
 
@@ -89,6 +91,9 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 			return
 		}
 
+		sketch.ID = info.ID
+		sketch.Name = info.Name
+
 		// spawn process
 		pid, _, _, err := spawnProcess(name, &sketch)
 		if err != nil {
@@ -98,13 +103,10 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		status.Info("/upload", "Sketch started with PID "+strconv.Itoa(pid))
 
-		s := SketchStatus{
-			ID:     info.ID,
-			PID:    pid,
-			Name:   info.Name,
-			Status: "RUNNING",
-		}
-		status.Set(info.ID, &s)
+		sketch.PID = pid
+		sketch.Status = "RUNNING"
+
+		status.Set(info.ID, &sketch)
 		status.Publish()
 
 		// go func(stdout io.ReadCloser) {
@@ -216,21 +218,18 @@ func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCl
 	stderrCopy.Split(bufio.ScanLines)
 
 	go func() {
+		fmt.Println("started scanning stdout")
 		for stdoutCopy.Scan() {
 			fmt.Printf(stdoutCopy.Text())
 		}
 	}()
 
 	go func() {
+		fmt.Println("started scanning stderr")
 		for stderrCopy.Scan() {
-			fmt.Printf(stdoutCopy.Text())
+			fmt.Printf(stderrCopy.Text())
 		}
 	}()
-
-	err := cmd.Wait()
-	//if we get here signal that the sketch has died
-	applyAction(sketch, "STOP")
-	fmt.Println("sketch exited" + err.Error())
 }
 
 // spawn Process creates a new process from a file
@@ -238,18 +237,32 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 	cmd := exec.Command(filepath)
 	stdout, err := cmd.StdoutPipe()
 	stderr, err := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		fmt.Println(err.Error())
+	var stderr_buf bytes.Buffer
+	cmd.Stderr = &stderr_buf
+
+	logSketchStdoutStderr(cmd, stdout, stderr, sketch)
+	if _, err := pty.Start(cmd); err != nil {
+		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
 		return 0, stdout, stderr, err
 	}
 	// keep track of sketch life (and isgnal if it ends abruptly)
-	go logSketchStdoutStderr(cmd, stdout, stderr, sketch)
+	go func() {
+		err := cmd.Wait()
+		//if we get here signal that the sketch has died
+		applyAction(sketch, "STOP")
+		if err != nil {
+			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+		}
+		fmt.Println("sketch exited " + err.Error())
+	}()
+
 	return cmd.Process.Pid, stdout, stderr, err
 }
 
 func applyAction(sketch *SketchStatus, action string) error {
 	process, err := os.FindProcess(sketch.PID)
-	if err != nil {
+	if err != nil && action != "STOP" {
+		fmt.Println("exit because of error")
 		return err
 	}
 
@@ -272,7 +285,9 @@ func applyAction(sketch *SketchStatus, action string) error {
 		break
 
 	case "STOP":
-		if sketch.PID != 0 {
+		fmt.Println("stop called")
+		if sketch.PID != 0 && err == nil {
+			fmt.Println("kill called")
 			err = process.Kill()
 		}
 		sketch.PID = 0
