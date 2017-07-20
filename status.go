@@ -11,16 +11,34 @@ import (
 type Status struct {
 	id       string
 	client   mqtt.Client
+	Sketches map[string]*SketchStatus `json:"sketches"`
+}
+
+// Status contains info about the sketches running on the device
+type StatusTemp struct {
+	id       string
+	client   mqtt.Client
 	Sketches map[string]SketchStatus `json:"sketches"`
+}
+
+func ExpandStatus(s *Status) *StatusTemp {
+	var temp StatusTemp
+	temp.id = s.id
+	temp.client = s.client
+	temp.Sketches = make(map[string]SketchStatus)
+	for _, element := range s.Sketches {
+		temp.Sketches[element.Name] = *element
+	}
+	return &temp
 }
 
 // SketchStatus contains info about a single running sketch
 type SketchStatus struct {
-	ID        string     `json:"id"`
-	Name      string     `json:"name"`
-	PID       int        `json:"pid"`
-	Status    string     `json:"status"`
-	Endpoints []Endpoint `json:"-"`
+	Name      string
+	ID        string
+	PID       int
+	Status    string // could be bool if we don't allow Pause
+	Endpoints []Endpoint
 }
 
 // Endpoint is an exposed function
@@ -34,15 +52,15 @@ func NewStatus(id string, client mqtt.Client) *Status {
 	return &Status{
 		id:       id,
 		client:   client,
-		Sketches: map[string]SketchStatus{},
+		Sketches: map[string]*SketchStatus{},
 	}
 }
 
 // Set adds or modify a sketch
-func (s *Status) Set(name string, sketch SketchStatus) {
+func (s *Status) Set(name string, sketch *SketchStatus) {
 	s.Sketches[name] = sketch
 
-	msg, err := json.Marshal(s)
+	msg, err := json.Marshal(ExpandStatus(s))
 	if err != nil {
 		panic(err) // Means that something went really wrong
 	}
@@ -66,7 +84,7 @@ func (s *Status) Info(topic, msg string) {
 
 // Publish sens on the /status topic a json representation of the connector
 func (s *Status) Publish() {
-	data, err := json.Marshal(s)
+	data, err := json.Marshal(ExpandStatus(s))
 	if err != nil {
 		s.Error("/status/error", errors.Wrap(err, "status request"))
 		return

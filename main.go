@@ -100,19 +100,23 @@ func (p program) run() {
 	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":$LD_LIBRARY_PATH")
 
 	files, err := ioutil.ReadDir(sketchFolder)
-	if err != nil {
+
+	if err == nil {
 		for _, file := range files {
+			fmt.Println(file.Name())
+
 			//add all files as sketches, stopped, without any PID
 			if file.IsDir() {
 				continue
 			}
+			fmt.Println("Listing files, got " + file.Name())
 			s := SketchStatus{
 				ID:     file.Name(),
 				PID:    0,
 				Name:   file.Name(),
 				Status: "STOPPED",
 			}
-			status.Set(file.Name(), s)
+			status.Set(file.Name(), &s)
 			status.Publish()
 		}
 	}

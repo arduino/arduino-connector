@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,6 +41,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
 		// unmarshal
 		var info UploadPayload
+		var sketch SketchStatus
 		err := json.Unmarshal(msg.Payload(), &info)
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
@@ -52,13 +54,14 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		// Stop and delete if existing
 		if sketch, ok := status.Sketches[info.ID]; ok {
-			err = applyAction(&sketch, "STOP")
+			err = applyAction(sketch, "STOP")
 			if err != nil {
 				status.Error("/upload", errors.Wrapf(err, "stop pid %d", sketch.PID))
 				return
 			}
 
-			err = os.Remove(sketch.Name)
+			sketchFolder, err := GetSketchFolder()
+			err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
 			if err != nil {
 				status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
 				return
@@ -87,7 +90,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		}
 
 		// spawn process
-		pid, _, err := spawnProcess(name)
+		pid, _, _, err := spawnProcess(name, &sketch)
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "spawn %s", name))
 			return
@@ -101,7 +104,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 			Name:   info.Name,
 			Status: "RUNNING",
 		}
-		status.Set(info.ID, s)
+		status.Set(info.ID, &s)
 		status.Publish()
 
 		// go func(stdout io.ReadCloser) {
@@ -148,7 +151,7 @@ func SketchCB(status *Status) mqtt.MessageHandler {
 		}
 
 		if sketch, ok := status.Sketches[info.ID]; ok {
-			err := applyAction(&sketch, info.Action)
+			err := applyAction(sketch, info.Action)
 			if err != nil {
 				status.Error("/sketch", errors.Wrapf(err, "applying %s to %s", info.Action, info.Name))
 				return
@@ -205,14 +208,43 @@ func downloadFile(filepath, url, token string) error {
 	return nil
 }
 
+func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCloser, sketch *SketchStatus) {
+	stdoutCopy := bufio.NewScanner(stdout)
+	stderrCopy := bufio.NewScanner(stderr)
+
+	stdoutCopy.Split(bufio.ScanLines)
+	stderrCopy.Split(bufio.ScanLines)
+
+	go func() {
+		for stdoutCopy.Scan() {
+			fmt.Printf(stdoutCopy.Text())
+		}
+	}()
+
+	go func() {
+		for stderrCopy.Scan() {
+			fmt.Printf(stdoutCopy.Text())
+		}
+	}()
+
+	err := cmd.Wait()
+	//if we get here signal that the sketch has died
+	applyAction(sketch, "STOP")
+	fmt.Println("sketch exited" + err.Error())
+}
+
 // spawn Process creates a new process from a file
-func spawnProcess(filepath string) (int, io.ReadCloser, error) {
+func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io.ReadCloser, error) {
 	cmd := exec.Command(filepath)
 	stdout, err := cmd.StdoutPipe()
+	stderr, err := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
-		return 0, stdout, err
+		fmt.Println(err.Error())
+		return 0, stdout, stderr, err
 	}
-	return cmd.Process.Pid, stdout, err
+	// keep track of sketch life (and isgnal if it ends abruptly)
+	go logSketchStdoutStderr(cmd, stdout, stderr, sketch)
+	return cmd.Process.Pid, stdout, stderr, err
 }
 
 func applyAction(sketch *SketchStatus, action string) error {
@@ -231,7 +263,7 @@ func applyAction(sketch *SketchStatus, action string) error {
 				return err
 			}
 			name := filepath.Join(folder, sketch.Name)
-			sketch.PID, _, err = spawnProcess(name)
+			sketch.PID, _, _, err = spawnProcess(name, sketch)
 		}
 		if err != nil {
 			return err
@@ -240,9 +272,11 @@ func applyAction(sketch *SketchStatus, action string) error {
 		break
 
 	case "STOP":
-		err = process.Kill()
-		sketch.Status = "STOPPED"
+		if sketch.PID != 0 {
+			err = process.Kill()
+		}
 		sketch.PID = 0
+		sketch.Status = "STOPPED"
 		break
 	case "PAUSE":
 		err = process.Signal(syscall.SIGTSTP)
