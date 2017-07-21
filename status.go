@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
@@ -87,9 +85,10 @@ func (s *Status) Info(topic, msg string) {
 // Publish sens on the /status topic a json representation of the connector
 func (s *Status) Publish() {
 	data, err := json.Marshal(s)
-	var out bytes.Buffer
-	json.Indent(&out, data, "", "  ")
-	fmt.Println(string(out.Bytes()))
+
+	//var out bytes.Buffer
+	//json.Indent(&out, data, "", "  ")
+	//fmt.Println(string(out.Bytes()))
 
 	if err != nil {
 		s.Error("/status/error", errors.Wrap(err, "status request"))

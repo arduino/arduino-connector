@@ -22,7 +22,6 @@ import (
 // StatusCB replies with the current status of the arduino-connector
 func StatusCB(status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Println("status reqs")
 		status.Publish()
 	}
 }
@@ -240,11 +239,28 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 	var stderr_buf bytes.Buffer
 	cmd.Stderr = &stderr_buf
 
-	logSketchStdoutStderr(cmd, stdout, stderr, sketch)
-	if _, err := pty.Start(cmd); err != nil {
+	f, err := pty.Start(cmd)
+
+	if err != nil {
 		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
 		return 0, stdout, stderr, err
 	}
+
+	go func() {
+		for {
+			temp := make([]byte, 1000)
+			len, err := f.Read(temp)
+			if err != nil {
+				break
+			}
+			if len > 0 {
+				fmt.Println(string(temp))
+			}
+		}
+	}()
+
+	//logSketchStdoutStderr(cmd, stdout, stderr, sketch)
+
 	// keep track of sketch life (and isgnal if it ends abruptly)
 	go func() {
 		err := cmd.Wait()
