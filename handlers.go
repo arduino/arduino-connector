@@ -92,6 +92,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		sketch.ID = info.ID
 		sketch.Name = info.Name
+		// TODO: save ID-Name to a sort of DB
 
 		// spawn process
 		pid, _, _, err := spawnProcess(name, &sketch, status)
