@@ -93,7 +93,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		sketch.ID = info.ID
 		sketch.Name = info.Name
-		// TODO: save ID-Name to a sort of DB
+		// save ID-Name to a sort of DB
 		InsertSketchInDB(sketch.Name, sketch.ID)
 
 		// spawn process
@@ -132,9 +132,19 @@ func GetSketchFolder() (string, error) {
 	return folder, err
 }
 
-func GetSketchDB() (string, error) {
+func GetSketchDBFolder() (string, error) {
 	// create folder if it doesn't exist
 	folder, err := GetSketchFolder()
+	folder = filepath.Join(folder, "db")
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		err = os.Mkdir(folder, 0644)
+	}
+	return folder, err
+}
+
+func GetSketchDB() (string, error) {
+	// create folder if it doesn't exist
+	folder, err := GetSketchDBFolder()
 	if err != nil {
 		return "", err
 	}

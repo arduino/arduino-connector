@@ -129,6 +129,7 @@ func (p program) run() {
 			if err != nil {
 				id = file.Name()
 			}
+			fmt.Println("Getting sketch from " + id + " " + file.Name())
 			s := SketchStatus{
 				ID:     id,
 				PID:    0,
