@@ -13,6 +13,8 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
+	logger "github.com/nats-io/gnatsd/logger"
+	server "github.com/nats-io/gnatsd/server"
 	"github.com/pkg/errors"
 )
 
@@ -76,6 +78,17 @@ func (p program) run() {
 	// - any spawned sketch process'es also have access to them
 	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
 	p.exportProxyEnvVars()
+
+	// Start nats-server on localhost:4222
+	opts := server.Options{}
+	opts.Port = 4222
+	opts.Host = "127.0.0.1"
+	// Remove any host/ip that points to itself in Route
+	newroutes, err := server.RemoveSelfReference(opts.Cluster.Port, opts.Routes)
+	opts.Routes = newroutes
+	s := server.New(&opts)
+	configureLogger(s, &opts)
+	go s.Start()
 
 	// Setup MQTT connection
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
@@ -189,4 +202,18 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 		return nil, errors.Wrap(token.Error(), "connect to mqtt")
 	}
 	return mqttClient, nil
+}
+
+func configureLogger(s *server.Server, opts *server.Options) {
+	var log server.Logger
+	colors := true
+	// Check to see if stderr is being redirected and if so turn off color
+	// Also turn off colors if we're running on Windows where os.Stderr.Stat() returns an invalid handle-error
+	stat, err := os.Stderr.Stat()
+	if err != nil || (stat.Mode()&os.ModeCharDevice) == 0 {
+		colors = false
+	}
+	log = logger.NewStdLogger(opts.Logtime, opts.Debug, opts.Trace, colors, true)
+
+	s.SetLogger(log, opts.Debug, opts.Trace)
 }
