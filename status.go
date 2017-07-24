@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
@@ -39,6 +40,7 @@ type SketchStatus struct {
 	PID       int        `json:"pid"`
 	Status    string     `json:"status"` // could be bool if we don't allow Pause
 	Endpoints []Endpoint `json:"endpoints"`
+	pty       *os.File   `json:"-"`
 }
 
 // Endpoint is an exposed function

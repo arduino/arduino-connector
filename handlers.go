@@ -55,7 +55,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 
 		// Stop and delete if existing
 		if sketch, ok := status.Sketches[info.ID]; ok {
-			err = applyAction(sketch, "STOP")
+			err = applyAction(sketch, "STOP", status)
 			if err != nil {
 				status.Error("/upload", errors.Wrapf(err, "stop pid %d", sketch.PID))
 				return
@@ -94,7 +94,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		sketch.Name = info.Name
 
 		// spawn process
-		pid, _, _, err := spawnProcess(name, &sketch)
+		pid, _, _, err := spawnProcess(name, &sketch, status)
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "spawn %s", name))
 			return
@@ -152,7 +152,7 @@ func SketchCB(status *Status) mqtt.MessageHandler {
 		}
 
 		if sketch, ok := status.Sketches[info.ID]; ok {
-			err := applyAction(sketch, info.Action)
+			err := applyAction(sketch, info.Action, status)
 			if err != nil {
 				status.Error("/sketch", errors.Wrapf(err, "applying %s to %s", info.Action, info.Name))
 				return
@@ -231,8 +231,14 @@ func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCl
 	}()
 }
 
+func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		pty.Write(msg.Payload())
+	}
+}
+
 // spawn Process creates a new process from a file
-func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io.ReadCloser, error) {
+func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, io.ReadCloser, io.ReadCloser, error) {
 	cmd := exec.Command(filepath)
 	stdout, err := cmd.StdoutPipe()
 	stderr, err := cmd.StderrPipe()
@@ -246,6 +252,9 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 		return 0, stdout, stderr, err
 	}
 
+	sketch.pty = f
+	status.client.Subscribe("$aws/things/"+status.id+"/"+strconv.Itoa(cmd.Process.Pid)+"/stdin", 1, StdInCB(f, status))
+
 	go func() {
 		for {
 			temp := make([]byte, 1000)
@@ -255,6 +264,7 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 			}
 			if len > 0 {
 				fmt.Println(string(temp))
+				status.Info("stdout", string(temp))
 			}
 		}
 	}()
@@ -265,7 +275,7 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 	go func() {
 		err := cmd.Wait()
 		//if we get here signal that the sketch has died
-		applyAction(sketch, "STOP")
+		applyAction(sketch, "STOP", status)
 		if err != nil {
 			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
 		}
@@ -275,7 +285,7 @@ func spawnProcess(filepath string, sketch *SketchStatus) (int, io.ReadCloser, io
 	return cmd.Process.Pid, stdout, stderr, err
 }
 
-func applyAction(sketch *SketchStatus, action string) error {
+func applyAction(sketch *SketchStatus, action string, status *Status) error {
 	process, err := os.FindProcess(sketch.PID)
 	if err != nil && action != "STOP" {
 		fmt.Println("exit because of error")
@@ -292,7 +302,7 @@ func applyAction(sketch *SketchStatus, action string) error {
 				return err
 			}
 			name := filepath.Join(folder, sketch.Name)
-			sketch.PID, _, _, err = spawnProcess(name, sketch)
+			sketch.PID, _, _, err = spawnProcess(name, sketch, status)
 		}
 		if err != nil {
 			return err
