@@ -33,6 +33,11 @@ func ExpandStatus(s *Status) *StatusTemp {
 	return &temp
 }
 
+type SketchBinding struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+
 // SketchStatus contains info about a single running sketch
 type SketchStatus struct {
 	Name      string     `json:"name"`

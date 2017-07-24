@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -93,6 +94,7 @@ func UploadCB(status *Status) mqtt.MessageHandler {
 		sketch.ID = info.ID
 		sketch.Name = info.Name
 		// TODO: save ID-Name to a sort of DB
+		InsertSketchInDB(sketch.Name, sketch.ID)
 
 		// spawn process
 		pid, _, _, err := spawnProcess(name, &sketch, status)
@@ -128,6 +130,55 @@ func GetSketchFolder() (string, error) {
 		err = os.Mkdir(folder, 0644)
 	}
 	return folder, err
+}
+
+func GetSketchDB() (string, error) {
+	// create folder if it doesn't exist
+	folder, err := GetSketchFolder()
+	if err != nil {
+		return "", err
+	}
+	db := filepath.Join(folder, "db")
+	return db, err
+}
+
+func InsertSketchInDB(name string, id string) {
+	// create folder if it doesn't exist
+	db, err := GetSketchDB()
+	if err != nil {
+		return
+	}
+
+	var c []SketchBinding
+	raw, err := ioutil.ReadFile(db)
+	json.Unmarshal(raw, &c)
+
+	for _, element := range c {
+		if element.ID == id && element.Name == name {
+			return
+		}
+	}
+	c = append(c, SketchBinding{ID: id, Name: name})
+	data, _ := json.Marshal(c)
+	ioutil.WriteFile(db, data, 0755)
+}
+
+func GetSketchIDFromDB(name string) (string, error) {
+	// create folder if it doesn't exist
+	db, err := GetSketchDB()
+	if err != nil {
+		return "", errors.New("Can't open DB")
+	}
+	var c []SketchBinding
+	raw, err := ioutil.ReadFile(db)
+	json.Unmarshal(raw, &c)
+
+	for _, element := range c {
+		if element.Name == name {
+			return element.ID, nil
+		}
+	}
+	return "", errors.New("No matching sketch")
 }
 
 // SketchActionPayload contains the name of the sketch and the action to perform

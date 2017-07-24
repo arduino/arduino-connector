@@ -125,8 +125,12 @@ func (p program) run() {
 			if file.IsDir() {
 				continue
 			}
+			id, err := GetSketchIDFromDB(file.Name())
+			if err != nil {
+				id = file.Name()
+			}
 			s := SketchStatus{
-				ID:     file.Name(),
+				ID:     id,
 				PID:    0,
 				Name:   file.Name(),
 				Status: "STOPPED",
