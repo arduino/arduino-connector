@@ -351,7 +351,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 
 func applyAction(sketch *SketchStatus, action string, status *Status) error {
 	process, err := os.FindProcess(sketch.PID)
-	if err != nil && action != "STOP" {
+	if err != nil && sketch.PID != 0 {
 		fmt.Println("exit because of error")
 		return err
 	}
