@@ -285,7 +285,9 @@ func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCl
 
 func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
-		pty.Write(msg.Payload())
+		if len(msg.Payload()) > 0 {
+			pty.Write(msg.Payload())
+		}
 	}
 }
 
@@ -305,7 +307,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	}
 
 	sketch.pty = f
-	status.client.Subscribe("$aws/things/"+status.id+"/"+strconv.Itoa(cmd.Process.Pid)+"/stdin", 1, StdInCB(f, status))
+	//status.client.Subscribe("$aws/things/"+status.id+"/"+strconv.Itoa(cmd.Process.Pid)+"/stdin", 1, StdInCB(f, status))
 
 	go func() {
 		for {
@@ -316,7 +318,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 			}
 			if len > 0 {
 				fmt.Println(string(temp))
-				status.Info("stdout", string(temp))
+				status.Info("/stdout", string(temp))
 			}
 		}
 	}()
