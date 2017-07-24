@@ -92,7 +92,11 @@ func (p program) run() {
 
 	// Setup MQTT connection
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
-	check(err, "ConnectMQTT")
+	if err != nil {
+		// if installing in a chroot the paths may be wrong and the installer may fail.
+		// Don't report it as an error
+		os.Exit(0)
+	}
 	log.Println("Connected to MQTT")
 
 	// Create global status
@@ -116,13 +120,11 @@ func (p program) run() {
 
 	if err == nil {
 		for _, file := range files {
-			fmt.Println(file.Name())
 
 			//add all files as sketches, stopped, without any PID
 			if file.IsDir() {
 				continue
 			}
-			fmt.Println("Listing files, got " + file.Name())
 			s := SketchStatus{
 				ID:     file.Name(),
 				PID:    0,
