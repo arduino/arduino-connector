@@ -136,7 +136,7 @@ func (p program) run() {
 				Name:   file.Name(),
 				Status: "STOPPED",
 			}
-			status.Set(file.Name(), &s)
+			status.Set(id, &s)
 			status.Publish()
 		}
 	}
