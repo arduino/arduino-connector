@@ -15,6 +15,7 @@ import (
 	"github.com/namsral/flag"
 	logger "github.com/nats-io/gnatsd/logger"
 	server "github.com/nats-io/gnatsd/server"
+	nats "github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
 )
 
@@ -87,11 +88,15 @@ func (p program) run() {
 	newroutes, err := server.RemoveSelfReference(opts.Cluster.Port, opts.Routes)
 	opts.Routes = newroutes
 	s := server.New(&opts)
-	configureLogger(s, &opts)
+	configureNatsdLogger(s, &opts)
 	go s.Start()
 
+	if !s.ReadyForConnections(1 * time.Second) {
+		log.Fatal("NATS server not redy for connections!")
+	}
+
 	// Setup MQTT connection
-	client, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
+	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
 	if err != nil {
 		// if installing in a chroot the paths may be wrong and the installer may fail.
 		// Don't report it as an error
@@ -100,16 +105,24 @@ func (p program) run() {
 	log.Println("Connected to MQTT")
 
 	// Create global status
-	status := NewStatus(p.Config.ID, client)
+	status := NewStatus(p.Config.ID, mqttClient)
 
 	if p.listenFile != "" {
 		go tailAndReport(p.listenFile, status)
 	}
 
+	// Start nats-client for local server
+	nc, err := nats.Connect(nats.DefaultURL)
+	check(err, "ConnectNATS")
+	nc.Subscribe("$arduino.cloud.*", NatsCloudCB(status))
+
+	// wipe the thing shadows
+	mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
+
 	// Subscribe to topics endpoint
-	client.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
-	client.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
-	client.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
+	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
+	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
+	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
 
 	sketchFolder, err := GetSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
@@ -211,7 +224,7 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 	return mqttClient, nil
 }
 
-func configureLogger(s *server.Server, opts *server.Options) {
+func configureNatsdLogger(s *server.Server, opts *server.Options) {
 	var log server.Logger
 	colors := true
 	// Check to see if stderr is being redirected and if so turn off color
