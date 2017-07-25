@@ -12,11 +12,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/kr/pty"
+	nats "github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
 )
 
@@ -227,6 +229,43 @@ func SketchCB(status *Status) mqtt.MessageHandler {
 		}
 
 		status.Error("/sketch", errors.New("sketch "+info.ID+" not found"))
+	}
+}
+
+func NatsCloudCB(s *Status) nats.MsgHandler {
+	return func(m *nats.Msg) {
+		pidStr := strings.TrimPrefix(m.Subject, "$arduino.cloud.")
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			return
+		}
+
+		sketchName, err := sketchNameForPid(pid, s)
+		if err != nil {
+			return
+		}
+
+		updateMessage := fmt.Sprintf("{\"state\": {\"reported\": { \"%s\": %s}}}", sketchName, string(m.Data))
+
+		s.mqttClient.Publish("$aws/things/"+s.id+"/shadow/update", 1, false, updateMessage)
+	}
+}
+
+// maps a PID to a sketch name
+func sketchNameForPid(pid int, status *Status) (string, error) {
+	sketchName := ""
+
+	for _, sketch := range status.Sketches {
+		if sketch.PID == pid {
+			sketchName = sketch.Name
+			break
+		}
+	}
+
+	if sketchName == "" {
+		return "", errors.New("Unknown PID")
+	} else {
+		return sketchName, nil
 	}
 }
 

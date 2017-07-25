@@ -10,22 +10,22 @@ import (
 
 // Status contains info about the sketches running on the device
 type Status struct {
-	id       string
-	client   mqtt.Client
-	Sketches map[string]*SketchStatus `json:"sketches"`
+	id         string
+	mqttClient mqtt.Client
+	Sketches   map[string]*SketchStatus `json:"sketches"`
 }
 
 // Status contains info about the sketches running on the device
 type StatusTemp struct {
-	id       string
-	client   mqtt.Client
-	Sketches map[string]SketchStatus `json:"sketches"`
+	id         string
+	mqttClient mqtt.Client
+	Sketches   map[string]SketchStatus `json:"sketches"`
 }
 
 func ExpandStatus(s *Status) *StatusTemp {
 	var temp StatusTemp
 	temp.id = s.id
-	temp.client = s.client
+	temp.mqttClient = s.mqttClient
 	temp.Sketches = make(map[string]SketchStatus)
 	for _, element := range s.Sketches {
 		temp.Sketches[element.Name] = *element
@@ -55,11 +55,11 @@ type Endpoint struct {
 }
 
 // NewStatus creates a new status that publishes on a topic
-func NewStatus(id string, client mqtt.Client) *Status {
+func NewStatus(id string, mqttClient mqtt.Client) *Status {
 	return &Status{
-		id:       id,
-		client:   client,
-		Sketches: map[string]*SketchStatus{},
+		id:         id,
+		mqttClient: mqttClient,
+		Sketches:   map[string]*SketchStatus{},
 	}
 }
 
@@ -72,20 +72,20 @@ func (s *Status) Set(name string, sketch *SketchStatus) {
 		panic(err) // Means that something went really wrong
 	}
 
-	if token := s.client.Publish("/status", 1, false, msg); token.Wait() && token.Error() != nil {
+	if token := s.mqttClient.Publish("/status", 1, false, msg); token.Wait() && token.Error() != nil {
 		panic(err) // Means that something went really wrong
 	}
 }
 
 // Error logs an error on the specified topic
 func (s *Status) Error(topic string, err error) {
-	token := s.client.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error())
+	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error())
 	token.Wait()
 }
 
 // Info logs a message on the specified topic
 func (s *Status) Info(topic, msg string) {
-	token := s.client.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg)
+	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg)
 	token.Wait()
 }
 
