@@ -61,7 +61,7 @@ if [ "$password" == "" ]
 then
 	sudo -E ./arduino-connector -install
 else
-	echo $password | sudo -kS -E ./arduino-connector -install > arduino-connector.log 2>&1
+	echo $password | sudo -kS -E ./arduino-connector -register -install > arduino-connector.log 2>&1
 fi
 
 if [ "$password" == "" ]
