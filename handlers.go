@@ -317,6 +317,7 @@ type DylibMap struct {
 	Name     string
 	Provides []string
 	URL      string
+	Help     string
 }
 
 func (d *DylibMap) Download(path string) {
@@ -358,6 +359,9 @@ func downloadDylibDependencies(library string) error {
 		for _, element := range v {
 			if element.Contains(library) {
 				folder, _ := GetSketchFolder()
+				if element.Help != "" {
+					return errors.New(element.Help)
+				}
 				element.Download(filepath.Join(folder, "lib"))
 			}
 		}
