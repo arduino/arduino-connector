@@ -73,6 +73,16 @@ func main() {
 	check(err, "RunService")
 }
 
+func appendIfUnique(slice []string, element string) []string {
+	for _, el := range slice {
+		if el == element {
+			return slice
+		}
+	}
+	slice = append(slice, element)
+	return slice
+}
+
 func (p program) run() {
 	// Export the proxy info as environments variables, so that:
 	// - http.DefaultTransport can use the proxy settings
@@ -127,7 +137,17 @@ func (p program) run() {
 	sketchFolder, err := GetSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway
-	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":$LD_LIBRARY_PATH")
+	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":"+os.Getenv("LD_LIBRARY_PATH"))
+
+	//scan /opt/intel searching for sdks
+	var extraPaths []string
+	filepath.Walk("/opt/intel", func(path string, f os.FileInfo, err error) error {
+		if strings.Contains(f.Name(), ".so") {
+			extraPaths = appendIfUnique(extraPaths, path)
+		}
+		return nil
+	})
+	os.Setenv("LD_LIBRARY_PATH", strings.Join(extraPaths, ":")+":"+os.Getenv("LD_LIBRARY_PATH"))
 
 	files, err := ioutil.ReadDir(sketchFolder)
 
