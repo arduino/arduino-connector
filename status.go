@@ -79,13 +79,13 @@ func (s *Status) Set(name string, sketch *SketchStatus) {
 
 // Error logs an error on the specified topic
 func (s *Status) Error(topic string, err error) {
-	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error())
+	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error()+"\n")
 	token.Wait()
 }
 
 // Info logs a message on the specified topic
 func (s *Status) Info(topic, msg string) {
-	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg)
+	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg+"\n")
 	token.Wait()
 }
 
@@ -102,5 +102,5 @@ func (s *Status) Publish() {
 		return
 	}
 
-	s.Info("/status", string(data))
+	s.Info("/status", string(data)+"\n")
 }
