@@ -314,10 +314,10 @@ func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 }
 
 type DylibMap struct {
-	Name     string
-	Provides []string
-	URL      string
-	Help     string
+	Name     string   `json:"Name"`
+	Provides []string `json:"Provides"`
+	URL      string   `json:"URL"`
+	Help     string   `json:"Help"`
 }
 
 func (d *DylibMap) Download(path string) {
@@ -352,14 +352,19 @@ func downloadDylibDependencies(library string) error {
 	if resp.StatusCode == 200 { // OK
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return errors.New("Can't download dylibs registry")
+			return errors.New("Can't read dylibs registry")
 		}
 		var v []DylibMap
-		json.Unmarshal(bodyBytes, v)
+		err = json.Unmarshal(bodyBytes, &v)
+		if err != nil {
+			return err
+		}
 		for _, element := range v {
 			if element.Contains(library) {
 				folder, _ := GetSketchFolder()
+				fmt.Println(element.Help)
 				if element.Help != "" {
+					// TODO: remove and replace with a status.Info()
 					return errors.New(element.Help)
 				}
 				element.Download(filepath.Join(folder, "lib"))
@@ -373,6 +378,7 @@ func extractLibrary(errorString string) string {
 	fields := strings.Fields(errorString)
 	for _, subStr := range fields {
 		if strings.Contains(subStr, ".so") {
+			subStr = strings.TrimRight(subStr, ":")
 			libName := strings.Split(subStr, ".")
 			if len(libName) >= 2 {
 				return libName[0] + "." + libName[1]
@@ -380,6 +386,21 @@ func extractLibrary(errorString string) string {
 		}
 	}
 	return ""
+}
+
+func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status *Status, err string) {
+	if strings.Contains(err, "error while loading shared libraries") {
+		// download dependencies and retry
+		// if the error persists, bail out
+		fmt.Println("Missing library!")
+		library := extractLibrary(err)
+		status.Info("/upload", "Downloading needed libraries")
+		err_download := downloadDylibDependencies(library)
+		if err_download != nil {
+			status.Error("/upload", err_download)
+		}
+		status.Error("/upload", errors.New("Missing libraries, install them and relaunch the sketch"))
+	}
 }
 
 // spawn Process creates a new process from a file
@@ -410,6 +431,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 			if len > 0 {
 				fmt.Println(string(temp))
 				status.Info("/stdout", string(temp))
+				checkForLibrariesMissingError(filepath, sketch, status, string(temp))
 			}
 		}
 	}()
@@ -422,31 +444,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 		//if we get here signal that the sketch has died
 		applyAction(sketch, "STOP", status)
 		if err != nil {
-			if strings.Contains(err.Error(), "shared libraries") {
-				// download dependencies and retry
-				// if the error persists, bail out
-				for {
-					library := extractLibrary(err.Error())
-					status.Info("/upload", "Downloading needed libraries")
-					err_download := downloadDylibDependencies(library)
-					if err_download != nil {
-						return
-					}
-					f_retry, err_retry := pty.Start(cmd)
-					if err_retry == nil {
-						f = f_retry
-						break
-					}
-					if err_retry.Error() == err.Error() {
-						// couldn't find any suitable  library
-						fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
-						return
-					}
-					err = err_retry
-				}
-			} else {
-				fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
-			}
+			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
 		}
 		fmt.Println("sketch exited " + err.Error())
 	}()
@@ -484,6 +482,8 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		if sketch.PID != 0 && err == nil {
 			fmt.Println("kill called")
 			err = process.Kill()
+		} else {
+			err = nil
 		}
 		sketch.PID = 0
 		sketch.Status = "STOPPED"
