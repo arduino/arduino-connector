@@ -234,38 +234,11 @@ func SketchCB(status *Status) mqtt.MessageHandler {
 
 func NatsCloudCB(s *Status) nats.MsgHandler {
 	return func(m *nats.Msg) {
-		pidStr := strings.TrimPrefix(m.Subject, "$arduino.cloud.")
-		pid, err := strconv.Atoi(pidStr)
-		if err != nil {
-			return
-		}
+		thingName := strings.TrimPrefix(m.Subject, "$arduino.cloud.")
 
-		sketchName, err := sketchNameForPid(pid, s)
-		if err != nil {
-			return
-		}
-
-		updateMessage := fmt.Sprintf("{\"state\": {\"reported\": { \"%s\": %s}}}", sketchName, string(m.Data))
+		updateMessage := fmt.Sprintf("{\"state\": {\"reported\": { \"%s\": %s}}}", thingName, string(m.Data))
 
 		s.mqttClient.Publish("$aws/things/"+s.id+"/shadow/update", 1, false, updateMessage)
-	}
-}
-
-// maps a PID to a sketch name
-func sketchNameForPid(pid int, status *Status) (string, error) {
-	sketchName := ""
-
-	for _, sketch := range status.Sketches {
-		if sketch.PID == pid {
-			sketchName = sketch.Name
-			break
-		}
-	}
-
-	if sketchName == "" {
-		return "", errors.New("Unknown PID")
-	} else {
-		return sketchName, nil
 	}
 }
 
