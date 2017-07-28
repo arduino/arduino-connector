@@ -340,6 +340,71 @@ func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 	}
 }
 
+type DylibMap struct {
+	Name     string
+	Provides []string
+	URL      string
+}
+
+func (d *DylibMap) Download(path string) {
+	for _, element := range d.Provides {
+		resp, err := http.Get(d.URL + "/" + element)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		filePath := filepath.Join(path, element)
+		ioutil.WriteFile(filePath, body, 0600)
+	}
+}
+
+func (d *DylibMap) Contains(match string) bool {
+	for _, element := range d.Provides {
+		if strings.Contains(element, match) {
+			return true
+		}
+	}
+	return false
+}
+
+func downloadDylibDependencies(library string) error {
+	resp, err := http.Get("https://downloads.arduino.cc/libArduino/dylib_dependencies.txt")
+	if err != nil {
+		return errors.New("Can't download dylibs registry")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 { // OK
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return errors.New("Can't download dylibs registry")
+		}
+		var v []DylibMap
+		json.Unmarshal(bodyBytes, v)
+		for _, element := range v {
+			if element.Contains(library) {
+				folder, _ := GetSketchFolder()
+				element.Download(filepath.Join(folder, "lib"))
+			}
+		}
+	}
+	return nil
+}
+
+func extractLibrary(errorString string) string {
+	fields := strings.Fields(errorString)
+	for _, subStr := range fields {
+		if strings.Contains(subStr, ".so") {
+			libName := strings.Split(subStr, ".")
+			if len(libName) >= 2 {
+				return libName[0] + "." + libName[1]
+			}
+		}
+	}
+	return ""
+}
+
 // spawn Process creates a new process from a file
 func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, io.ReadCloser, io.ReadCloser, error) {
 	cmd := exec.Command(filepath)
@@ -351,8 +416,32 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	f, err := pty.Start(cmd)
 
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
-		return 0, stdout, stderr, err
+		if strings.Contains(err.Error(), "shared libraries") {
+			// download dependencies and retry
+			// if the error persists, bail out
+			for {
+				library := extractLibrary(err.Error())
+				status.Info("/upload", "Downloading needed libraries")
+				err_download := downloadDylibDependencies(library)
+				if err_download != nil {
+					return 0, stdout, stderr, err
+				}
+				f_retry, err_retry := pty.Start(cmd)
+				if err_retry == nil {
+					f = f_retry
+					break
+				}
+				if err_retry.Error() == err.Error() {
+					// couldn't find any suitable  library
+					fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+					return 0, stdout, stderr, err
+				}
+				err = err_retry
+			}
+		} else {
+			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+			return 0, stdout, stderr, err
+		}
 	}
 
 	sketch.pty = f
