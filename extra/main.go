@@ -31,7 +31,7 @@ func main() {
 		lib.Help = "Please install " + lib.Name + " library from Intel website http://intel.com/"
 		v = append(v, lib)
 	}
-	bytes, err := json.MarshalIndent(v, "", "   ")
+	bytes, err := json.Marshal(v)
 	if err == nil {
 		fmt.Println(string(bytes))
 	}
