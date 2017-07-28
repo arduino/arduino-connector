@@ -393,32 +393,8 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	f, err := pty.Start(cmd)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "shared libraries") {
-			// download dependencies and retry
-			// if the error persists, bail out
-			for {
-				library := extractLibrary(err.Error())
-				status.Info("/upload", "Downloading needed libraries")
-				err_download := downloadDylibDependencies(library)
-				if err_download != nil {
-					return 0, stdout, stderr, err
-				}
-				f_retry, err_retry := pty.Start(cmd)
-				if err_retry == nil {
-					f = f_retry
-					break
-				}
-				if err_retry.Error() == err.Error() {
-					// couldn't find any suitable  library
-					fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
-					return 0, stdout, stderr, err
-				}
-				err = err_retry
-			}
-		} else {
-			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
-			return 0, stdout, stderr, err
-		}
+		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+		return 0, stdout, stderr, err
 	}
 
 	sketch.pty = f
@@ -446,7 +422,31 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 		//if we get here signal that the sketch has died
 		applyAction(sketch, "STOP", status)
 		if err != nil {
-			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+			if strings.Contains(err.Error(), "shared libraries") {
+				// download dependencies and retry
+				// if the error persists, bail out
+				for {
+					library := extractLibrary(err.Error())
+					status.Info("/upload", "Downloading needed libraries")
+					err_download := downloadDylibDependencies(library)
+					if err_download != nil {
+						return
+					}
+					f_retry, err_retry := pty.Start(cmd)
+					if err_retry == nil {
+						f = f_retry
+						break
+					}
+					if err_retry.Error() == err.Error() {
+						// couldn't find any suitable  library
+						fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+						return
+					}
+					err = err_retry
+				}
+			} else {
+				fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+			}
 		}
 		fmt.Println("sketch exited " + err.Error())
 	}()
