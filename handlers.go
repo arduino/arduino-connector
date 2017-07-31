@@ -404,6 +404,22 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 	}
 }
 
+func checkSketchForMissingDisplayEnvVariable(errorString string) {
+	if strings.Contains(errorString, "Can't open display") || strings.Contains(errorString, "cannot open display") {
+		i := 0
+		for i < 10 {
+			// export DISPLAY variable
+			os.Setenv("DISPLAY", ":"+strconv.Itoa(i))
+			cmd := exec.Command("xrandr")
+			ret, err := cmd.CombinedOutput()
+			if err == nil && !strings.Contains(string(ret), "open display") {
+				break
+			}
+			i++
+		}
+	}
+}
+
 // spawn Process creates a new process from a file
 func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, io.ReadCloser, io.ReadCloser, error) {
 	cmd := exec.Command(filepath)
@@ -433,6 +449,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 				fmt.Println(string(temp))
 				status.Info("/stdout", string(temp))
 				checkForLibrariesMissingError(filepath, sketch, status, string(temp))
+				checkSketchForMissingDisplayEnvVariable(string(temp))
 			}
 		}
 	}()
