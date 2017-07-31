@@ -479,7 +479,7 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 
 	case "STOP":
 		fmt.Println("stop called")
-		if sketch.PID != 0 && err == nil {
+		if sketch.PID != 0 && err == nil && process.Pid != 0 {
 			fmt.Println("kill called")
 			err = process.Kill()
 		} else {
