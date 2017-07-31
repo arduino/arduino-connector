@@ -370,6 +370,7 @@ func downloadDylibDependencies(library string) error {
 				element.Download(filepath.Join(folder, "lib"))
 			}
 		}
+		return errors.New("Can't find a provider for " + library)
 	}
 	return nil
 }
