@@ -152,9 +152,6 @@ func (p program) run() {
 		os.Setenv("LD_LIBRARY_PATH", strings.Join(extraPaths, ":")+":"+os.Getenv("LD_LIBRARY_PATH"))
 	}
 
-	// Blindly set DISPLAY env variable to default
-	os.Setenv("DISPLAY", ":0")
-
 	files, err := ioutil.ReadDir(sketchFolder)
 
 	if err == nil {

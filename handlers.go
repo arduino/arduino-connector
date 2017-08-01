@@ -404,19 +404,36 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 	}
 }
 
-func checkSketchForMissingDisplayEnvVariable(errorString string) {
+func checkSketchForMissingDisplayEnvVariable(errorString string, filepath string, sketch *SketchStatus, status *Status) {
 	if strings.Contains(errorString, "Can't open display") || strings.Contains(errorString, "cannot open display") {
-		i := 0
-		for i < 10 {
-			// export DISPLAY variable
-			os.Setenv("DISPLAY", ":"+strconv.Itoa(i))
-			cmd := exec.Command("xrandr")
-			ret, err := cmd.CombinedOutput()
-			if err == nil && !strings.Contains(string(ret), "open display") {
-				break
-			}
-			i++
+
+		if os.Getenv("DISPLAY") == "NULL" {
+			return
 		}
+
+		setupDisplay()
+		spawnProcess(filepath, sketch, status)
+		sketch.Status = "RUNNING"
+	}
+}
+
+func setupDisplay() {
+	// Blindly set DISPLAY env variable to default
+	os.Setenv("DISPLAY", ":0")
+	// Unlock xorg session for localhost connections
+	// TODO: find a way to automatically remove -nolisten tcp
+	cmd := exec.Command("xhost", "+localhost")
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
+	_, err := cmd.CombinedOutput()
+	// Also try xrandr
+	cmd = exec.Command("xrandr")
+	_, err_xrandr := cmd.CombinedOutput()
+	if err != nil || err_xrandr != nil {
+		fmt.Println("Xorg server unavailable, make sure you have a display attached and a user logged in")
+		fmt.Println("If it's already ok, try setting up Xorg to accept incoming connection (-listen tcp)")
+		fmt.Println("On Ubuntu, add \n\n[SeatDefaults]\nxserver-allow-tcp=true\n\nto /etc/lightdm/lightdm.conf")
+		os.Setenv("DISPLAY", "NULL")
 	}
 }
 
@@ -449,7 +466,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 				fmt.Println(string(temp))
 				status.Info("/stdout", string(temp))
 				checkForLibrariesMissingError(filepath, sketch, status, string(temp))
-				checkSketchForMissingDisplayEnvVariable(string(temp))
+				checkSketchForMissingDisplayEnvVariable(string(temp), filepath, sketch, status)
 			}
 		}
 	}()
