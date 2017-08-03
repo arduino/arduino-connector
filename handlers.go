@@ -393,6 +393,7 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 	if strings.Contains(err, "error while loading shared libraries") {
 		// download dependencies and retry
 		// if the error persists, bail out
+		addIntelLibrariesToLdPath()
 		fmt.Println("Missing library!")
 		library := extractLibrary(err)
 		status.Info("/upload", "Downloading needed libraries")
