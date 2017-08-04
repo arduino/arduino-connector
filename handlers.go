@@ -409,32 +409,50 @@ func checkSketchForMissingDisplayEnvVariable(errorString string, filepath string
 	if strings.Contains(errorString, "Can't open display") || strings.Contains(errorString, "cannot open display") {
 
 		if os.Getenv("DISPLAY") == "NULL" {
+			os.Setenv("DISPLAY", ":0")
 			return
 		}
 
-		setupDisplay()
+		err := setupDisplay(true)
+		if err != nil {
+			setupDisplay(false)
+		}
 		spawnProcess(filepath, sketch, status)
 		sketch.Status = "RUNNING"
 	}
 }
 
-func setupDisplay() {
+func setupDisplay(usermode bool) error {
 	// Blindly set DISPLAY env variable to default
-	os.Setenv("DISPLAY", ":0")
-	// Unlock xorg session for localhost connections
-	// TODO: find a way to automatically remove -nolisten tcp
-	cmd := exec.Command("xhost", "+localhost")
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
-	_, err := cmd.CombinedOutput()
-	// Also try xrandr
-	cmd = exec.Command("xrandr")
-	_, err_xrandr := cmd.CombinedOutput()
-	if err != nil || err_xrandr != nil {
-		fmt.Println("Xorg server unavailable, make sure you have a display attached and a user logged in")
-		fmt.Println("If it's already ok, try setting up Xorg to accept incoming connection (-listen tcp)")
-		fmt.Println("On Ubuntu, add \n\n[SeatDefaults]\nxserver-allow-tcp=true\n\nto /etc/lightdm/lightdm.conf")
-		os.Setenv("DISPLAY", "NULL")
+	i := 0
+	for {
+		os.Setenv("DISPLAY", ":"+strconv.Itoa(i))
+		fmt.Println("Exporting DISPLAY as " + ":" + strconv.Itoa(i))
+		// Unlock xorg session for localhost connections
+		// TODO: find a way to automatically remove -nolisten tcp
+		cmd := exec.Command("xhost", "+localhost")
+		if usermode {
+			cmd.SysProcAttr = &syscall.SysProcAttr{}
+			cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
+		}
+		out, err := cmd.CombinedOutput()
+		fmt.Println(string(out))
+		// Also try xrandr
+		cmd = exec.Command("xrandr")
+		out, err_xrandr := cmd.CombinedOutput()
+		fmt.Println(string(out))
+		if err != nil || err_xrandr != nil {
+			if i > 2 {
+				fmt.Println("Xorg server unavailable, make sure you have a display attached and a user logged in")
+				fmt.Println("If it's already ok, try setting up Xorg to accept incoming connection (-listen tcp)")
+				fmt.Println("On Ubuntu, add \n\n[SeatDefaults]\nxserver-allow-tcp=true\n\nto /etc/lightdm/lightdm.conf")
+				os.Setenv("DISPLAY", "NULL")
+				return errors.New("Unable to open display")
+			}
+		} else {
+			return nil
+		}
+		i++
 	}
 }
 
