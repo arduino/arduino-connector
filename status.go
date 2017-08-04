@@ -89,6 +89,12 @@ func (s *Status) Info(topic, msg string) {
 	token.Wait()
 }
 
+// Info logs a message on the specified topic
+func (s *Status) Raw(topic, msg string) {
+	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, msg)
+	token.Wait()
+}
+
 // Publish sens on the /status topic a json representation of the connector
 func (s *Status) Publish() {
 	data, err := json.Marshal(s)

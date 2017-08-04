@@ -67,6 +67,7 @@ func main() {
 
 	if *doInstall {
 		install(s)
+		// TODO: return after install? need to retest all the flows
 	}
 
 	err = s.Run()
