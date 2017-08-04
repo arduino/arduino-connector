@@ -12,11 +12,11 @@ func addIntelLibrariesToLdPath() {
 		//scan /opt/intel searching for sdks
 		var extraPaths []string
 		filepath.Walk("/opt/intel", func(path string, f os.FileInfo, err error) error {
-			if strings.Contains(f.Name(), ".so") {
+			if strings.Contains(f.Name(), ".so") && !strings.Contains(path, "uninstall") {
 				extraPaths = appendIfUnique(extraPaths, filepath.Dir(path))
 			}
 			return nil
 		})
-		os.Setenv("LD_LIBRARY_PATH", strings.Join(extraPaths, ":")+":"+os.Getenv("LD_LIBRARY_PATH"))
+		os.Setenv("LD_LIBRARY_PATH", os.Getenv("LD_LIBRARY_PATH")+":"+strings.Join(extraPaths, ":"))
 	}
 }
