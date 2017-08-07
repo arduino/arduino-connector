@@ -472,7 +472,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	}
 
 	sketch.pty = f
-	//status.client.Subscribe("$aws/things/"+status.id+"/"+strconv.Itoa(cmd.Process.Pid)+"/stdin", 1, StdInCB(f, status))
+	go status.mqttClient.Subscribe("$aws/things/"+status.id+"/stdin", 1, StdInCB(f, status))
 
 	go func() {
 		for {
