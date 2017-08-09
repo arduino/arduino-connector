@@ -11,11 +11,13 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
 	logger "github.com/nats-io/gnatsd/logger"
 	server "github.com/nats-io/gnatsd/server"
 	nats "github.com/nats-io/go-nats"
+
 	"github.com/pkg/errors"
 )
 
@@ -144,7 +146,6 @@ func (p program) run() {
 	addIntelLibrariesToLdPath()
 
 	files, err := ioutil.ReadDir(sketchFolder)
-
 	if err == nil {
 		for _, file := range files {
 
@@ -152,23 +153,63 @@ func (p program) run() {
 			if file.IsDir() {
 				continue
 			}
-			id, err := GetSketchIDFromDB(file.Name())
-			if err != nil {
-				id = file.Name()
-			}
-			fmt.Println("Getting sketch from " + id + " " + file.Name())
-			s := SketchStatus{
-				ID:     id,
-				PID:    0,
-				Name:   file.Name(),
-				Status: "STOPPED",
-			}
-			status.Set(id, &s)
-			status.Publish()
+			addFileToSketchDB(file, status)
 		}
 	}
 
+	addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
+
 	select {}
+}
+
+func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
+	id, err := GetSketchIDFromDB(file.Name())
+	if err != nil {
+		id = file.Name()
+	}
+	fmt.Println("Getting sketch from " + id + " " + file.Name())
+	s := SketchStatus{
+		ID:     id,
+		PID:    0,
+		Name:   file.Name(),
+		Status: "STOPPED",
+	}
+	status.Set(id, &s)
+	status.Publish()
+	return &s
+}
+
+func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status *Status) {
+	watcher, err := fsnotify.NewWatcher()
+	defer watcher.Close()
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				log.Println("event:", event)
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					// give it some time to settle
+					time.Sleep(2 * time.Second)
+					name := filepath.Base(strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
+					filename := filepath.Join(folderDest, name)
+					os.Rename(event.Name, filename)
+					os.Chmod(filename, 0755)
+					log.Println("Moving new sketch to sketches folder")
+					fileInfo, _ := os.Stat(filename)
+					s := addFileToSketchDB(fileInfo, status)
+					applyAction(s, "START", status)
+				}
+			case err := <-watcher.Errors:
+				log.Println("error:", err)
+			}
+		}
+	}()
+	err = watcher.Add(folderOrigin)
+	if err != nil {
+		log.Fatal(err)
+	}
+	<-done
 }
 
 func tailAndReport(listenFile string, status *Status) {
