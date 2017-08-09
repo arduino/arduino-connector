@@ -20,6 +20,7 @@ import (
 	"github.com/kr/pty"
 	nats "github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // StatusCB replies with the current status of the arduino-connector
@@ -465,6 +466,8 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	cmd.Stderr = &stderr_buf
 
 	f, err := pty.Start(cmd)
+
+	terminal.MakeRaw(int(f.Fd()))
 
 	if err != nil {
 		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
