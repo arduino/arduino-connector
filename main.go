@@ -67,7 +67,8 @@ func main() {
 
 	if *doInstall {
 		install(s)
-		// TODO: return after install? need to retest all the flows
+		// install should return cleanly if succeeded
+		os.Exit(0)
 	}
 
 	err = s.Run()
