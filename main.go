@@ -157,6 +157,7 @@ func (p program) run() {
 		}
 	}
 
+	os.Mkdir("/tmp/sketches", 0777)
 	addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
 
 	select {}
