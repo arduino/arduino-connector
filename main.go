@@ -109,8 +109,12 @@ func (p program) run() {
 		log.Fatal("NATS server not redy for connections!")
 	}
 
+	// Create global status
+	status := NewStatus(p.Config.ID, nil)
+
 	// Setup MQTT connection
-	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL)
+	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL, status)
+
 	if err != nil {
 		// if installing in a chroot the paths may be wrong and the installer may fail.
 		// Don't report it as an error
@@ -118,8 +122,7 @@ func (p program) run() {
 	}
 	log.Println("Connected to MQTT")
 
-	// Create global status
-	status := NewStatus(p.Config.ID, mqttClient)
+	status.mqttClient = mqttClient
 
 	if p.listenFile != "" {
 		go tailAndReport(p.listenFile, status)
@@ -132,11 +135,6 @@ func (p program) run() {
 
 	// wipe the thing shadows
 	mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
-
-	// Subscribe to topics endpoint
-	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/status/post", 1, StatusCB(status))
-	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/upload/post", 1, UploadCB(status))
-	mqttClient.Subscribe("$aws/things/"+p.Config.ID+"/sketch/post", 1, SketchCB(status))
 
 	sketchFolder, err := GetSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
@@ -161,6 +159,16 @@ func (p program) run() {
 	addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
 
 	select {}
+}
+
+func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
+	// Subscribe to topics endpoint
+	if status == nil {
+		return
+	}
+	mqttClient.Subscribe("$aws/things/"+id+"/status/post", 1, StatusCB(status))
+	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, UploadCB(status))
+	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, SketchCB(status))
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
@@ -245,7 +253,7 @@ func check(err error, context string) {
 }
 
 // setupMQTTConnection establish a connection with aws iot
-func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
+func setupMQTTConnection(cert, key, id, url string, status *Status) (mqtt.Client, error) {
 	// Read certificate
 	cer, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
@@ -257,7 +265,12 @@ func setupMQTTConnection(cert, key, id, url string) (mqtt.Client, error) {
 	// KeepAlive option is 30 seconds by default
 	opts := mqtt.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
 	opts.SetClientID(id)
-	opts.SetMaxReconnectInterval(1 * time.Second)
+	opts.SetMaxReconnectInterval(20 * time.Second)
+	opts.SetConnectTimeout(0)
+	opts.SetAutoReconnect(true)
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		subscribeTopics(c, id, status)
+	})
 	opts.SetTLSConfig(&tls.Config{
 		Certificates: []tls.Certificate{cer},
 		ServerName:   url,

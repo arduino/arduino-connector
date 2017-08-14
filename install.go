@@ -86,7 +86,7 @@ func register(config Config, token string) {
 
 	// Connect to MQTT and communicate back
 	fmt.Println("Check successful mqtt connection")
-	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL)
+	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
 	check(err, "ConnectMQTT")
 
 	err = registerDevice(client, config.ID)
