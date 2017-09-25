@@ -67,6 +67,9 @@ func NewStatus(id string, mqttClient mqtt.Client) *Status {
 func (s *Status) Set(name string, sketch *SketchStatus) {
 	s.Sketches[name] = sketch
 
+	if s.mqttClient == nil {
+		return
+	}
 	msg, err := json.Marshal(s)
 	if err != nil {
 		panic(err) // Means that something went really wrong
@@ -79,18 +82,27 @@ func (s *Status) Set(name string, sketch *SketchStatus) {
 
 // Error logs an error on the specified topic
 func (s *Status) Error(topic string, err error) {
+	if s.mqttClient == nil {
+		return
+	}
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error()+"\n")
 	token.Wait()
 }
 
 // Info logs a message on the specified topic
 func (s *Status) Info(topic, msg string) {
+	if s.mqttClient == nil {
+		return
+	}
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg+"\n")
 	token.Wait()
 }
 
 // Info logs a message on the specified topic
 func (s *Status) Raw(topic, msg string) {
+	if s.mqttClient == nil {
+		return
+	}
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, msg)
 	token.Wait()
 }

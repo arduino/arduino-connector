@@ -115,14 +115,12 @@ func (p program) run() {
 	// Setup MQTT connection
 	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL, status)
 
-	if err != nil {
-		// if installing in a chroot the paths may be wrong and the installer may fail.
-		// Don't report it as an error
-		os.Exit(0)
+	if err == nil {
+		log.Println("Connected to MQTT")
+		status.mqttClient = mqttClient
+	} else {
+		log.Println("Connection to MQTT failed, cloud features unavailable")
 	}
-	log.Println("Connected to MQTT")
-
-	status.mqttClient = mqttClient
 
 	if p.listenFile != "" {
 		go tailAndReport(p.listenFile, status)
@@ -134,7 +132,9 @@ func (p program) run() {
 	nc.Subscribe("$arduino.cloud.*", NatsCloudCB(status))
 
 	// wipe the thing shadows
-	mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
+	if status.mqttClient != nil {
+		mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
+	}
 
 	sketchFolder, err := GetSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
@@ -156,9 +156,18 @@ func (p program) run() {
 	}
 
 	os.Mkdir("/tmp/sketches", 0777)
-	addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
+
+	go addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
+
+	autospawnSketchIfMatchesName("sketchLoadedThroughUSB", status)
 
 	select {}
+}
+
+func autospawnSketchIfMatchesName(name string, status *Status) {
+	if status.Sketches[name] != nil {
+		applyAction(status.Sketches[name], "START", status)
+	}
 }
 
 func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
@@ -188,6 +197,24 @@ func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
 	return &s
 }
 
+func copyFileAndRemoveOriginal(src string, dst string) error {
+	// Read all content of src to data
+	data, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	// Write data to dst
+	err = ioutil.WriteFile(dst, data, 0644)
+	if err != nil {
+		return err
+	}
+	os.Remove(src)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status *Status) {
 	watcher, err := fsnotify.NewWatcher()
 	defer watcher.Close()
@@ -200,12 +227,25 @@ func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status 
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					// give it some time to settle
 					time.Sleep(2 * time.Second)
-					name := filepath.Base(strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
-					filename := filepath.Join(folderDest, name)
-					os.Rename(event.Name, filename)
+					//name := filepath.Base(strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
+					//filename := filepath.Join(folderDest, name)
+					filename := filepath.Join(folderDest, "sketchLoadedThroughUSB")
+					err := os.Rename(event.Name, filename)
+					if err != nil {
+						// copy the file and remote the original
+						err = copyFileAndRemoveOriginal(event.Name, filename)
+						if err != nil {
+							// nevermind, break and do nothing
+							break
+						}
+					}
 					os.Chmod(filename, 0755)
 					log.Println("Moving new sketch to sketches folder")
-					fileInfo, _ := os.Stat(filename)
+					fileInfo, err := os.Stat(filename)
+					if err != nil {
+						log.Println("Got error:" + err.Error())
+						break
+					}
 					s := addFileToSketchDB(fileInfo, status)
 					applyAction(s, "START", status)
 				}
