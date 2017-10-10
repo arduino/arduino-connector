@@ -230,6 +230,12 @@ func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status 
 					//name := filepath.Base(strings.TrimSuffix(event.Name, filepath.Ext(event.Name)))
 					//filename := filepath.Join(folderDest, name)
 					filename := filepath.Join(folderDest, "sketchLoadedThroughUSB")
+
+					// stop already running sketch if it exists
+					if sketch, ok := status.Sketches["sketchLoadedThroughUSB"]; ok {
+						err = applyAction(sketch, "STOP", status)
+					}
+
 					err := os.Rename(event.Name, filename)
 					if err != nil {
 						// copy the file and remote the original
