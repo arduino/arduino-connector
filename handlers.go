@@ -475,7 +475,9 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	}
 
 	sketch.pty = f
-	go status.mqttClient.Subscribe("$aws/things/"+status.id+"/stdin", 1, StdInCB(f, status))
+	if status.mqttClient != nil {
+		go status.mqttClient.Subscribe("$aws/things/"+status.id+"/stdin", 1, StdInCB(f, status))
+	}
 
 	go func() {
 		for {
