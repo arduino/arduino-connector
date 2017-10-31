@@ -491,7 +491,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 				break
 			}
 			if len > 0 {
-				fmt.Println(string(temp[:len]))
+				//fmt.Println(string(temp[:len]))
 				status.Raw("/stdout", string(temp[:len]))
 				checkForLibrariesMissingError(filepath, sketch, status, string(temp))
 				checkSketchForMissingDisplayEnvVariable(string(temp), filepath, sketch, status)

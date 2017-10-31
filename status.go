@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -109,6 +111,7 @@ func (s *Status) Raw(topic, msg string) {
 		return
 	}
 	if s.messagesSent > 1000 {
+		fmt.Println("rate limiting: " + strconv.Itoa(s.messagesSent))
 		time.Sleep(time.Duration(s.messagesSent/1000) * time.Second)
 	}
 	s.messagesSent++
