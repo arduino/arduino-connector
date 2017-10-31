@@ -120,6 +120,8 @@ func (p program) run() {
 		status.mqttClient = mqttClient
 	} else {
 		log.Println("Connection to MQTT failed, cloud features unavailable")
+		// TODO: temporary, fail if no connection is available
+		os.Exit(0)
 	}
 
 	if p.listenFile != "" {
