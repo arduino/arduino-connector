@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
@@ -239,6 +240,9 @@ func NatsCloudCB(s *Status) nats.MsgHandler {
 
 		updateMessage := fmt.Sprintf("{\"state\": {\"reported\": { \"%s\": %s}}}", thingName, string(m.Data))
 
+		if s.messagesSent > 1000 {
+			time.Sleep(time.Duration(s.messagesSent/1000) * time.Second)
+		}
 		s.mqttClient.Publish("$aws/things/"+s.id+"/shadow/update", 1, false, updateMessage)
 	}
 }

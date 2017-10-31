@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
@@ -10,9 +11,10 @@ import (
 
 // Status contains info about the sketches running on the device
 type Status struct {
-	id         string
-	mqttClient mqtt.Client
-	Sketches   map[string]*SketchStatus `json:"sketches"`
+	id           string
+	mqttClient   mqtt.Client
+	Sketches     map[string]*SketchStatus `json:"sketches"`
+	messagesSent int
 }
 
 // Status contains info about the sketches running on the device
@@ -75,6 +77,7 @@ func (s *Status) Set(name string, sketch *SketchStatus) {
 		panic(err) // Means that something went really wrong
 	}
 
+	s.messagesSent++
 	if token := s.mqttClient.Publish("/status", 1, false, msg); token.Wait() && token.Error() != nil {
 		panic(err) // Means that something went really wrong
 	}
@@ -85,6 +88,7 @@ func (s *Status) Error(topic string, err error) {
 	if s.mqttClient == nil {
 		return
 	}
+	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error()+"\n")
 	token.Wait()
 }
@@ -94,6 +98,7 @@ func (s *Status) Info(topic, msg string) {
 	if s.mqttClient == nil {
 		return
 	}
+	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg+"\n")
 	token.Wait()
 }
@@ -103,6 +108,10 @@ func (s *Status) Raw(topic, msg string) {
 	if s.mqttClient == nil {
 		return
 	}
+	if s.messagesSent > 1000 {
+		time.Sleep(time.Duration(s.messagesSent/1000) * time.Second)
+	}
+	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, msg)
 	token.Wait()
 }
