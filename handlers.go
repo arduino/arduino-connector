@@ -547,6 +547,16 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		sketch.PID = 0
 		sketch.Status = "STOPPED"
 		break
+	case "DELETE":
+		applyAction(sketch, "STOP", status)
+		fmt.Println("delete called")
+		sketchFolder, err := GetSketchFolder()
+		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
+		if err != nil {
+			fmt.Println("error deleting sketch")
+		}
+		status.Sketches[sketch.ID] = nil
+		break
 	case "PAUSE":
 		err = process.Signal(syscall.SIGTSTP)
 		sketch.Status = "PAUSED"
