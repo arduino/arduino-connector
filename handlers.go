@@ -67,12 +67,16 @@ func UpdateCB(status *Status) mqtt.MessageHandler {
 			status.Error("/update", errors.Wrapf(err, "chmod 744 %s", name))
 			return
 		}
+		os.Rename(executablePath, executablePath+".old")
 		// copy it over existing binary
-		copyFileAndRemoveOriginal(name, executablePath)
+		err = copyFileAndRemoveOriginal(name, executablePath)
 		if err != nil {
+			// rollback
+			os.Rename(executablePath+".old", executablePath)
 			status.Error("/update", errors.Wrap(err, "error copying itself from "+name+" to "+executablePath))
 			return
 		}
+		os.Remove(executablePath + ".old")
 		// leap of faith: kill itself, systemd should respawn the process
 		os.Exit(0)
 	}
