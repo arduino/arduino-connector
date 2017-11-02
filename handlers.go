@@ -31,6 +31,53 @@ func StatusCB(status *Status) mqtt.MessageHandler {
 	}
 }
 
+type UpdatePayload struct {
+	URL       string `json:"url"`
+	Signature string `json:"signature"`
+	Token     string `json:"token"`
+}
+
+// UpdateCB handles the connector autoupdate
+// Any URL must be signed with Arduino private key
+func UpdateCB(status *Status) mqtt.MessageHandler {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		var info UpdatePayload
+		err := json.Unmarshal(msg.Payload(), &info)
+		if err != nil {
+			status.Error("/update", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+			return
+		}
+		executablePath, _ := os.Executable()
+		name := filepath.Join(os.TempDir(), filepath.Base(executablePath))
+		err = downloadFile(name, info.URL, info.Token)
+		err = downloadFile(name+".sig", info.URL+".sig", info.Token)
+		if err != nil {
+			status.Error("/update", errors.Wrap(err, "no signature file "+info.URL+".sig"))
+			return
+		}
+		// check the signature
+		err = checkGPGSig(name, name+".sig")
+		if err != nil {
+			status.Error("/update", errors.Wrap(err, "wrong signature "+info.URL+".sig"))
+			return
+		}
+		// chmod it
+		err = os.Chmod(name, 0744)
+		if err != nil {
+			status.Error("/update", errors.Wrapf(err, "chmod 744 %s", name))
+			return
+		}
+		// copy it over existing binary
+		copyFileAndRemoveOriginal(name, executablePath)
+		if err != nil {
+			status.Error("/update", errors.Wrap(err, "error copying itself from "+name+" to "+executablePath))
+			return
+		}
+		// leap of faith: kill itself, systemd should respawn the process
+		os.Exit(0)
+	}
+}
+
 // UploadPayload contains the name and url of the sketch to upload on the device
 type UploadPayload struct {
 	ID    string `json:"id"`
