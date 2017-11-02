@@ -112,7 +112,11 @@ func (s *Status) Raw(topic, msg string) {
 	}
 	if s.messagesSent > 1000 {
 		fmt.Println("rate limiting: " + strconv.Itoa(s.messagesSent))
-		time.Sleep(time.Duration(s.messagesSent/1000) * time.Second)
+		introducedDelay := time.Duration(s.messagesSent/1000) * time.Second
+		if introducedDelay > 20*time.Second {
+			introducedDelay = 20 * time.Second
+		}
+		time.Sleep(introducedDelay)
 	}
 	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, msg)

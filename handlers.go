@@ -241,8 +241,14 @@ func NatsCloudCB(s *Status) nats.MsgHandler {
 		updateMessage := fmt.Sprintf("{\"state\": {\"reported\": { \"%s\": %s}}}", thingName, string(m.Data))
 
 		if s.messagesSent > 1000 {
-			time.Sleep(time.Duration(s.messagesSent/1000) * time.Second)
+			fmt.Println("rate limiting: " + strconv.Itoa(s.messagesSent))
+			introducedDelay := time.Duration(s.messagesSent/1000) * time.Second
+			if introducedDelay > 20*time.Second {
+				introducedDelay = 20 * time.Second
+			}
+			time.Sleep(introducedDelay)
 		}
+		s.messagesSent++
 		s.mqttClient.Publish("$aws/things/"+s.id+"/shadow/update", 1, false, updateMessage)
 	}
 }
