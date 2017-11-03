@@ -17,7 +17,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"syscall"
 	"time"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/bcmi-labs/arduino-connector/auth"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -102,7 +105,12 @@ func askCredentials() (token string, err error) {
 	fmt.Println("Insert your arduino username")
 	fmt.Scanln(&user)
 	fmt.Println("Insert your arduino password")
-	fmt.Scanln(&pass)
+
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", err
+	}
+	pass = string(bytePassword)
 
 	auth := auth.New()
 	auth.ClientID = "connector"
