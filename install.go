@@ -112,10 +112,21 @@ func askCredentials() (token string, err error) {
 	}
 	pass = string(bytePassword)
 
-	auth := auth.New()
-	auth.ClientID = "connector"
-	auth.Scopes = "iot:devices"
-	tok, err := auth.Token(user, pass)
+	authClient := auth.New()
+	authClient.ClientID = "connector"
+	authClient.Scopes = "iot:devices"
+
+	var tok *auth.Token
+	// Handle captcha
+	for {
+		tok, err = authClient.Token(user, pass)
+		if err == nil || !strings.HasPrefix(err.Error(), "authenticate: CAPTCHA") {
+			break
+		}
+		fmt.Println("The authentication requested a captcha! We can't let you solve it in a terminal, so please visit https://auth.arduino.cc/login. When you managed to log in from the browser come back here and press [Enter]")
+		var temp string
+		fmt.Scanln(&temp)
+	}
 	if err != nil {
 		return "", err
 	}

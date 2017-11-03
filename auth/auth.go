@@ -48,6 +48,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -202,6 +203,8 @@ func (c *Config) requestAuth(client *http.Client) (string, cookies, error) {
 	return res.Request.URL.String(), cookies, err
 }
 
+var errorRE = regexp.MustCompile(`<div class="error">(?P<error>.*)</div>`)
+
 // authenticate uses the user and pass to pass the authentication challenge and returns the authorization_code
 func (c *Config) authenticate(client *http.Client, cookies cookies, uri, user, pass string) (string, error) {
 	// Find csrf
@@ -235,7 +238,11 @@ func (c *Config) authenticate(client *http.Client, cookies cookies, uri, user, p
 
 	if res.StatusCode != 302 {
 		body, _ := ioutil.ReadAll(res.Body)
-		return "", errors.New("status = " + res.Status + ", response = " + string(body))
+		errs := errorRE.FindStringSubmatch(string(body))
+		if len(errs) < 2 {
+			return "", errors.New("status = " + res.Status + ", response = " + string(body))
+		}
+		return "", errors.New(errs[1])
 	}
 
 	// Follow redirect to hydra
