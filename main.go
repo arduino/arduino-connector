@@ -64,6 +64,7 @@ func (c Config) String() string {
 func main() {
 	config := Config{}
 
+	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
 	var doInstall = flag.Bool("install", false, "Install as a service")
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
@@ -81,13 +82,27 @@ func main() {
 	s, err := createService(config, *listenFile)
 	check(err, "CreateService")
 
+	if *doLogin {
+		token, err := askCredentials()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Access Token:", token)
+		os.Exit(0)
+	}
+
 	if *doRegister {
 		register(config, *token)
 	}
 
 	if *doInstall {
 		install(s)
-		// install should return cleanly if succeeded
+	}
+
+	if *doRegister || *doInstall {
+		// install and register should return cleanly if succeeded
 		os.Exit(0)
 	}
 
@@ -321,6 +336,7 @@ func check(err error, context string) {
 
 // setupMQTTConnection establish a connection with aws iot
 func setupMQTTConnection(cert, key, id, url string, status *Status) (mqtt.Client, error) {
+	fmt.Println("setupMQTT", cert, key, id, url)
 	// Read certificate
 	cer, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
