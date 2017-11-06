@@ -1,22 +1,22 @@
 # Arduino Connector
 
-arduino-connect allows your board to connect to the arduino-cloud and push and receive message through mqtt
+The Arduino Connector allows your device to connect to the Arduino Cloud, and push and receive message through the [MQTT protocol](http://mqtt.org/). You can see and control all your cloud-enabled devices via a web app called [My Devices](https://create.arduino.cc/devices).
 
 ## Install
 
-You can follow the [create getting-started](https://create.arduino.cc/getting-started) to create a device and install the connector onto a board.
+Follow the Getting Started guides to install the connector and allow your devices to communincate with the cloud via Arduino Create. You can install the connector onto a [Up2 board](https://create.arduino.cc/getting-started/up2) or a generic [Intel-based platform running Linux](https://create.arduino.cc/getting-started/intel-platforms).
 
 ### How does it work?
 
-Arduino-connector gets installed on a board and does the following things:
+The Arduino Connector gets installed on a device and does the following things:
 
-- Connects to mqtt using the certificate and key generated during installation
-- Starts and Stops sketches acording to the received commands from mqtt
-- Collects the output of the sketches in order to send them on mqtt
+- Connects to MQTT using the certificate and key generated during installation
+- Starts and Stops sketches according to the received commands from MQTT
+- Collects the output of the sketches in order to send them on MQTT
 
 ### Install from source
 
-Arduino-Connector is tied to a specific device registered within the arduino cloud. The getting started does everything for you, but if you want to do things the hard way, go ahead.
+The Arduino Connector is tied to a specific device registered within the Arduino Cloud. The [getting started guide](https://create.arduino.cc/getting-started) does everything for you, but if you want to do things the hard way, please read the following instructions:
 
 1. To build the connector from source make sure you have the [go toolchain](https://golang.org/doc/install) installed and this repository cloned in `$GOPATH/src/github.com/arduino/arduino-connector.
 
@@ -25,11 +25,11 @@ $ go get 		# retrieves all the dependencies
 $ go build 		# generates the arduino-connector executable
 ```
 
-2. Make sure you have an arduino account and you are able to log in: https://auth.arduino.cc/login
+2. Make sure you have an Arduino Account and you are able to log at: https://auth.arduino.cc/login
 
-You can ask auth@arduino.cc for support if you encounter issues.
+Please write us at auth@arduino.cc if you encounter any issue loggin in and you need support.
 
-3. The arduino api use oauth2 for authentication. You don't need to know what it is, but you need to login and obtain an access token:
+3. The Arduino APIs use oauth2 for authentication. You don't need to know what it is, but you need to login and obtain an access token:
 
 ```bash
 $ ./arduino-connector login
@@ -39,7 +39,7 @@ Insert your arduino password
 Access Token:  -kNkqSjymiOVtcUPUf17hroD5KK6VaCrVBd_a4ccE8o.nUD6N9E-jPm3fiTCexrnDp4n-GxfxsozidKuoQgIG9k
 ```
 
-4. The arduino api are REST, that means they follow a standard and are (hopefully) easy to work with. You can see the detailed documentation of the devices-api here: https://api2.arduino.cc/devices/docs
+4. The Arduino APIs are REST, that means they follow a standard and are (hopefully) easy to work with. You can see the detailed documentation of the devices-api here: https://api2.arduino.cc/devices/docs
 
 Try listing all of the devices you have registered with
 
@@ -56,7 +56,7 @@ Connection: keep-alive
 
 ```
 
-If this is the first time you are using the arduino-connector you probably obtained an empty list
+If this is the first time you are using the Arduino Connector you'll probably obtained an empty list
 
 5. We can create a new device with a PUT request
 
@@ -71,9 +71,9 @@ Connection: keep-alive
 {"href":"/devices/v1/awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb","id":"awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb","name":"awesome_device","user_id":"076a0d84-b9dd-442b-bb89-78fdc6d5028a"}
 ```
 
-We have created a device with the name "awesome_device", and the api assigned us an id
+We have created a device with the name "awesome_device", and the API has assigned us an ID
 
-6. Register the arduino-connector with this device
+6. Register the Arduino Connector with this device
 
 ```go build && ./arduino-connector -register -id awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb -token -kNkqSjymiOVtcUPUf17hroD5KK6VaCrVBd_a4ccE8o.nUD6N9E-jPm3fiTCexrnDp4n-GxfxsozidKuoQgIG9k
 Generate private key
