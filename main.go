@@ -64,6 +64,7 @@ func (c Config) String() string {
 func main() {
 	config := Config{}
 
+	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
 	var doInstall = flag.Bool("install", false, "Install as a service")
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
@@ -80,6 +81,17 @@ func main() {
 	// Create service and install
 	s, err := createService(config, *listenFile)
 	check(err, "CreateService")
+
+	if *doLogin {
+		token, err := askCredentials()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Access Token:", token)
+		os.Exit(0)
+	}
 
 	if *doRegister {
 		register(config, *token)
