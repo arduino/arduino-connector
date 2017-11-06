@@ -99,7 +99,10 @@ func main() {
 
 	if *doInstall {
 		install(s)
-		// install should return cleanly if succeeded
+	}
+
+	if *doRegister || *doInstall {
+		// install and register should return cleanly if succeeded
 		os.Exit(0)
 	}
 
@@ -333,6 +336,7 @@ func check(err error, context string) {
 
 // setupMQTTConnection establish a connection with aws iot
 func setupMQTTConnection(cert, key, id, url string, status *Status) (mqtt.Client, error) {
+	fmt.Println("setupMQTT", cert, key, id, url)
 	// Read certificate
 	cer, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
