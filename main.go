@@ -78,10 +78,6 @@ func main() {
 
 	flag.Parse()
 
-	// Create service and install
-	s, err := createService(config, *listenFile)
-	check(err, "CreateService")
-
 	if *doLogin {
 		token, err := askCredentials()
 		if err != nil {
@@ -97,12 +93,13 @@ func main() {
 		register(config, *token)
 	}
 
+	// Create service and install
+	s, err := createService(config, *listenFile)
+	check(err, "CreateService")
+
 	if *doInstall {
 		install(s)
-	}
-
-	if *doRegister || *doInstall {
-		// install and register should return cleanly if succeeded
+		// install should return cleanly if succeeded
 		os.Exit(0)
 	}
 
