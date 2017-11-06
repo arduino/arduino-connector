@@ -18,7 +18,7 @@ The Arduino Connector gets installed on a device and does the following things:
 
 The Arduino Connector is tied to a specific device registered within the Arduino Cloud. The [getting started guide](https://create.arduino.cc/getting-started) does everything for you, but if you want to do things the hard way, please read the following instructions:
 
-1. To build the connector from source make sure you have the [go toolchain](https://golang.org/doc/install) installed and this repository cloned in `$GOPATH/src/github.com/arduino/arduino-connector.
+1. To build the connector from source make sure you have the [go toolchain](https://golang.org/doc/install) installed and this repository cloned in `$GOPATH/src/github.com/arduino/arduino-connector`.
 
 ```bash
 $ go get 		# retrieves all the dependencies
@@ -60,6 +60,7 @@ If this is the first time you are using the Arduino Connector you'll probably ob
 
 5. We can create a new device with a PUT request
 
+```bash
 $ curl -H "Authorization: Bearer -kNkqSjymiOVtcUPUf17hroD5KK6VaCrVBd_a4ccE8o.nUD6N9E-jPm3fiTCexrnDp4n-GxfxsozidKuoQgIG9k" -i -X PUT -d '{"name": "awesome_device"}' https://api2.arduino.cc/devices/v1
 HTTP/1.1 201 Created
 Content-Type: application/vnd.arduino.device+json
@@ -75,7 +76,8 @@ We have created a device with the name "awesome_device", and the API has assigne
 
 6. Register the Arduino Connector with this device
 
-```go build && ./arduino-connector -register -id awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb -token -kNkqSjymiOVtcUPUf17hroD5KK6VaCrVBd_a4ccE8o.nUD6N9E-jPm3fiTCexrnDp4n-GxfxsozidKuoQgIG9k
+```bash
+$ go build && ./arduino-connector -register -id awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb -token -kNkqSjymiOVtcUPUf17hroD5KK6VaCrVBd_a4ccE8o.nUD6N9E-jPm3fiTCexrnDp4n-GxfxsozidKuoQgIG9k
 Generate private key
 Generate csr
 Request certificate
@@ -90,7 +92,7 @@ Setup completed
 
 You should now have an arduino-connector.cfg file sitting in this folder, containing something like
 
-``
+```
 id=awesome_user:7c369cb0-1105-478f-818d-24dc20eb7dfb
 url=a19g5nbe27wn47.iot.us-east-1.amazonaws.com
 http_proxy=
@@ -100,8 +102,8 @@ all_proxy=
 
 7. Launch the arduino-connector for real, this time
 
-```
-./arduino-connector -config ./arduino-connector.cfg                        2 ↵   docs    10:19:20
+```bash
+./arduino-connector -config ./arduino-connector.cfg
 [1852] [INF] Starting nats-server version 1.0.4
 [1852] [INF] Listening for client connections on 127.0.0.1:4222
 [1852] [INF] Server is ready
