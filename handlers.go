@@ -585,7 +585,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 		if err != nil {
 			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
 		}
-		fmt.Println("sketch exited " + err.Error())
+		fmt.Println("sketch exited ")
 	}()
 
 	return cmd.Process.Pid, stdout, stderr, err
