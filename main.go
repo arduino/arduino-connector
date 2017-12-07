@@ -211,6 +211,7 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, UploadCB(status))
 	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, SketchCB(status))
 	mqttClient.Subscribe("$aws/things/"+id+"/update/post", 1, UpdateCB(status))
+	mqttClient.Subscribe("$aws/things/"+id+"/stats/post", 1, StatsCB(status))
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
