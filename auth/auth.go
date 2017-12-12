@@ -199,8 +199,9 @@ func (c *Config) authenticate(client *http.Client, cookies cookies, uri, user, p
 	// Find csrf
 	csrf := ""
 	for _, cookie := range cookies["auth"] {
-		if cookie.Name == "_csrf" {
+		if cookie.Name == "_csrf" && cookie.Value != "" {
 			csrf = cookie.Value
+			break;
 		}
 	}
 	query := url.Values{}
