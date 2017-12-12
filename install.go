@@ -40,7 +40,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/bcmi-labs/arduino-connector/auth"
+	"github.com/arduino/arduino-connector/auth"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
