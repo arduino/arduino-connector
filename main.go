@@ -206,7 +206,7 @@ func (p program) run() {
 		}
 	}
 
-	os.Mkdir("/tmp/sketches", 0777)
+	os.Mkdir("/tmp/sketches", 0700)
 
 	go addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
 
@@ -310,7 +310,7 @@ func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status 
 							break
 						}
 					}
-					os.Chmod(filename, 0755)
+					os.Chmod(filename, 0700)
 					log.Println("Moving new sketch to sketches folder")
 					fileInfo, err := os.Stat(filename)
 					if err != nil {
