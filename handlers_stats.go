@@ -24,8 +24,25 @@ import (
 
 	"github.com/arduino/go-system-stats/disk"
 	"github.com/arduino/go-system-stats/mem"
+	"github.com/arduino/go-system-stats/network"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/pkg/errors"
 )
+
+// WiFiEvent tries to connect to the specified wifi network
+func (s *Status) WiFiEvent(client mqtt.Client, msg mqtt.Message) {
+	// try registering a new wifi network
+	var info struct {
+		SSID     string `json:"ssid"`
+		Password string `json:"password"`
+	}
+	err := json.Unmarshal(msg.Payload(), &info)
+	if err != nil {
+		s.Error("/wifi", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
+	}
+	net.AddWirelessConnection(info.SSID, info.Password)
+}
 
 // StatsEvent sends statistics about resource used in the system (RAM, Disk, Network, etc...)
 func (s *Status) StatsEvent(client mqtt.Client, msg mqtt.Message) {
@@ -42,14 +59,22 @@ func (s *Status) StatsEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
+	netStats, err := net.GetNetworkStats()
+	if err != nil {
+		s.Error("/stats/error", fmt.Errorf("Retrieving network stats: %s", err))
+		return
+	}
+
 	type StatsPayload struct {
-		Memory *mem.Stats      `json:"memory"`
-		Disk   []*disk.FSStats `json:"disk"`
+		Memory  *mem.Stats      `json:"memory"`
+		Disk    []*disk.FSStats `json:"disk"`
+		Network *net.Stats      `json:"network"`
 	}
 
 	info := StatsPayload{
-		Memory: memStats,
-		Disk:   diskStats,
+		Memory:  memStats,
+		Disk:    diskStats,
+		Network: netStats,
 	}
 
 	// Send result
