@@ -218,6 +218,11 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/Remove/post", 1, status.AptRemoveEvent)
+
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/list/post", 1, status.AptRepositoryListEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/add/post", 1, status.AptRepositoryAddEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
