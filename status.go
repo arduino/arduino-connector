@@ -141,6 +141,27 @@ func (s *Status) Raw(topic, msg string) {
 	token.Wait()
 }
 
+// InfoCommandOutput sends command output on the specified topic
+func (s *Status) InfoCommandOutput(topic string, out []byte, err error) {
+	// Prepare response payload
+	type response struct {
+		Result string
+		Output string
+	}
+	info := response{
+		Result: err.Error(),
+		Output: string(out),
+	}
+	data, err := json.Marshal(info)
+	if err != nil {
+		s.Error(topic+"/error", fmt.Errorf("Json marshal result: %s", err))
+		return
+	}
+
+	// Send result
+	s.Info(topic, string(data)+"\n")
+}
+
 // Publish sens on the /status topic a json representation of the connector
 func (s *Status) Publish() {
 	data, err := json.Marshal(s)
