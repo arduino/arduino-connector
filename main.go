@@ -207,11 +207,11 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	mqttClient.Subscribe("$aws/things/"+id+"/status/post", 1, StatusCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, UploadCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, SketchCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/update/post", 1, UpdateCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/stats/post", 1, StatsCB(status))
+	mqttClient.Subscribe("$aws/things/"+id+"/status/post", 1, status.StatusEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, status.UploadEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, status.SketchEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/update/post", 1, status.UpdateEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/stats/post", 1, status.StatsEvent)
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
