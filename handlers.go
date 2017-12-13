@@ -154,9 +154,9 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	// chmod it
-	err = os.Chmod(name, 0744)
+	err = os.Chmod(name, 0700)
 	if err != nil {
-		status.Error("/upload", errors.Wrapf(err, "chmod 744 %s", name))
+		status.Error("/upload", errors.Wrapf(err, "chmod 700 %s", name))
 		return
 	}
 
@@ -195,7 +195,7 @@ func GetSketchFolder() (string, error) {
 	folder, err := osext.ExecutableFolder()
 	folder = filepath.Join(folder, "sketches")
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		err = os.Mkdir(folder, 0755)
+		err = os.Mkdir(folder, 0700)
 	}
 	return folder, err
 }
@@ -205,7 +205,7 @@ func GetSketchDBFolder() (string, error) {
 	folder, err := GetSketchFolder()
 	folder = filepath.Join(folder, "db")
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		err = os.Mkdir(folder, 0755)
+		err = os.Mkdir(folder, 0700)
 	}
 	return folder, err
 }
@@ -238,7 +238,7 @@ func InsertSketchInDB(name string, id string) {
 	}
 	c = append(c, SketchBinding{ID: id, Name: name})
 	data, _ := json.Marshal(c)
-	ioutil.WriteFile(db, data, 0644)
+	ioutil.WriteFile(db, data, 0600)
 }
 
 func GetSketchIDFromDB(name string) (string, error) {
