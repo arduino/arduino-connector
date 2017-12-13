@@ -238,7 +238,7 @@ func InsertSketchInDB(name string, id string) {
 	}
 	c = append(c, SketchBinding{ID: id, Name: name})
 	data, _ := json.Marshal(c)
-	ioutil.WriteFile(db, data, 0755)
+	ioutil.WriteFile(db, data, 0644)
 }
 
 func GetSketchIDFromDB(name string) (string, error) {
