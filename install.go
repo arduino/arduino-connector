@@ -48,8 +48,7 @@ import (
 )
 
 const (
-	rsaBits    = 2048
-	devicesAPI = "https://api2.arduino.cc/devices/v1"
+	rsaBits = 2048
 )
 
 // Install installs the program as a service
@@ -65,7 +64,7 @@ func register(config Config, token string) {
 	// Request token
 	var err error
 	if token == "" {
-		token, err = askCredentials()
+		token, err = askCredentials(config.AuthURL)
 		check(err, "AskCredentials")
 	}
 
@@ -88,7 +87,7 @@ func register(config Config, token string) {
 
 	// Request a certificate
 	fmt.Println("Request certificate")
-	pem, err := requestCert(config.ID, token, csr)
+	pem, err := requestCert(config.APIURL, config.ID, token, csr)
 	check(err, "requestCert")
 
 	err = ioutil.WriteFile("certificate.pem", []byte(pem), 0600)
@@ -96,7 +95,7 @@ func register(config Config, token string) {
 
 	// Request URL
 	fmt.Println("Request mqtt url")
-	config.URL, err = requestURL(token)
+	config.URL, err = requestURL(config.APIURL, token)
 	check(err, "requestURL")
 
 	// Write the configuration
@@ -118,7 +117,7 @@ func register(config Config, token string) {
 	fmt.Println("Setup completed")
 }
 
-func askCredentials() (token string, err error) {
+func askCredentials(authURL string) (token string, err error) {
 	var user, pass string
 	fmt.Println("Insert your arduino username")
 	fmt.Scanln(&user)
@@ -131,6 +130,8 @@ func askCredentials() (token string, err error) {
 	pass = string(bytePassword)
 
 	authClient := auth.New()
+	authClient.CodeURL = authURL + "/oauth2/auth"
+	authClient.TokenURL = authURL + "/oauth2/token"
 	authClient.ClientID = "connector"
 	authClient.Scopes = "iot:devices"
 
@@ -217,7 +218,7 @@ func generateCsr(priv interface{}) ([]byte, error) {
 	return csr, nil
 }
 
-func requestCert(id, token string, csr []byte) (string, error) {
+func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -227,7 +228,7 @@ func requestCert(id, token string, csr []byte) (string, error) {
 	payload := `{"csr":"` + pemData.String() + `"}`
 	payload = strings.Replace(payload, "\n", "\\n", -1)
 
-	req, err := http.NewRequest("POST", devicesAPI+"/"+id, strings.NewReader(payload))
+	req, err := http.NewRequest("POST", apiURL+"/"+id, strings.NewReader(payload))
 	if err != nil {
 		return "", err
 	}
@@ -257,12 +258,12 @@ func requestCert(id, token string, csr []byte) (string, error) {
 	return data.Certificate, nil
 }
 
-func requestURL(token string) (string, error) {
+func requestURL(apiURL, token string) (string, error) {
 	client := http.Client{
 		Timeout: 5 * time.Second,
 	}
 
-	req, err := http.NewRequest("POST", devicesAPI+"/connect", nil)
+	req, err := http.NewRequest("POST", apiURL+"/connect", nil)
 	if err != nil {
 		return "", err
 	}

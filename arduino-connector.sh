@@ -22,6 +22,8 @@ export TOKEN=$token
 export HTTP_PROXY=$http_proxy
 export HTTPS_PROXY=$https_proxy
 export ALL_PROXY=$all_proxy
+export AUTHURL=$authurl
+export APIURL=$apiurl
 
 echo printenv
 echo ---------

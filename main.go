@@ -50,6 +50,8 @@ type Config struct {
 	HTTPProxy  string
 	HTTPSProxy string
 	ALLProxy   string
+	AuthURL    string
+	APIURL     string
 }
 
 func (c Config) String() string {
@@ -62,6 +64,7 @@ func (c Config) String() string {
 }
 
 func main() {
+	// Read config
 	config := Config{}
 
 	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
@@ -75,6 +78,8 @@ func main() {
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
+	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
+	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
 
 	flag.Parse()
 
@@ -83,7 +88,7 @@ func main() {
 	check(err, "CreateService")
 
 	if *doLogin {
-		token, err := askCredentials()
+		token, err := askCredentials(config.AuthURL)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
