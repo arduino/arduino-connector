@@ -154,7 +154,7 @@ func (s *Status) InfoCommandOutput(topic string, out []byte, err error) {
 	}
 	data, err := json.Marshal(info)
 	if err != nil {
-		s.Error(topic+"/error", fmt.Errorf("Json marshal result: %s", err))
+		s.Error(topic, fmt.Errorf("Json marshal result: %s", err))
 		return
 	}
 
@@ -171,7 +171,7 @@ func (s *Status) Publish() {
 	//fmt.Println(string(out.Bytes()))
 
 	if err != nil {
-		s.Error("/status/error", errors.Wrap(err, "status request"))
+		s.Error("/status", errors.Wrap(err, "status request"))
 		return
 	}
 

@@ -49,19 +49,19 @@ func (s *Status) StatsEvent(client mqtt.Client, msg mqtt.Message) {
 	// Gather all system data metrics
 	memStats, err := mem.GetStats()
 	if err != nil {
-		s.Error("/stats/error", fmt.Errorf("Retrieving memory stats: %s", err))
+		s.Error("/stats", fmt.Errorf("Retrieving memory stats: %s", err))
 		return
 	}
 
 	diskStats, err := disk.GetStats()
 	if err != nil {
-		s.Error("/stats/error", fmt.Errorf("Retrieving disk stats: %s", err))
+		s.Error("/stats", fmt.Errorf("Retrieving disk stats: %s", err))
 		return
 	}
 
 	netStats, err := net.GetNetworkStats()
 	if err != nil {
-		s.Error("/stats/error", fmt.Errorf("Retrieving network stats: %s", err))
+		s.Error("/stats", fmt.Errorf("Retrieving network stats: %s", err))
 		return
 	}
 
@@ -80,7 +80,7 @@ func (s *Status) StatsEvent(client mqtt.Client, msg mqtt.Message) {
 	// Send result
 	data, err := json.Marshal(info)
 	if err != nil {
-		s.Error("/stats/error", fmt.Errorf("Json marsahl result: %s", err))
+		s.Error("/stats", fmt.Errorf("Json marsahl result: %s", err))
 		return
 	}
 
