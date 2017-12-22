@@ -21,3 +21,216 @@ The Arduino Connector is tied to a specific device registered within the Arduino
 Make sure you have an Arduino Account and you are able to log at: https://auth.arduino.cc/login
 
 Please write us at auth@arduino.cc if you encounter any issue loggin in and you need support.
+
+### API
+
+To control the arduino-connector you must have:
+
+- the ID of the device in which the arduino-connector has been installed (eg `username:0002251d-4e19-4cc8-a4a9-1de215bfb502`)
+- a working mqtt connection
+
+Send messages to the topic ending with /post, Receive the answer from the topic ending with /. Errors are sent to the same endpoint.
+
+You can distinguish between errors and non-errors because of the INFO: or ERROR: prefix of the message
+
+#### Status
+
+Retrieve the status of the connector
+```
+{}
+--> $aws/things/{{id}}/status/post
+
+INFO: {
+    "sketches": {
+        "4c1f3a9d-ed78-4ae4-94c8-bcfa2e94c692": {
+            "name":"sketch_oct31a",
+            "id":"4c1f3a9d-ed78-4ae4-94c8-bcfa2e94c692",
+            "pid":31343,
+            "status":"RUNNING",
+            "endpoints":null
+        }
+    }
+}
+<-- $aws/things/{{id}}/status
+```
+
+Upload a sketch on the connector
+```
+{
+  "token": "toUZDUNTcooVlyqAUwooBGAEtgr8iPzp017RhcST8gM.bDBgrxVzKKySBX-kBPMRqFRqlP3j_cwlgt9qPh_Ct2Y",
+  "url": "https://api-builder.arduino.cc/builder/v1/compile/sketch_oct31a.bin",
+  "name": "sketch_oct31a",
+  "id": "4c1f3a9d-ed78-4ae4-94c8-bcfa2e94c692"
+}
+--> $aws/things/{{id}}/upload/post
+
+INFO: Sketch started with PID 570
+<-- $aws/things/{{id}}/upload
+```
+
+Update the arduino-connector (doesn't return anything)
+```
+{
+  "url": "https://downloads.arduino.cc/tools/arduino-connector",
+}
+--> $aws/things/{{id}}/update/post
+
+<-- $aws/things/{{id}}/sketch
+```
+
+Update the arduino-connector
+```
+{
+  "url": "https://downloads.arduino.cc/tools/arduino-connector",
+}
+--> $aws/things/{{id}}/update/post
+
+<-- $aws/things/{{id}}/sketch
+```
+
+Retrieve the stats of the machine (memory, disk, networks)
+```
+{}
+--> $aws/things/{{id}}/stats/post
+
+INFO: {  
+   "memory":{  
+      "FreeMem":1317964,
+      "TotalMem":15859984,
+      "AvailableMem":8184204,
+      "Buffers":757412,
+      "Cached":6569888,
+      "FreeSwapMem":0,
+      "TotalSwapMem":0
+   },
+   "disk":[
+        {  
+            "Device":"sysfs",
+            "Type":"sysfs",
+            "MountPoint":"/sys",
+            "FreeSpace":0,
+            "AvailableSpace":0,
+            "DiskSize":0
+        },
+    ],
+   "network":{  
+      "Devices":[  
+         {  
+            "AccessPoints":[  
+               {  
+                  "Flags":1,
+                  "Frequency":2437,
+                  "HWAddress":"58:6D:8F:8F:FD:F3",
+                  "MaxBitrate":54000,
+                  "Mode":"Nm80211ModeInfra",
+                  "RSNFlags":392,
+                  "SSID":"ssid-2g",
+                  "Strength":80,
+                  "WPAFlags":0
+               }
+            ],
+            "AvailableConnections":[  
+               {  
+                  "802-11-wireless":{  
+                     "mac-address":"QOIwy+Ef",
+                     "mac-address-blacklist":[],
+                     "mode":"infrastructure",
+                     "security":"802-11-wireless-security",
+                     "seen-bssids":[  
+                        "58:6D:8F:8F:FD:F3"
+                     ],
+                     "ssid":"QkNNSWxhYnMtMmc="
+                  },
+                  "802-11-wireless-security":{  
+                     "auth-alg":"open",
+                     "group":[],
+                     "key-mgmt":"wpa-psk",
+                     "pairwise":[],
+                     "proto":[]
+                  },
+                  "connection":{  
+                     "id":"ssid-2g",
+                     "permissions":[],
+                     "secondaries":[],
+                     "timestamp":1513953989,
+                     "type":"802-11-wireless",
+                     "uuid":"b5dd1024-db02-4e0f-ad3b-c41c375f750a"
+                  },
+                  "ipv4":{  
+                     "address-data":[],
+                     "addresses":[],
+                     "dns":[],
+                     "dns-search":[],
+                     "method":"auto",
+                     "route-data":[],
+                     "routes":[]
+                  },
+                  "ipv6":{  
+                     "address-data":[],
+                     "addresses":[],
+                     "dns":[],
+                     "dns-search":[],
+                     "method":"auto",
+                     "route-data":[],
+                     "routes":[]
+                  }
+               }
+            ],
+            "DeviceType":"NmDeviceTypeWifi",
+            "IP4Config":{  
+               "Addresses":[  
+                  {  
+                     "Address":"10.130.22.132",
+                     "Prefix":24,
+                     "Gateway":"10.130.22.1"
+                  }
+               ],
+               "Domains":[],
+               "Nameservers":[  
+                  "10.130.22.1"
+               ],
+               "Routes":[]
+            },
+            "Interface":"wlp4s0",
+            "State":"NmDeviceStateActivated"
+         }
+      ],
+      "Status":"NmStateConnectedGlobal"
+   }
+}
+<-- $aws/things/{{id}}/stats
+```
+
+Configure the wifi (doesn't return anything)
+```
+{
+  "ssid": "ssid-2g",
+  "password": "passwordssid"
+}
+--> $aws/things/{{id}}/stats/post
+
+<-- $aws/things/{{id}}/stats
+```
+
+#### Package Management
+
+Retrieve a list of the installed packages
+
+```
+{}
+--> $aws/things/{{id}}/apt/list/post
+
+INFO: {"memory": ... ,"disk": ... }
+<-- $aws/things/{{id}}/stats
+```
+
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/list/post", 1, status.AptListEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/Remove/post", 1, status.AptRemoveEvent)
+
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/list/post", 1, status.AptRepositoryListEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/add/post", 1, status.AptRepositoryAddEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
