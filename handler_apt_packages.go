@@ -47,20 +47,30 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	upgradable, err := apt.ListUpgradable()
+	// On upgradable packages set the status to "upgradable"
+	updates, err := apt.ListUpgradable()
 	if err != nil {
 		s.Error("/apt/list/error", fmt.Errorf("Retrieving packages: %s", err))
 		return
 	}
 
+	for _, update := range updates {
+		for i := range all {
+			if update.Name == all[i].Name {
+				all[i].Status = "upgradable"
+				break
+			}
+		}
+	}
+
 	// Prepare response payload
 	type response struct {
-		Packages   []*apt.Package `json:"packages"`
-		Upgradable []*apt.Package `json:"upgradable"`
+		Packages []*apt.Package `json:"packages"`
+		Updates  []*apt.Package `json:"updates"`
 	}
 	info := response{
-		Packages:   all,
-		Upgradable: upgradable,
+		Packages: all,
+		Updates:  updates,
 	}
 
 	// Send result
