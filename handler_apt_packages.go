@@ -28,8 +28,11 @@ import (
 
 // AptListEvent sends a list of available packages and their status
 func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
+	const ITEMS_PER_PAGE = 30
+
 	var params struct {
 		Search string `json:"search"`
+		Page   int    `json:"page"`
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
@@ -47,17 +50,32 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	// On upgradable packages set the status to "upgradable"
-	updates, err := apt.ListUpgradable()
+	// Paginate data
+	pages := (len(all)-1)/ITEMS_PER_PAGE + 1
+	first := params.Page * ITEMS_PER_PAGE
+	last := first + ITEMS_PER_PAGE
+	if first >= len(all) {
+		all = all[0:0]
+	} else if last >= len(all) {
+		all = all[first:]
+	} else {
+		all = all[first:last]
+	}
+
+	// On upgradable packages set the status to "upgradable" and add the
+	// available upgrade to the Updates list
+	allUpdates, err := apt.ListUpgradable()
 	if err != nil {
 		s.Error("/apt/list/error", fmt.Errorf("Retrieving packages: %s", err))
 		return
 	}
 
-	for _, update := range updates {
+	updates := []*apt.Package{}
+	for _, update := range allUpdates {
 		for i := range all {
 			if update.Name == all[i].Name {
 				all[i].Status = "upgradable"
+				updates = append(updates, update)
 				break
 			}
 		}
@@ -67,10 +85,14 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	type response struct {
 		Packages []*apt.Package `json:"packages"`
 		Updates  []*apt.Package `json:"updates"`
+		Page     int            `json:"page"`
+		Pages    int            `json:"pages"`
 	}
 	info := response{
 		Packages: all,
 		Updates:  updates,
+		Page:     params.Page,
+		Pages:    pages,
 	}
 
 	// Send result
