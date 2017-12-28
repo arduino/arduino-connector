@@ -60,6 +60,8 @@ func (c Config) String() string {
 	out += "http_proxy=" + c.HTTPProxy + "\r\n"
 	out += "https_proxy=" + c.HTTPSProxy + "\r\n"
 	out += "all_proxy=" + c.ALLProxy + "\r\n"
+	out += "authurl=" + c.AuthURL + "\r\n"
+	out += "apiurl=" + c.APIURL + "\r\n"
 	return out
 }
 
