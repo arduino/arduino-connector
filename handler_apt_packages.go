@@ -28,8 +28,20 @@ import (
 
 // AptListEvent sends a list of available packages and their status
 func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
+	var params struct {
+		Search string `json:"search"`
+	}
+	err := json.Unmarshal(msg.Payload(), &params)
+	if err != nil {
+		s.Error("/apt/list/error", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		return
+	}
+
 	// Get packages from system
-	all, err := apt.List()
+	if params.Search == "" {
+		params.Search = "*"
+	}
+	all, err := apt.Search(params.Search)
 	if err != nil {
 		s.Error("/apt/list/error", fmt.Errorf("Retrieving packages: %s", err))
 		return
