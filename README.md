@@ -93,8 +93,8 @@ Retrieve the stats of the machine (memory, disk, networks)
 {}
 --> $aws/things/{{id}}/stats/post
 
-INFO: {  
-   "memory":{  
+INFO: {
+   "memory":{
       "FreeMem":1317964,
       "TotalMem":15859984,
       "AvailableMem":8184204,
@@ -104,7 +104,7 @@ INFO: {
       "TotalSwapMem":0
    },
    "disk":[
-        {  
+        {
             "Device":"sysfs",
             "Type":"sysfs",
             "MountPoint":"/sys",
@@ -113,11 +113,11 @@ INFO: {
             "DiskSize":0
         },
     ],
-   "network":{  
-      "Devices":[  
-         {  
-            "AccessPoints":[  
-               {  
+   "network":{
+      "Devices":[
+         {
+            "AccessPoints":[
+               {
                   "Flags":1,
                   "Frequency":2437,
                   "HWAddress":"58:6D:8F:8F:FD:F3",
@@ -129,26 +129,26 @@ INFO: {
                   "WPAFlags":0
                }
             ],
-            "AvailableConnections":[  
-               {  
-                  "802-11-wireless":{  
+            "AvailableConnections":[
+               {
+                  "802-11-wireless":{
                      "mac-address":"QOIwy+Ef",
                      "mac-address-blacklist":[],
                      "mode":"infrastructure",
                      "security":"802-11-wireless-security",
-                     "seen-bssids":[  
+                     "seen-bssids":[
                         "58:6D:8F:8F:FD:F3"
                      ],
                      "ssid":"QkNNSWxhYnMtMmc="
                   },
-                  "802-11-wireless-security":{  
+                  "802-11-wireless-security":{
                      "auth-alg":"open",
                      "group":[],
                      "key-mgmt":"wpa-psk",
                      "pairwise":[],
                      "proto":[]
                   },
-                  "connection":{  
+                  "connection":{
                      "id":"ssid-2g",
                      "permissions":[],
                      "secondaries":[],
@@ -156,7 +156,7 @@ INFO: {
                      "type":"802-11-wireless",
                      "uuid":"b5dd1024-db02-4e0f-ad3b-c41c375f750a"
                   },
-                  "ipv4":{  
+                  "ipv4":{
                      "address-data":[],
                      "addresses":[],
                      "dns":[],
@@ -165,7 +165,7 @@ INFO: {
                      "route-data":[],
                      "routes":[]
                   },
-                  "ipv6":{  
+                  "ipv6":{
                      "address-data":[],
                      "addresses":[],
                      "dns":[],
@@ -177,16 +177,16 @@ INFO: {
                }
             ],
             "DeviceType":"NmDeviceTypeWifi",
-            "IP4Config":{  
-               "Addresses":[  
-                  {  
+            "IP4Config":{
+               "Addresses":[
+                  {
                      "Address":"10.130.22.132",
                      "Prefix":24,
                      "Gateway":"10.130.22.1"
                   }
                ],
                "Domains":[],
-               "Nameservers":[  
+               "Nameservers":[
                   "10.130.22.1"
                ],
                "Routes":[]
@@ -214,17 +214,48 @@ Configure the wifi (doesn't return anything)
 
 #### Package Management
 
-Retrieve a list of the installed packages
+Retrieve a list of the upgradable packages
 
 ```
 {}
 --> $aws/things/{{id}}/apt/list/post
 
-INFO: {"memory": ... ,"disk": ... }
+INFO: {"packages":[
+        {"Name":"firefox","Status":"upgradable","Architecture":"amd64","Version":"57.0.3+build1-0ubuntu0.17.10.1"},
+        {"Name":"firefox-locale-en","Status":"upgradable","Architecture":"amd64","Version":"57.0.3+build1-0ubuntu0.17.10.1"}
+    ],
+    "page":0,"pages":1}
 <-- $aws/things/{{id}}/stats
 ```
 
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/list/post", 1, status.AptListEvent)
+Search for installed/installable/upgradable packages
+
+```
+{"search": "linux"}
+--> $aws/things/{{id}}/apt/list/post
+
+INFO: {"packages":[
+        {"Name":"binutils-x86-64-linux-gnu","Status":"installed","Architecture":"amd64","Version":"2.29.1-4ubuntu1"},
+        {"Name":"firmware-linux","Status":"not-installed","Architecture":"","Version":""},
+        ...
+    ],"page":0,"pages":6}
+<-- $aws/things/{{id}}/stats
+```
+
+Navigate pages
+
+```
+{"search": "linux", "page": 2}
+--> $aws/things/{{id}}/apt/list/post
+
+INFO: {"packages":[
+        {"Name":"linux-image-4.10.0-30-generic","Status":"config-files","Architecture":"amd64","Version":"4.10.0-30.34"},
+        {"Name":"linux-image-4.13.0-21-generic","Status":"installed","Architecture":"amd64","Version":"4.13.0-21.24"},
+        ...
+    ],"page":2,"pages":6}
+<-- $aws/things/{{id}}/stats
+
+
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)

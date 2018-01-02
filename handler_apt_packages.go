@@ -36,15 +36,18 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/list/error", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/list", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
 	// Get packages from system
+	var all []*apt.Package
 	if params.Search == "" {
-		params.Search = "*"
+		all, err = apt.ListUpgradable()
+	} else {
+		all, err = apt.Search(params.Search)
 	}
-	all, err := apt.Search(params.Search)
+
 	if err != nil {
 		s.Error("/apt/list", fmt.Errorf("Retrieving packages: %s", err))
 		return
@@ -70,12 +73,10 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	updates := []*apt.Package{}
 	for _, update := range allUpdates {
 		for i := range all {
 			if update.Name == all[i].Name {
 				all[i].Status = "upgradable"
-				updates = append(updates, update)
 				break
 			}
 		}
@@ -84,13 +85,11 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	// Prepare response payload
 	type response struct {
 		Packages []*apt.Package `json:"packages"`
-		Updates  []*apt.Package `json:"updates"`
 		Page     int            `json:"page"`
 		Pages    int            `json:"pages"`
 	}
 	info := response{
 		Packages: all,
-		Updates:  updates,
 		Page:     params.Page,
 		Pages:    pages,
 	}
