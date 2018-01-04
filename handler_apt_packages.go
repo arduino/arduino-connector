@@ -65,8 +65,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 		all = all[first:last]
 	}
 
-	// On upgradable packages set the status to "upgradable" and add the
-	// available upgrade to the Updates list
+	// On upgradable packages set the status to "upgradable"
 	allUpdates, err := apt.ListUpgradable()
 	if err != nil {
 		s.Error("/apt/list", fmt.Errorf("Retrieving packages: %s", err))
