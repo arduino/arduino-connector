@@ -225,7 +225,7 @@ INFO: {"packages":[
         {"Name":"firefox-locale-en","Status":"upgradable","Architecture":"amd64","Version":"57.0.3+build1-0ubuntu0.17.10.1"}
     ],
     "page":0,"pages":1}
-<-- $aws/things/{{id}}/stats
+<-- $aws/things/{{id}}/apt/list
 ```
 
 Search for installed/installable/upgradable packages
@@ -239,7 +239,7 @@ INFO: {"packages":[
         {"Name":"firmware-linux","Status":"not-installed","Architecture":"","Version":""},
         ...
     ],"page":0,"pages":6}
-<-- $aws/things/{{id}}/stats
+<-- $aws/things/{{id}}/apt/list
 ```
 
 Navigate pages
@@ -253,9 +253,11 @@ INFO: {"packages":[
         {"Name":"linux-image-4.13.0-21-generic","Status":"installed","Architecture":"amd64","Version":"4.13.0-21.24"},
         ...
     ],"page":2,"pages":6}
-<-- $aws/things/{{id}}/stats
+<-- $aws/things/{{id}}/apt/list
+```
 
-
+TODO:
+```
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)
@@ -265,3 +267,4 @@ INFO: {"packages":[
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/add/post", 1, status.AptRepositoryAddEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
+```
