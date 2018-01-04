@@ -28,7 +28,7 @@ import (
 
 // AptListEvent sends a list of available packages and their status
 func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
-	const ITEMS_PER_PAGE = 30
+	const itemsPerPage = 30
 
 	var params struct {
 		Search string `json:"search"`
@@ -54,9 +54,9 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	// Paginate data
-	pages := (len(all)-1)/ITEMS_PER_PAGE + 1
-	first := params.Page * ITEMS_PER_PAGE
-	last := first + ITEMS_PER_PAGE
+	pages := (len(all)-1)/itemsPerPage + 1
+	first := params.Page * itemsPerPage
+	last := first + itemsPerPage
 	if first >= len(all) {
 		all = all[0:0]
 	} else if last >= len(all) {
