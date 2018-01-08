@@ -41,6 +41,7 @@ import (
 
 const (
 	configFile = "./arduino-connector.cfg"
+	version    = "1.0.0"
 )
 
 // Config holds the configuration needed by the application
@@ -52,6 +53,8 @@ type Config struct {
 	ALLProxy   string
 	AuthURL    string
 	APIURL     string
+	updateUrl  string
+	appName    string
 }
 
 func (c Config) String() string {
@@ -74,6 +77,9 @@ func main() {
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
+	flag.StringVar(&config.updateUrl, "updateUrl", "http://localhost/", "")
+	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
+
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
 	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
@@ -130,6 +136,8 @@ func (p program) run() {
 	// - any spawned sketch process'es also have access to them
 	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
 	p.exportProxyEnvVars()
+
+	updateHandler(p.Config)
 
 	// Start nats-server on localhost:4222
 	opts := server.Options{}
