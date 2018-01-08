@@ -268,3 +268,17 @@ TODO:
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
 ```
+
+## Compile
+```
+go get github.com/arduino/arduino-connector
+go build -ldflags "-X main.version=$VERSION" github.com/arduino/arduino-connector
+```
+
+## Autoupdate
+```
+go get github.com/sanbornm/go-selfupdate
+./bin/go-selfupdate arduino-connector $VERSION
+# scp -r public/* user@server:/var/www/files/arduino-connector
+```
+
