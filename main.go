@@ -41,7 +41,10 @@ import (
 
 const (
 	configFile = "./arduino-connector.cfg"
-	version    = "1.0.0"
+)
+
+var (
+	version = "x.x.x"
 )
 
 // Config holds the configuration needed by the application
