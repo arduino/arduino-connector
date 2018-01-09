@@ -77,7 +77,7 @@ func main() {
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
-	flag.StringVar(&config.updateUrl, "updateUrl", "http://localhost/", "")
+	flag.StringVar(&config.updateUrl, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
 	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
 
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
