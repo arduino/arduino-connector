@@ -137,8 +137,6 @@ func (p program) run() {
 	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
 	p.exportProxyEnvVars()
 
-	updateHandler(p.Config)
-
 	// Start nats-server on localhost:4222
 	opts := server.Options{}
 	opts.Port = 4222
@@ -156,6 +154,7 @@ func (p program) run() {
 
 	// Create global status
 	status := NewStatus(p.Config.ID, nil)
+	status.Update(p.Config)
 
 	// Setup MQTT connection
 	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL, status)

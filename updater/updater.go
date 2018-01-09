@@ -8,13 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/blang/semver"
 	"github.com/kr/binarydist"
 	update "gopkg.in/inconshreveable/go-update.v0"
@@ -112,7 +112,6 @@ func fetch(url string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		log.Errorf("bad http status from %s: %v", url, resp.Status)
 		return nil, fmt.Errorf("bad http status from %s: %v", url, resp.Status)
 	}
 	return resp.Body, nil
@@ -248,7 +247,6 @@ func (u *Updater) update() error {
 
 	err, errRecover := up.FromStream(bytes.NewBuffer(bin))
 	if errRecover != nil {
-		log.Errorf("update and recovery errors: %q %q", err, errRecover)
 		return fmt.Errorf("update and recovery errors: %q %q", err, errRecover)
 	}
 	if err != nil {

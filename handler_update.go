@@ -10,10 +10,9 @@ import (
 	"github.com/kardianos/osext"
 )
 
-func updateHandler(config Config) {
+func (s *Status) Update(config Config) {
 
 	path, err := osext.Executable()
-
 	if err != nil {
 		//c.JSON(500, gin.H{"error": err.Error()})
 		return
