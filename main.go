@@ -69,6 +69,8 @@ func (c Config) String() string {
 }
 
 func main() {
+	fmt.Println("Version: " + version)
+
 	// Read config
 	config := Config{}
 
