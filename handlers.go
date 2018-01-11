@@ -42,11 +42,9 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// StatusCB replies with the current status of the arduino-connector
-func StatusCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		status.Publish()
-	}
+// StatusEvent replies with the current status of the arduino-connector
+func (status *Status) StatusEvent(client mqtt.Client, msg mqtt.Message) {
+	status.Publish()
 }
 
 type UpdatePayload struct {
@@ -55,50 +53,48 @@ type UpdatePayload struct {
 	Token     string `json:"token"`
 }
 
-// UpdateCB handles the connector autoupdate
+// UpdateEvent handles the connector autoupdate
 // Any URL must be signed with Arduino private key
-func UpdateCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		var info UpdatePayload
-		err := json.Unmarshal(msg.Payload(), &info)
-		if err != nil {
-			status.Error("/update", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-		executablePath, _ := os.Executable()
-		name := filepath.Join(os.TempDir(), filepath.Base(executablePath))
-		err = downloadFile(name, info.URL, info.Token)
-		err = downloadFile(name+".sig", info.URL+".sig", info.Token)
-		if err != nil {
-			status.Error("/update", errors.Wrap(err, "no signature file "+info.URL+".sig"))
-			return
-		}
-		// check the signature
-		err = checkGPGSig(name, name+".sig")
-		if err != nil {
-			status.Error("/update", errors.Wrap(err, "wrong signature "+info.URL+".sig"))
-			return
-		}
-		// chmod it
-		err = os.Chmod(name, 0744)
-		if err != nil {
-			status.Error("/update", errors.Wrapf(err, "chmod 744 %s", name))
-			return
-		}
-		os.Rename(executablePath, executablePath+".old")
-		// copy it over existing binary
-		err = copyFileAndRemoveOriginal(name, executablePath)
-		if err != nil {
-			// rollback
-			os.Rename(executablePath+".old", executablePath)
-			status.Error("/update", errors.Wrap(err, "error copying itself from "+name+" to "+executablePath))
-			return
-		}
-		os.Chmod(executablePath, 0744)
-		os.Remove(executablePath + ".old")
-		// leap of faith: kill itself, systemd should respawn the process
-		os.Exit(0)
+func (status *Status) UpdateEvent(client mqtt.Client, msg mqtt.Message) {
+	var info UpdatePayload
+	err := json.Unmarshal(msg.Payload(), &info)
+	if err != nil {
+		status.Error("/update", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
 	}
+	executablePath, _ := os.Executable()
+	name := filepath.Join(os.TempDir(), filepath.Base(executablePath))
+	err = downloadFile(name, info.URL, info.Token)
+	err = downloadFile(name+".sig", info.URL+".sig", info.Token)
+	if err != nil {
+		status.Error("/update", errors.Wrap(err, "no signature file "+info.URL+".sig"))
+		return
+	}
+	// check the signature
+	err = checkGPGSig(name, name+".sig")
+	if err != nil {
+		status.Error("/update", errors.Wrap(err, "wrong signature "+info.URL+".sig"))
+		return
+	}
+	// chmod it
+	err = os.Chmod(name, 0744)
+	if err != nil {
+		status.Error("/update", errors.Wrapf(err, "chmod 744 %s", name))
+		return
+	}
+	os.Rename(executablePath, executablePath+".old")
+	// copy it over existing binary
+	err = copyFileAndRemoveOriginal(name, executablePath)
+	if err != nil {
+		// rollback
+		os.Rename(executablePath+".old", executablePath)
+		status.Error("/update", errors.Wrap(err, "error copying itself from "+name+" to "+executablePath))
+		return
+	}
+	os.Chmod(executablePath, 0744)
+	os.Remove(executablePath + ".old")
+	// leap of faith: kill itself, systemd should respawn the process
+	os.Exit(0)
 }
 
 // UploadPayload contains the name and url of the sketch to upload on the device
@@ -109,91 +105,89 @@ type UploadPayload struct {
 	Token string `json:"token"`
 }
 
-// UploadCB receives the url and name of the sketch binary, then it
+// UploadEvent receives the url and name of the sketch binary, then it
 // - downloads the binary,
 // - chmods +x it
 // - executes redirecting stdout and sterr to a proper logger
-func UploadCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		// unmarshal
-		var info UploadPayload
-		var sketch SketchStatus
-		err := json.Unmarshal(msg.Payload(), &info)
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-
-		if info.ID == "" {
-			info.ID = info.Name
-		}
-
-		// Stop and delete if existing
-		if sketch, ok := status.Sketches[info.ID]; ok {
-			err = applyAction(sketch, "STOP", status)
-			if err != nil {
-				status.Error("/upload", errors.Wrapf(err, "stop pid %d", sketch.PID))
-				return
-			}
-
-			sketchFolder, err := GetSketchFolder()
-			err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
-			if err != nil {
-				status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
-				return
-			}
-		}
-
-		folder, err := GetSketchFolder()
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "create sketch folder %s", info.ID))
-			return
-		}
-
-		// download the binary
-		name := filepath.Join(folder, info.Name)
-		err = downloadFile(name, info.URL, info.Token)
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "download file %s", info.URL))
-			return
-		}
-
-		// chmod it
-		err = os.Chmod(name, 0744)
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "chmod 744 %s", name))
-			return
-		}
-
-		sketch.ID = info.ID
-		sketch.Name = info.Name
-		// save ID-Name to a sort of DB
-		InsertSketchInDB(sketch.Name, sketch.ID)
-
-		// spawn process
-		pid, _, _, err := spawnProcess(name, &sketch, status)
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "spawn %s", name))
-			return
-		}
-
-		status.Info("/upload", "Sketch started with PID "+strconv.Itoa(pid))
-
-		sketch.PID = pid
-		sketch.Status = "RUNNING"
-
-		status.Set(info.ID, &sketch)
-		status.Publish()
-
-		// go func(stdout io.ReadCloser) {
-		// 	in := bufio.NewScanner(stdout)
-		// 	for {
-		// 		for in.Scan() {
-		// 			fmt.Printf(in.Text()) // write each line to your log, or anything you need
-		// 		}
-		// 	}
-		// }(stdout)
+func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
+	// unmarshal
+	var info UploadPayload
+	var sketch SketchStatus
+	err := json.Unmarshal(msg.Payload(), &info)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
 	}
+
+	if info.ID == "" {
+		info.ID = info.Name
+	}
+
+	// Stop and delete if existing
+	if sketch, ok := status.Sketches[info.ID]; ok {
+		err = applyAction(sketch, "STOP", status)
+		if err != nil {
+			status.Error("/upload", errors.Wrapf(err, "stop pid %d", sketch.PID))
+			return
+		}
+
+		sketchFolder, err := GetSketchFolder()
+		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
+		if err != nil {
+			status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
+			return
+		}
+	}
+
+	folder, err := GetSketchFolder()
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "create sketch folder %s", info.ID))
+		return
+	}
+
+	// download the binary
+	name := filepath.Join(folder, info.Name)
+	err = downloadFile(name, info.URL, info.Token)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "download file %s", info.URL))
+		return
+	}
+
+	// chmod it
+	err = os.Chmod(name, 0744)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "chmod 744 %s", name))
+		return
+	}
+
+	sketch.ID = info.ID
+	sketch.Name = info.Name
+	// save ID-Name to a sort of DB
+	InsertSketchInDB(sketch.Name, sketch.ID)
+
+	// spawn process
+	pid, _, _, err := spawnProcess(name, &sketch, status)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "spawn %s", name))
+		return
+	}
+
+	status.Info("/upload", "Sketch started with PID "+strconv.Itoa(pid))
+
+	sketch.PID = pid
+	sketch.Status = "RUNNING"
+
+	status.Set(info.ID, &sketch)
+	status.Publish()
+
+	// go func(stdout io.ReadCloser) {
+	// 	in := bufio.NewScanner(stdout)
+	// 	for {
+	// 		for in.Scan() {
+	// 			fmt.Printf(in.Text()) // write each line to your log, or anything you need
+	// 		}
+	// 	}
+	// }(stdout)
 }
 
 func GetSketchFolder() (string, error) {
@@ -272,36 +266,34 @@ type SketchActionPayload struct {
 	Action string
 }
 
-// SketchCB listens to commands to start and stop sketches
-func SketchCB(status *Status) mqtt.MessageHandler {
-	return func(client mqtt.Client, msg mqtt.Message) {
-		// unmarshal
-		var info SketchActionPayload
-		err := json.Unmarshal(msg.Payload(), &info)
-		if err != nil {
-			status.Error("/sketch", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
-			return
-		}
-
-		if info.ID == "" {
-			info.ID = info.Name
-		}
-
-		if sketch, ok := status.Sketches[info.ID]; ok {
-			err := applyAction(sketch, info.Action, status)
-			if err != nil {
-				status.Error("/sketch", errors.Wrapf(err, "applying %s to %s", info.Action, info.Name))
-				return
-			}
-			status.Info("/sketch", "successfully performed "+info.Action+" on sketch "+info.ID)
-
-			status.Set(info.ID, sketch)
-			status.Publish()
-			return
-		}
-
-		status.Error("/sketch", errors.New("sketch "+info.ID+" not found"))
+// SketchEvent listens to commands to start and stop sketches
+func (status *Status) SketchEvent(client mqtt.Client, msg mqtt.Message) {
+	// unmarshal
+	var info SketchActionPayload
+	err := json.Unmarshal(msg.Payload(), &info)
+	if err != nil {
+		status.Error("/sketch", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
 	}
+
+	if info.ID == "" {
+		info.ID = info.Name
+	}
+
+	if sketch, ok := status.Sketches[info.ID]; ok {
+		err := applyAction(sketch, info.Action, status)
+		if err != nil {
+			status.Error("/sketch", errors.Wrapf(err, "applying %s to %s", info.Action, info.Name))
+			return
+		}
+		status.Info("/sketch", "successfully performed "+info.Action+" on sketch "+info.ID)
+
+		status.Set(info.ID, sketch)
+		status.Publish()
+		return
+	}
+
+	status.Error("/sketch", errors.New("sketch "+info.ID+" not found"))
 }
 
 func NatsCloudCB(s *Status) nats.MsgHandler {

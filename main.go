@@ -50,6 +50,8 @@ type Config struct {
 	HTTPProxy  string
 	HTTPSProxy string
 	ALLProxy   string
+	AuthURL    string
+	APIURL     string
 }
 
 func (c Config) String() string {
@@ -58,10 +60,13 @@ func (c Config) String() string {
 	out += "http_proxy=" + c.HTTPProxy + "\r\n"
 	out += "https_proxy=" + c.HTTPSProxy + "\r\n"
 	out += "all_proxy=" + c.ALLProxy + "\r\n"
+	out += "authurl=" + c.AuthURL + "\r\n"
+	out += "apiurl=" + c.APIURL + "\r\n"
 	return out
 }
 
 func main() {
+	// Read config
 	config := Config{}
 
 	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
@@ -75,6 +80,8 @@ func main() {
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
+	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
+	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
 
 	flag.Parse()
 
@@ -83,7 +90,7 @@ func main() {
 	check(err, "CreateService")
 
 	if *doLogin {
-		token, err := askCredentials()
+		token, err := askCredentials(config.AuthURL)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -207,10 +214,23 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	mqttClient.Subscribe("$aws/things/"+id+"/status/post", 1, StatusCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, UploadCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, SketchCB(status))
-	mqttClient.Subscribe("$aws/things/"+id+"/update/post", 1, UpdateCB(status))
+	mqttClient.Subscribe("$aws/things/"+id+"/status/post", 1, status.StatusEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/upload/post", 1, status.UploadEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/sketch/post", 1, status.SketchEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/update/post", 1, status.UpdateEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/stats/post", 1, status.StatsEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/wifi/post", 1, status.WiFiEvent)
+
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/list/post", 1, status.AptListEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/remove/post", 1, status.AptRemoveEvent)
+
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/list/post", 1, status.AptRepositoryListEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/add/post", 1, status.AptRepositoryAddEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
