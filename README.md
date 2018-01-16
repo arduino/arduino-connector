@@ -33,7 +33,7 @@ Send messages to the topic ending with /post, Receive the answer from the topic 
 
 You can distinguish between errors and non-errors because of the INFO: or ERROR: prefix of the message
 
-#### Status
+### Status
 
 Retrieve the status of the connector
 ```
@@ -54,7 +54,8 @@ INFO: {
 <-- $aws/things/{{id}}/status
 ```
 
-Upload a sketch on the connector
+### Upload a sketch on the connector
+
 ```
 {
   "token": "toUZDUNTcooVlyqAUwooBGAEtgr8iPzp017RhcST8gM.bDBgrxVzKKySBX-kBPMRqFRqlP3j_cwlgt9qPh_Ct2Y",
@@ -68,7 +69,8 @@ INFO: Sketch started with PID 570
 <-- $aws/things/{{id}}/upload
 ```
 
-Update the arduino-connector (doesn't return anything)
+### Update the arduino-connector (doesn't return anything)
+
 ```
 {
   "url": "https://downloads.arduino.cc/tools/arduino-connector",
@@ -78,7 +80,8 @@ Update the arduino-connector (doesn't return anything)
 <-- $aws/things/{{id}}/sketch
 ```
 
-Update the arduino-connector
+### Update the arduino-connector
+
 ```
 {
   "url": "https://downloads.arduino.cc/tools/arduino-connector",
@@ -88,7 +91,8 @@ Update the arduino-connector
 <-- $aws/things/{{id}}/sketch
 ```
 
-Retrieve the stats of the machine (memory, disk, networks)
+### Retrieve the stats of the machine (memory, disk, networks)
+
 ```
 {}
 --> $aws/things/{{id}}/stats/post
@@ -201,7 +205,8 @@ INFO: {
 <-- $aws/things/{{id}}/stats
 ```
 
-Configure the wifi (doesn't return anything)
+### Configure the wifi (doesn't return anything)
+
 ```
 {
   "ssid": "ssid-2g",
@@ -212,9 +217,9 @@ Configure the wifi (doesn't return anything)
 <-- $aws/things/{{id}}/stats
 ```
 
-#### Package Management
+### Package Management
 
-Retrieve a list of the upgradable packages
+#### Retrieve a list of the upgradable packages
 
 ```
 {}
@@ -228,7 +233,7 @@ INFO: {"packages":[
 <-- $aws/things/{{id}}/apt/list
 ```
 
-Search for installed/installable/upgradable packages
+#### Search for installed/installable/upgradable packages
 
 ```
 {"search": "linux"}
@@ -256,7 +261,7 @@ INFO: {"packages":[
 <-- $aws/things/{{id}}/apt/list
 ```
 
-Update the list of available packages
+#### Update the list of available packages
 ```
 {}
 --> $aws/things/{{id}}/apt/update/post
@@ -268,7 +273,7 @@ INFO: {
 <-- $aws/things/{{id}}/apt/update/post
 ```
 
-Install a set of packages
+#### Install a set of packages
 
 ```
 {"packages" : { "package-a", "package-b", .... }}
@@ -281,7 +286,7 @@ INFO: {
 <-- $aws/things/{{id}}/apt/install/post
 ```
 
-Upgrade a set of packages
+#### Upgrade a set of packages
 
 ```
 {"packages" : { "package-a", "package-b", .... }}
@@ -294,7 +299,7 @@ INFO: {
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
 
-Upgrade all packages
+#### Upgrade all packages
 
 ```
 {"packages" : { }}
@@ -307,7 +312,7 @@ INFO: {
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
 
-Uninstall a set of packages
+#### Uninstall a set of packages
 
 ```
 {"packages" : { "package-a", "package-b", .... }}
