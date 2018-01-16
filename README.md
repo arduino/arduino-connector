@@ -256,17 +256,110 @@ INFO: {"packages":[
 <-- $aws/things/{{id}}/apt/list
 ```
 
-TODO:
+Update the list of available packages
 ```
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/upgrade/post", 1, status.AptUpgradeEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/remove/post", 1, status.AptRemoveEvent)
+{}
+--> $aws/things/{{id}}/apt/update/post
 
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/list/post", 1, status.AptRepositoryListEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/add/post", 1, status.AptRepositoryAddEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/remove/post", 1, status.AptRepositoryRemoveEvent)
-	mqttClient.Subscribe("$aws/things/"+id+"/apt/repos/edit/post", 1, status.AptRepositoryEditEvent)
+INFO: {
+    "result" : "nil or error description",
+    "output" : "apt command output..."
+}
+<-- $aws/things/{{id}}/apt/update/post
+```
+
+Install a set of packages
+
+```
+{"packages" : { "package-a", "package-b", .... }}
+--> $aws/things/{{id}}/apt/install/post
+
+INFO: {
+    "result" : "nil or error description",
+    "output" : "apt command output..."
+}
+<-- $aws/things/{{id}}/apt/install/post
+```
+
+Upgrade a set of packages
+
+```
+{"packages" : { "package-a", "package-b", .... }}
+--> $aws/things/{{id}}/apt/upgrade/post
+
+INFO: {
+    "result" : "nil or error description",
+    "output" : "apt command output..."
+}
+<-- $aws/things/{{id}}/apt/upgrade/post
+```
+
+Upgrade all packages
+
+```
+{"packages" : { }}
+--> $aws/things/{{id}}/apt/upgrade/post
+
+INFO: {
+    "result" : "nil or error description",
+    "output" : "apt command output..."
+}
+<-- $aws/things/{{id}}/apt/upgrade/post
+```
+
+Uninstall a set of packages
+
+```
+{"packages" : { "package-a", "package-b", .... }}
+--> $aws/things/{{id}}/apt/remove/post
+
+INFO: {
+    "result" : "nil or error description",
+    "output" : "apt command output..."
+}
+<-- $aws/things/{{id}}/apt/remove/post
+```
+
+#### Repositories management
+
+List repositories
+
+```
+{}
+--> $aws/things/{{id}}/apt/repos/list/post
+
+INFO: {}
+<-- $aws/things/{{id}}/apt/repos/list/post
+```
+
+Add repositories
+
+```
+{}
+--> $aws/things/{{id}}/apt/repos/add/post
+
+INFO: {}
+<-- $aws/things/{{id}}/apt/repos/add/post
+```
+
+Remove repositories
+
+```
+{}
+--> $aws/things/{{id}}/apt/repos/remove/post
+
+INFO: {}
+<-- $aws/things/{{id}}/apt/repos/remove/post
+```
+
+Edit repositories
+
+```
+{}
+--> $aws/things/{{id}}/apt/repos/edit/post
+
+INFO: {}
+<-- $aws/things/{{id}}/apt/repos/edit/post
 ```
 
 ## Compile
