@@ -145,12 +145,14 @@ func (s *Status) Raw(topic, msg string) {
 func (s *Status) InfoCommandOutput(topic string, out []byte, err error) {
 	// Prepare response payload
 	type response struct {
-		Result string
-		Output string
+		Output string `json:"output"`
+		Error  string `json:"error"`
 	}
-	info := response{
-		Result: err.Error(),
-		Output: string(out),
+	info := response{Output: string(out)}
+	if err == nil {
+		info.Error = "nil"
+	} else {
+		info.Error = err.Error()
 	}
 	data, err := json.Marshal(info)
 	if err != nil {

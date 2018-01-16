@@ -262,8 +262,8 @@ Update the list of available packages
 --> $aws/things/{{id}}/apt/update/post
 
 INFO: {
-    "result" : "nil or error description",
     "output" : "apt command output..."
+    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/update/post
 ```
@@ -275,8 +275,8 @@ Install a set of packages
 --> $aws/things/{{id}}/apt/install/post
 
 INFO: {
-    "result" : "nil or error description",
     "output" : "apt command output..."
+    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/install/post
 ```
@@ -288,8 +288,8 @@ Upgrade a set of packages
 --> $aws/things/{{id}}/apt/upgrade/post
 
 INFO: {
-    "result" : "nil or error description",
     "output" : "apt command output..."
+    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
@@ -301,8 +301,8 @@ Upgrade all packages
 --> $aws/things/{{id}}/apt/upgrade/post
 
 INFO: {
-    "result" : "nil or error description",
     "output" : "apt command output..."
+    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
@@ -314,8 +314,8 @@ Uninstall a set of packages
 --> $aws/things/{{id}}/apt/remove/post
 
 INFO: {
-    "result" : "nil or error description",
     "output" : "apt command output..."
+    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/remove/post
 ```
