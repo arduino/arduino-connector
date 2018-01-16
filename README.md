@@ -320,45 +320,80 @@ INFO: {
 <-- $aws/things/{{id}}/apt/remove/post
 ```
 
-#### Repositories management
+### Repositories management
 
-List repositories
+The following API handles repositories, each repository is
+repesented by the following JSON structure:
+
+```
+{
+    "enabled":      true/false,
+	"sourceRepo":   true/false,
+	"options":      "...",
+	"uri":          "...",
+	"distribution": "...",
+	"components":   "...",
+	"comment":      "...",
+}
+```
+
+for clarity, in the following descriptions, we will refer to the above structure with the `REPOSITORYxx` shortcut.
+
+#### List repositories
 
 ```
 {}
 --> $aws/things/{{id}}/apt/repos/list/post
 
-INFO: {}
+INFO: {
+    REPOSITORY1,
+    REPOSITORY2,
+    ....
+}
 <-- $aws/things/{{id}}/apt/repos/list/post
 ```
 
-Add repositories
+#### Add repository
 
 ```
-{}
+{ "repository" : REPOSITORY1 }
 --> $aws/things/{{id}}/apt/repos/add/post
 
-INFO: {}
+INFO: {
+    "output" : "OK"
+    "error" : "nil",
+}
 <-- $aws/things/{{id}}/apt/repos/add/post
 ```
 
-Remove repositories
+#### Remove repository
 
 ```
-{}
+{ "repository" : REPOSITORY1 }
 --> $aws/things/{{id}}/apt/repos/remove/post
 
-INFO: {}
+INFO: {
+    "output" : "OK"
+    "error" : "nil",
+}
 <-- $aws/things/{{id}}/apt/repos/remove/post
 ```
 
-Edit repositories
+#### Edit repository
+
+The repository in `old_repository` is replaced with `new_repository`
 
 ```
-{}
+{
+    "old_repository": REPOSITORY1,
+    "new_repository": REPOSITORY2,
+}
 --> $aws/things/{{id}}/apt/repos/edit/post
 
-INFO: {}
+INFO: {
+    "output" : "OK"
+    "error" : "nil",
+}
 <-- $aws/things/{{id}}/apt/repos/edit/post
 ```
 
