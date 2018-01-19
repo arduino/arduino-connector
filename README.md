@@ -268,7 +268,6 @@ INFO: {"packages":[
 
 INFO: {
     "output" : "apt command output..."
-    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/update/post
 ```
@@ -281,7 +280,6 @@ INFO: {
 
 INFO: {
     "output" : "apt command output..."
-    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/install/post
 ```
@@ -294,7 +292,6 @@ INFO: {
 
 INFO: {
     "output" : "apt command output..."
-    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
@@ -307,7 +304,6 @@ INFO: {
 
 INFO: {
     "output" : "apt command output..."
-    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/upgrade/post
 ```
@@ -320,7 +316,6 @@ INFO: {
 
 INFO: {
     "output" : "apt command output..."
-    "error" : "nil or error description",
 }
 <-- $aws/things/{{id}}/apt/remove/post
 ```
@@ -364,10 +359,7 @@ INFO: {
 { "repository" : REPOSITORY1 }
 --> $aws/things/{{id}}/apt/repos/add/post
 
-INFO: {
-    "output" : "OK"
-    "error" : "nil",
-}
+INFO: OK
 <-- $aws/things/{{id}}/apt/repos/add/post
 ```
 
@@ -377,10 +369,7 @@ INFO: {
 { "repository" : REPOSITORY1 }
 --> $aws/things/{{id}}/apt/repos/remove/post
 
-INFO: {
-    "output" : "OK"
-    "error" : "nil",
-}
+INFO: OK
 <-- $aws/things/{{id}}/apt/repos/remove/post
 ```
 
@@ -395,10 +384,7 @@ The repository in `old_repository` is replaced with `new_repository`
 }
 --> $aws/things/{{id}}/apt/repos/edit/post
 
-INFO: {
-    "output" : "OK"
-    "error" : "nil",
-}
+INFO: OK
 <-- $aws/things/{{id}}/apt/repos/edit/post
 ```
 

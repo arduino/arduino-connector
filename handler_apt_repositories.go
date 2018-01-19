@@ -46,7 +46,7 @@ func (s *Status) AptRepositoryListEvent(client mqtt.Client, msg mqtt.Message) {
 	//json.Indent(&out, data, "", "  ")
 	//fmt.Println(string(out.Bytes()))
 
-	s.Info("/apt/repos/list", string(data)+"\n")
+	s.Info("/apt/repos/list", string(data))
 }
 
 // AptRepositoryAddEvent adds a repository to the apt configuration
@@ -66,7 +66,7 @@ func (s *Status) AptRepositoryAddEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	s.InfoCommandOutput("/apt/repos/add", []byte("OK"), nil)
+	s.Info("/apt/repos/add", "OK")
 }
 
 // AptRepositoryRemoveEvent removes a repository from the apt configuration
@@ -86,7 +86,7 @@ func (s *Status) AptRepositoryRemoveEvent(client mqtt.Client, msg mqtt.Message) 
 		return
 	}
 
-	s.InfoCommandOutput("/apt/repos/remove", []byte("OK"), nil)
+	s.Info("/apt/repos/remove", "OK")
 }
 
 // AptRepositoryEditEvent modifies a repository definition in the apt configuration
@@ -107,5 +107,5 @@ func (s *Status) AptRepositoryEditEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	s.InfoCommandOutput("/apt/repos/edit", []byte("OK"), nil)
+	s.Info("/apt/repos/edit", "OK")
 }

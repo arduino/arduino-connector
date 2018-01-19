@@ -142,18 +142,12 @@ func (s *Status) Raw(topic, msg string) {
 }
 
 // InfoCommandOutput sends command output on the specified topic
-func (s *Status) InfoCommandOutput(topic string, out []byte, err error) {
+func (s *Status) InfoCommandOutput(topic string, out []byte) {
 	// Prepare response payload
 	type response struct {
 		Output string `json:"output"`
-		Error  string `json:"error"`
 	}
 	info := response{Output: string(out)}
-	if err == nil {
-		info.Error = "nil"
-	} else {
-		info.Error = err.Error()
-	}
 	data, err := json.Marshal(info)
 	if err != nil {
 		s.Error(topic, fmt.Errorf("Json marshal result: %s", err))

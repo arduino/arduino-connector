@@ -123,13 +123,21 @@ func (s *Status) AptInstallEvent(client mqtt.Client, msg mqtt.Message) {
 		toInstall = append(toInstall, &apt.Package{Name: p})
 	}
 	out, err := apt.Install(toInstall...)
-	s.InfoCommandOutput("/apt/install", out, err)
+	if err != nil {
+		s.Error("/apt/install", fmt.Errorf("Running installer: %s\nOutput:\n%s", err, out))
+		return
+	}
+	s.InfoCommandOutput("/apt/install", out)
 }
 
 // AptUpdateEvent checks repositories for updates on installed packages
 func (s *Status) AptUpdateEvent(client mqtt.Client, msg mqtt.Message) {
 	out, err := apt.CheckForUpdates()
-	s.InfoCommandOutput("/apt/update", out, err)
+	if err != nil {
+		s.Error("/apt/update", fmt.Errorf("Checking for updates: %s\nOutput:\n%s", err, out))
+		return
+	}
+	s.InfoCommandOutput("/apt/update", out)
 }
 
 // AptUpgradeEvent installs upgrade for specified packages (or for all
@@ -151,10 +159,18 @@ func (s *Status) AptUpgradeEvent(client mqtt.Client, msg mqtt.Message) {
 
 	if len(toUpgrade) == 0 {
 		out, err := apt.UpgradeAll()
-		s.InfoCommandOutput("/apt/upgrade", out, err)
+		if err != nil {
+			s.Error("/apt/upgrade", fmt.Errorf("Upgrading all packages: %s\nOutput:\n%s", err, out))
+			return
+		}
+		s.InfoCommandOutput("/apt/upgrade", out)
 	} else {
 		out, err := apt.Upgrade(toUpgrade...)
-		s.InfoCommandOutput("/apt/upgrade", out, err)
+		if err != nil {
+			s.Error("/apt/upgrade", fmt.Errorf("Upgrading %+v: %s\nOutput:\n%s", params, err, out))
+			return
+		}
+		s.InfoCommandOutput("/apt/upgrade", out)
 	}
 }
 
@@ -175,5 +191,9 @@ func (s *Status) AptRemoveEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	out, err := apt.Remove(toRemove...)
-	s.InfoCommandOutput("/apt/remove", out, err)
+	if err != nil {
+		s.Error("/apt/remove", fmt.Errorf("Removing %+v: %s\nOutput:\n%s", params, err, out))
+		return
+	}
+	s.InfoCommandOutput("/apt/remove", out)
 }
