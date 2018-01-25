@@ -26,6 +26,64 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// AptGetEvent sends the status for a specific package
+func (s *Status) AptGetEvent(client mqtt.Client, msg mqtt.Message) {
+	var params struct {
+		Package string `json:"package"`
+	}
+	err := json.Unmarshal(msg.Payload(), &params)
+	if err != nil {
+		s.Error("/apt/get", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		return
+	}
+
+	// Get package from system
+	var res []*apt.Package
+	res, err = apt.Search(params.Package)
+
+	if err != nil {
+		s.Error("/apt/get", fmt.Errorf("Retrieving package data: %s", err))
+		return
+	}
+
+	//If package is upgradable set the status to "upgradable"
+	allUpdates, err := apt.ListUpgradable()
+	if err != nil {
+		s.Error("/apt/get", fmt.Errorf("Retrieving package: %s", err))
+		return
+	}
+
+	for _, update := range allUpdates {
+		for i := range res {
+			if update.Name == res[i].Name {
+				res[i].Status = "upgradable"
+				break
+			}
+		}
+	}
+
+	// Prepare response payload
+	type response struct {
+		Packages []*apt.Package `json:"packages"`
+	}
+	info := response{
+		Packages: res,
+	}
+
+	// Send result
+	data, err := json.Marshal(info)
+	if err != nil {
+		s.Error("/apt/get", fmt.Errorf("Json marshal result: %s", err))
+		return
+	}
+
+	//var out bytes.Buffer
+	//json.Indent(&out, data, "", "  ")
+	//fmt.Println(string(out.Bytes()))
+
+	s.Info("/apt/get", string(data)+"\n")
+}
+
 // AptListEvent sends a list of available packages and their status
 func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	const itemsPerPage = 30
@@ -45,7 +103,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	if params.Search == "" {
 		all, err = apt.ListUpgradable()
 	} else {
-		all, err = apt.Search(params.Search)
+		all, err = apt.Search("*" + params.Search + "*")
 	}
 
 	if err != nil {

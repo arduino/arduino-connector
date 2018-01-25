@@ -234,6 +234,7 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	mqttClient.Subscribe("$aws/things/"+id+"/wifi/post", 1, status.WiFiEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/ethernet/post", 1, status.EthEvent)
 
+	mqttClient.Subscribe("$aws/things/"+id+"/apt/get/post", 1, status.AptGetEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/list/post", 1, status.AptListEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/install/post", 1, status.AptInstallEvent)
 	mqttClient.Subscribe("$aws/things/"+id+"/apt/update/post", 1, status.AptUpdateEvent)

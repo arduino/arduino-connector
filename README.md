@@ -233,6 +233,20 @@ INFO: {"packages":[
 <-- $aws/things/{{id}}/apt/list
 ```
 
+#### Get data for a single package
+
+```
+{"package": "firmware-linux"}
+--> $aws/things/{{id}}/apt/get/post
+
+INFO: {"packages":[
+        {"Name":"firmware-linux","Status":"not-installed","Architecture":"","Version":""}
+    ]}
+<-- $aws/things/{{id}}/apt/get
+```
+
+The response is an array that may have 1 element if the package is found or 0 if no packages are found.
+
 #### Search for installed/installable/upgradable packages
 
 ```
