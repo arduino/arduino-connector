@@ -257,7 +257,7 @@ INFO: {"packages":[
         {"Name":"binutils-x86-64-linux-gnu","Status":"installed","Architecture":"amd64","Version":"2.29.1-4ubuntu1"},
         {"Name":"firmware-linux","Status":"not-installed","Architecture":"","Version":""},
         ...
-    ],"page":0,"pages":6}
+    ],"page":0,"pages":6,"total_items":182}
 <-- $aws/things/{{id}}/apt/list
 ```
 

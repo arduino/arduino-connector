@@ -112,12 +112,13 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	// Paginate data
-	pages := (len(all)-1)/itemsPerPage + 1
+	total := len(all)
+	pages := (total-1)/itemsPerPage + 1
 	first := params.Page * itemsPerPage
 	last := first + itemsPerPage
-	if first >= len(all) {
+	if first >= total {
 		all = all[0:0]
-	} else if last >= len(all) {
+	} else if last >= total {
 		all = all[first:]
 	} else {
 		all = all[first:last]
@@ -141,14 +142,16 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 
 	// Prepare response payload
 	type response struct {
-		Packages []*apt.Package `json:"packages"`
-		Page     int            `json:"page"`
-		Pages    int            `json:"pages"`
+		Packages   []*apt.Package `json:"packages"`
+		Page       int            `json:"page"`
+		Pages      int            `json:"pages"`
+		TotalItems int            `json:"total_items"`
 	}
 	info := response{
-		Packages: all,
-		Page:     params.Page,
-		Pages:    pages,
+		Packages:   all,
+		Page:       params.Page,
+		Pages:      pages,
+		TotalItems: total,
 	}
 
 	// Send result
