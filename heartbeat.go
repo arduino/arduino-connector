@@ -50,8 +50,6 @@ func (h *heartbeat) run() {
 		payload := strconv.FormatFloat(uptime.Seconds(), 'f', 2, 64)
 		if err := h.send(payload); err != nil {
 			fmt.Println("Error sending heartbeat:", err)
-			h.running = false
-			return
 		}
 	}
 }
