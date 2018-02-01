@@ -20,15 +20,18 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/arduino/go-system-stats/system"
 )
 
 type heartbeat struct {
 	running bool
-	send    func(payload int) error
+	send    func(payload string) error
 }
 
-func newHeartbeat(sendFunction func(payload int) error) *heartbeat {
+func newHeartbeat(sendFunction func(payload string) error) *heartbeat {
 	res := &heartbeat{
 		running: true,
 		send:    sendFunction,
@@ -38,12 +41,14 @@ func newHeartbeat(sendFunction func(payload int) error) *heartbeat {
 }
 
 func (h *heartbeat) run() {
-	id := 0
 	for h.running {
 		time.Sleep(15 * time.Second)
-		err := h.send(id)
-		id = (id + 1) % 10000
+		uptime, err := system.GetUptime()
 		if err != nil {
+			fmt.Println("Error getting uptime:", err)
+		}
+		payload := strconv.FormatFloat(uptime.Seconds(), 'f', 2, 64)
+		if err := h.send(payload); err != nil {
 			fmt.Println("Error sending heartbeat:", err)
 			h.running = false
 			return

@@ -407,11 +407,11 @@ INFO: OK
 The connector will send keep-alive messages on the following queue every 15 seconds
 
 ```
-INFO: 2877
+INFO: 162653.88
 <-- $aws/things/{{id}}/heartbeat
 ```
 
-The number is increased on each message and restarts from 0 after 9999
+The number is the uptime in seconds
 
 ## Compile
 ```

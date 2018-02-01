@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -190,8 +189,8 @@ func (p program) run() {
 
 	// start heartbeat
 	if status.mqttClient != nil {
-		newHeartbeat(func(id int) error {
-			if !status.Info("/heartbeat", strconv.Itoa(id)) {
+		newHeartbeat(func(payload string) error {
+			if !status.Info("/heartbeat", payload) {
 				return fmt.Errorf("Publish failed")
 			}
 			return nil
