@@ -114,13 +114,13 @@ func (s *Status) Error(topic string, err error) {
 }
 
 // Info logs a message on the specified topic
-func (s *Status) Info(topic, msg string) {
+func (s *Status) Info(topic, msg string) bool {
 	if s.mqttClient == nil {
-		return
+		return false
 	}
 	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg+"\n")
-	token.Wait()
+	return token.Wait()
 }
 
 // Info logs a message on the specified topic

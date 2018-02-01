@@ -25,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,6 +186,16 @@ func (p program) run() {
 	// wipe the thing shadows
 	if status.mqttClient != nil {
 		mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
+	}
+
+	// start heartbeat
+	if status.mqttClient != nil {
+		newHeartbeat(func(id int) error {
+			if !status.Info("/heartbeat", strconv.Itoa(id)) {
+				return fmt.Errorf("Publish failed")
+			}
+			return nil
+		})
 	}
 
 	sketchFolder, err := GetSketchFolder()
