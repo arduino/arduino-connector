@@ -42,7 +42,6 @@ func newHeartbeat(sendFunction func(payload string) error) *heartbeat {
 
 func (h *heartbeat) run() {
 	for h.running {
-		time.Sleep(15 * time.Second)
 		uptime, err := system.GetUptime()
 		if err != nil {
 			fmt.Println("Error getting uptime:", err)
@@ -51,6 +50,7 @@ func (h *heartbeat) run() {
 		if err := h.send(payload); err != nil {
 			fmt.Println("Error sending heartbeat:", err)
 		}
+		time.Sleep(15 * time.Second)
 	}
 }
 
