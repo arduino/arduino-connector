@@ -187,6 +187,16 @@ func (p program) run() {
 		mqttClient.Publish("$aws/things/"+p.Config.ID+"/shadow/delete", 1, false, "")
 	}
 
+	// start heartbeat
+	if status.mqttClient != nil {
+		newHeartbeat(func(payload string) error {
+			if !status.Info("/heartbeat", payload) {
+				return fmt.Errorf("Publish failed")
+			}
+			return nil
+		})
+	}
+
 	sketchFolder, err := GetSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway

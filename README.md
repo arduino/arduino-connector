@@ -402,6 +402,17 @@ INFO: OK
 <-- $aws/things/{{id}}/apt/repos/edit/post
 ```
 
+#### Heartbeat
+
+The connector will send keep-alive messages on the following queue every 15 seconds
+
+```
+INFO: 162653.88
+<-- $aws/things/{{id}}/heartbeat
+```
+
+The number is the uptime in seconds
+
 ## Compile
 ```
 go get github.com/arduino/arduino-connector
