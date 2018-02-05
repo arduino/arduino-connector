@@ -47,16 +47,14 @@ func (status *Status) StatusEvent(client mqtt.Client, msg mqtt.Message) {
 	status.Publish()
 }
 
-type UpdatePayload struct {
-	URL       string `json:"url"`
-	Signature string `json:"signature"`
-	Token     string `json:"token"`
-}
-
 // UpdateEvent handles the connector autoupdate
 // Any URL must be signed with Arduino private key
 func (status *Status) UpdateEvent(client mqtt.Client, msg mqtt.Message) {
-	var info UpdatePayload
+	var info struct {
+		URL       string `json:"url"`
+		Signature string `json:"signature"`
+		Token     string `json:"token"`
+	}
 	err := json.Unmarshal(msg.Payload(), &info)
 	if err != nil {
 		status.Error("/update", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
@@ -97,22 +95,17 @@ func (status *Status) UpdateEvent(client mqtt.Client, msg mqtt.Message) {
 	os.Exit(0)
 }
 
-// UploadPayload contains the name and url of the sketch to upload on the device
-type UploadPayload struct {
-	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Name  string `json:"name"`
-	Token string `json:"token"`
-}
-
 // UploadEvent receives the url and name of the sketch binary, then it
 // - downloads the binary,
 // - chmods +x it
 // - executes redirecting stdout and sterr to a proper logger
 func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
-	// unmarshal
-	var info UploadPayload
-	var sketch SketchStatus
+	var info struct {
+		ID    string `json:"id"`
+		URL   string `json:"url"`
+		Name  string `json:"name"`
+		Token string `json:"token"`
+	}
 	err := json.Unmarshal(msg.Payload(), &info)
 	if err != nil {
 		status.Error("/upload", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
@@ -124,6 +117,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	// Stop and delete if existing
+	var sketch SketchStatus
 	if sketch, ok := status.Sketches[info.ID]; ok {
 		err = applyAction(sketch, "STOP", status)
 		if err != nil {
@@ -259,17 +253,13 @@ func GetSketchIDFromDB(name string) (string, error) {
 	return "", errors.New("No matching sketch")
 }
 
-// SketchActionPayload contains the name of the sketch and the action to perform
-type SketchActionPayload struct {
-	ID     string
-	Name   string
-	Action string
-}
-
 // SketchEvent listens to commands to start and stop sketches
 func (status *Status) SketchEvent(client mqtt.Client, msg mqtt.Message) {
-	// unmarshal
-	var info SketchActionPayload
+	var info struct {
+		ID     string
+		Name   string
+		Action string
+	}
 	err := json.Unmarshal(msg.Payload(), &info)
 	if err != nil {
 		status.Error("/sketch", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
