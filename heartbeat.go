@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
