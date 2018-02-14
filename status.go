@@ -101,6 +101,9 @@ func (s *Status) Set(name string, sketch *SketchStatus) {
 	if token := s.mqttClient.Publish("/status", 1, false, msg); token.Wait() && token.Error() != nil {
 		panic(err) // Means that something went really wrong
 	}
+	if debugMqtt {
+		fmt.Println("MQTT OUT: /status", string(msg))
+	}
 }
 
 // Error logs an error on the specified topic
@@ -111,6 +114,9 @@ func (s *Status) Error(topic string, err error) {
 	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error()+"\n")
 	token.Wait()
+	if debugMqtt {
+		fmt.Println("MQTT OUT: $aws/things/"+s.id+topic, "ERROR: "+err.Error()+"\n")
+	}
 }
 
 // Info logs a message on the specified topic
@@ -120,7 +126,11 @@ func (s *Status) Info(topic, msg string) bool {
 	}
 	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "INFO: "+msg+"\n")
-	return token.Wait()
+	res := token.Wait()
+	if debugMqtt {
+		fmt.Println("MQTT OUT: $aws/things/"+s.id+topic, "INFO: "+msg+"\n")
+	}
+	return res
 }
 
 // Info logs a message on the specified topic
@@ -139,6 +149,9 @@ func (s *Status) Raw(topic, msg string) {
 	s.messagesSent++
 	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, msg)
 	token.Wait()
+	if debugMqtt {
+		fmt.Println("MQTT OUT: $aws/things/"+s.id+topic, string(msg))
+	}
 }
 
 // InfoCommandOutput sends command output on the specified topic

@@ -302,6 +302,9 @@ func NatsCloudCB(s *Status) nats.MsgHandler {
 		}
 		s.messagesSent++
 		s.mqttClient.Publish("$aws/things/"+s.id+"/shadow/update", 1, false, updateMessage)
+		if debugMqtt {
+			fmt.Println("MQTT OUT: $aws/things/"+s.id+"/shadow/update", updateMessage)
+		}
 	}
 }
 
