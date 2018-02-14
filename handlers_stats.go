@@ -62,19 +62,16 @@ func (s *Status) StatsEvent(client mqtt.Client, msg mqtt.Message) {
 	memStats, err := mem.GetStats()
 	if err != nil {
 		s.Error("/stats", fmt.Errorf("Retrieving memory stats: %s", err))
-		return
 	}
 
 	diskStats, err := disk.GetStats()
 	if err != nil {
 		s.Error("/stats", fmt.Errorf("Retrieving disk stats: %s", err))
-		return
 	}
 
 	netStats, err := net.GetNetworkStats()
 	if err != nil {
 		s.Error("/stats", fmt.Errorf("Retrieving network stats: %s", err))
-		return
 	}
 
 	type StatsPayload struct {
