@@ -37,24 +37,6 @@ type Status struct {
 	messagesSent int
 }
 
-// StatusTemp contains info about the sketches running on the device
-type StatusTemp struct {
-	id         string
-	mqttClient mqtt.Client
-	Sketches   map[string]SketchStatus `json:"sketches"`
-}
-
-func expandStatus(s *Status) *StatusTemp {
-	var temp StatusTemp
-	temp.id = s.id
-	temp.mqttClient = s.mqttClient
-	temp.Sketches = make(map[string]SketchStatus)
-	for _, element := range s.Sketches {
-		temp.Sketches[element.Name] = *element
-	}
-	return &temp
-}
-
 // SketchBinding represents a pair (SketchName,SketchId)
 type SketchBinding struct {
 	Name string `json:"name"`
