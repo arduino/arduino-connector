@@ -57,7 +57,7 @@ type Config struct {
 	ALLProxy   string
 	AuthURL    string
 	APIURL     string
-	updateUrl  string
+	updateURL  string
 	appName    string
 }
 
@@ -83,7 +83,7 @@ func main() {
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
-	flag.StringVar(&config.updateUrl, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
+	flag.StringVar(&config.updateURL, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
 	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
 
 	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
@@ -182,7 +182,7 @@ func (p program) run() {
 	// Start nats-client for local server
 	nc, err := nats.Connect(nats.DefaultURL)
 	check(err, "ConnectNATS")
-	nc.Subscribe("$arduino.cloud.*", NatsCloudCB(status))
+	nc.Subscribe("$arduino.cloud.*", natsCloudCB(status))
 
 	// wipe the thing shadows
 	if status.mqttClient != nil {
@@ -199,7 +199,7 @@ func (p program) run() {
 		})
 	}
 
-	sketchFolder, err := GetSketchFolder()
+	sketchFolder, err := getSketchFolder()
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway
 	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":"+os.Getenv("LD_LIBRARY_PATH"))
@@ -272,7 +272,7 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.Messa
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
-	id, err := GetSketchIDFromDB(file.Name())
+	id, err := getSketchIDFromDB(file.Name())
 	if err != nil {
 		id = file.Name()
 	}

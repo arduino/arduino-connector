@@ -125,7 +125,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		sketchFolder, err := GetSketchFolder()
+		sketchFolder, err := getSketchFolder()
 		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
 		if err != nil {
 			status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
@@ -133,7 +133,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 		}
 	}
 
-	folder, err := GetSketchFolder()
+	folder, err := getSketchFolder()
 	if err != nil {
 		status.Error("/upload", errors.Wrapf(err, "create sketch folder %s", info.ID))
 		return
@@ -157,7 +157,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	sketch.ID = info.ID
 	sketch.Name = info.Name
 	// save ID-Name to a sort of DB
-	InsertSketchInDB(sketch.Name, sketch.ID)
+	insertSketchInDB(sketch.Name, sketch.ID)
 
 	// spawn process
 	pid, _, _, err := spawnProcess(name, &sketch, status)
@@ -184,7 +184,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	// }(stdout)
 }
 
-func GetSketchFolder() (string, error) {
+func getSketchFolder() (string, error) {
 	// create folder if it doesn't exist
 	folder, err := osext.ExecutableFolder()
 	folder = filepath.Join(folder, "sketches")
@@ -194,9 +194,9 @@ func GetSketchFolder() (string, error) {
 	return folder, err
 }
 
-func GetSketchDBFolder() (string, error) {
+func getSketchDBFolder() (string, error) {
 	// create folder if it doesn't exist
-	folder, err := GetSketchFolder()
+	folder, err := getSketchFolder()
 	folder = filepath.Join(folder, "db")
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		err = os.Mkdir(folder, 0700)
@@ -204,9 +204,9 @@ func GetSketchDBFolder() (string, error) {
 	return folder, err
 }
 
-func GetSketchDB() (string, error) {
+func getSketchDB() (string, error) {
 	// create folder if it doesn't exist
-	folder, err := GetSketchDBFolder()
+	folder, err := getSketchDBFolder()
 	if err != nil {
 		return "", err
 	}
@@ -214,9 +214,9 @@ func GetSketchDB() (string, error) {
 	return db, err
 }
 
-func InsertSketchInDB(name string, id string) {
+func insertSketchInDB(name string, id string) {
 	// create folder if it doesn't exist
-	db, err := GetSketchDB()
+	db, err := getSketchDB()
 	if err != nil {
 		return
 	}
@@ -235,9 +235,9 @@ func InsertSketchInDB(name string, id string) {
 	ioutil.WriteFile(db, data, 0600)
 }
 
-func GetSketchIDFromDB(name string) (string, error) {
+func getSketchIDFromDB(name string) (string, error) {
 	// create folder if it doesn't exist
-	db, err := GetSketchDB()
+	db, err := getSketchDB()
 	if err != nil {
 		return "", errors.New("Can't open DB")
 	}
@@ -286,7 +286,7 @@ func (status *Status) SketchEvent(client mqtt.Client, msg mqtt.Message) {
 	status.Error("/sketch", errors.New("sketch "+info.ID+" not found"))
 }
 
-func NatsCloudCB(s *Status) nats.MsgHandler {
+func natsCloudCB(s *Status) nats.MsgHandler {
 	return func(m *nats.Msg) {
 		thingName := strings.TrimPrefix(m.Subject, "$arduino.cloud.")
 
@@ -371,7 +371,7 @@ func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCl
 	}()
 }
 
-func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
+func stdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
 		if len(msg.Payload()) > 0 {
 			pty.Write(msg.Payload())
@@ -379,14 +379,14 @@ func StdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 	}
 }
 
-type DylibMap struct {
+type dylibMap struct {
 	Name     string   `json:"Name"`
 	Provides []string `json:"Provides"`
 	URL      string   `json:"URL"`
 	Help     string   `json:"Help"`
 }
 
-func (d *DylibMap) Download(path string) {
+func (d *dylibMap) Download(path string) {
 	for _, element := range d.Provides {
 		resp, err := http.Get(d.URL + "/" + element)
 		if err != nil {
@@ -399,7 +399,7 @@ func (d *DylibMap) Download(path string) {
 	}
 }
 
-func (d *DylibMap) Contains(match string) bool {
+func (d *dylibMap) Contains(match string) bool {
 	for _, element := range d.Provides {
 		if strings.Contains(element, match) {
 			return true
@@ -420,14 +420,14 @@ func downloadDylibDependencies(library string) error {
 		if err != nil {
 			return errors.New("Can't read dylibs registry")
 		}
-		var v []DylibMap
+		var v []dylibMap
 		err = json.Unmarshal(bodyBytes, &v)
 		if err != nil {
 			return err
 		}
 		for _, element := range v {
 			if element.Contains(library) {
-				folder, _ := GetSketchFolder()
+				folder, _ := getSketchFolder()
 				fmt.Println(element.Help)
 				if element.Help != "" {
 					// TODO: remove and replace with a status.Info()
@@ -463,9 +463,8 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 		fmt.Println("Missing library!")
 		library := extractLibrary(err)
 		status.Info("/upload", "Downloading needed libraries")
-		err_download := downloadDylibDependencies(library)
-		if err_download != nil {
-			status.Error("/upload", err_download)
+		if err := downloadDylibDependencies(library); err != nil {
+			status.Error("/upload", err)
 		}
 		status.Error("/upload", errors.New("Missing libraries, install them and relaunch the sketch"))
 	}
@@ -501,13 +500,13 @@ func setupDisplay(usermode bool) error {
 			cmd.SysProcAttr = &syscall.SysProcAttr{}
 			cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
 		}
-		out, err := cmd.CombinedOutput()
+		out, errXhost := cmd.CombinedOutput()
 		fmt.Println(string(out))
 		// Also try xrandr
 		cmd = exec.Command("xrandr")
-		out, err_xrandr := cmd.CombinedOutput()
+		out, errXrandr := cmd.CombinedOutput()
 		fmt.Println(string(out))
-		if err != nil || err_xrandr != nil {
+		if errXhost != nil || errXrandr != nil {
 			if i > 2 {
 				fmt.Println("Xorg server unavailable, make sure you have a display attached and a user logged in")
 				fmt.Println("If it's already ok, try setting up Xorg to accept incoming connection (-listen tcp)")
@@ -527,21 +526,21 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	cmd := exec.Command(filepath)
 	stdout, err := cmd.StdoutPipe()
 	stderr, err := cmd.StderrPipe()
-	var stderr_buf bytes.Buffer
-	cmd.Stderr = &stderr_buf
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
 
 	f, err := pty.Start(cmd)
 
 	terminal.MakeRaw(int(f.Fd()))
 
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+		fmt.Println(fmt.Sprint(err) + ": " + stderrBuf.String())
 		return 0, stdout, stderr, err
 	}
 
 	sketch.pty = f
 	if status.mqttClient != nil {
-		go status.mqttClient.Subscribe("$aws/things/"+status.id+"/stdin", 1, StdInCB(f, status))
+		go status.mqttClient.Subscribe("$aws/things/"+status.id+"/stdin", 1, stdInCB(f, status))
 	}
 
 	go func() {
@@ -568,7 +567,7 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 		//if we get here signal that the sketch has died
 		applyAction(sketch, "STOP", status)
 		if err != nil {
-			fmt.Println(fmt.Sprint(err) + ": " + stderr_buf.String())
+			fmt.Println(fmt.Sprint(err) + ": " + stderrBuf.String())
 		}
 		fmt.Println("sketch exited ")
 	}()
@@ -588,7 +587,7 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		if sketch.PID != 0 {
 			err = process.Signal(syscall.SIGCONT)
 		} else {
-			folder, err := GetSketchFolder()
+			folder, err := getSketchFolder()
 			if err != nil {
 				return err
 			}
@@ -615,7 +614,7 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 	case "DELETE":
 		applyAction(sketch, "STOP", status)
 		fmt.Println("delete called")
-		sketchFolder, err := GetSketchFolder()
+		sketchFolder, err := getSketchFolder()
 		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
 		if err != nil {
 			fmt.Println("error deleting sketch")

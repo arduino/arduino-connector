@@ -28,6 +28,8 @@ import (
 	"github.com/kardianos/osext"
 )
 
+// Update checks for updates on arduino-connector. If an update is
+// available it performs the upgrade and restart the connector.
 func (s *Status) Update(config Config) {
 
 	path, err := osext.Executable()
@@ -38,8 +40,8 @@ func (s *Status) Update(config Config) {
 
 	var up = &updater.Updater{
 		CurrentVersion: version,
-		APIURL:         config.updateUrl,
-		BinURL:         config.updateUrl,
+		APIURL:         config.updateURL,
+		BinURL:         config.updateURL,
 		DiffURL:        "",
 		Dir:            "update/",
 		CmdName:        config.appName,

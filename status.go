@@ -37,14 +37,14 @@ type Status struct {
 	messagesSent int
 }
 
-// Status contains info about the sketches running on the device
+// StatusTemp contains info about the sketches running on the device
 type StatusTemp struct {
 	id         string
 	mqttClient mqtt.Client
 	Sketches   map[string]SketchStatus `json:"sketches"`
 }
 
-func ExpandStatus(s *Status) *StatusTemp {
+func expandStatus(s *Status) *StatusTemp {
 	var temp StatusTemp
 	temp.id = s.id
 	temp.mqttClient = s.mqttClient
@@ -55,6 +55,7 @@ func ExpandStatus(s *Status) *StatusTemp {
 	return &temp
 }
 
+// SketchBinding represents a pair (SketchName,SketchId)
 type SketchBinding struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
@@ -67,7 +68,7 @@ type SketchStatus struct {
 	PID       int        `json:"pid"`
 	Status    string     `json:"status"` // could be bool if we don't allow Pause
 	Endpoints []Endpoint `json:"endpoints"`
-	pty       *os.File   `json:"-"`
+	pty       *os.File
 }
 
 // Endpoint is an exposed function
@@ -133,7 +134,7 @@ func (s *Status) Info(topic, msg string) bool {
 	return res
 }
 
-// Info logs a message on the specified topic
+// Raw sends a message on the specified topic without further processing
 func (s *Status) Raw(topic, msg string) {
 	if s.mqttClient == nil {
 		return
