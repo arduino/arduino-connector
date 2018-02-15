@@ -47,7 +47,7 @@ func (s *Status) WiFiEvent(client mqtt.Client, msg mqtt.Message) {
 // EthEvent tries to change IP/Netmask/DNS configuration of the wired connection
 func (s *Status) EthEvent(client mqtt.Client, msg mqtt.Message) {
 	// try registering a new wifi network
-	var info net.IpProxyConfig
+	var info net.IPProxyConfig
 	err := json.Unmarshal(msg.Payload(), &info)
 	if err != nil {
 		s.Error("/ethernet", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
