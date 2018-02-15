@@ -404,7 +404,7 @@ func setupMQTTConnection(cert, key, id, url string, status *Status) (mqtt.Client
 	opts := mqtt.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
 	opts.SetClientID(id)
 	opts.SetMaxReconnectInterval(20 * time.Second)
-	opts.SetConnectTimeout(0)
+	opts.SetConnectTimeout(30 * time.Second)
 	opts.SetAutoReconnect(true)
 	opts.SetOnConnectHandler(func(c mqtt.Client) {
 		subscribeTopics(c, id, status)
