@@ -123,6 +123,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	checkAndInstallNetworkManager()
+
 	err = s.Run()
 	check(err, "RunService")
 }

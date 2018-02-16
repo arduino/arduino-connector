@@ -21,7 +21,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
+	"strings"
 
+	apt "github.com/arduino/go-apt-client"
 	"github.com/arduino/go-system-stats/disk"
 	"github.com/arduino/go-system-stats/mem"
 	"github.com/arduino/go-system-stats/network"
@@ -54,6 +57,28 @@ func (s *Status) EthEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 	net.AddWiredConnection(info)
+}
+
+func checkAndInstallNetworkManager() {
+	_, err := net.GetNetworkStats()
+	if err == nil {
+		return
+	}
+	if strings.Contains(err.Error(), "NetworkManager") {
+		go func() {
+			toInstall := &apt.Package{Name: "network-manager"}
+			if out, err := apt.Install(toInstall); err != nil {
+				fmt.Println("Failed to install network-manager:")
+				fmt.Println(string(out))
+				return
+			}
+			cmd := exec.Command("/etc/init.d/network-manager", "start")
+			if out, err := cmd.CombinedOutput(); err != nil {
+				fmt.Println("Failed to start network-manager:")
+				fmt.Println(string(out))
+			}
+		}()
+	}
 }
 
 // StatsEvent sends statistics about resource used in the system (RAM, Disk, Network, etc...)
