@@ -31,10 +31,11 @@ import (
 
 // Status contains info about the sketches running on the device
 type Status struct {
-	id           string
-	mqttClient   mqtt.Client
-	Sketches     map[string]*SketchStatus `json:"sketches"`
-	messagesSent int
+	id             string
+	mqttClient     mqtt.Client
+	Sketches       map[string]*SketchStatus `json:"sketches"`
+	messagesSent   int
+	firstMessageAt time.Time
 }
 
 // SketchBinding represents a pair (SketchName,SketchId)
@@ -121,7 +122,18 @@ func (s *Status) Raw(topic, msg string) {
 	if s.mqttClient == nil {
 		return
 	}
+
+	if s.messagesSent < 10 {
+		// first 10 messages are virtually free
+		s.firstMessageAt = time.Now()
+	}
+
 	if s.messagesSent > 1000 {
+		// if started more than one day ago, reset the counter
+		if time.Since(s.firstMessageAt) > 24*time.Hour {
+			s.messagesSent = 0
+		}
+
 		fmt.Println("rate limiting: " + strconv.Itoa(s.messagesSent))
 		introducedDelay := time.Duration(s.messagesSent/1000) * time.Second
 		if introducedDelay > 20*time.Second {
