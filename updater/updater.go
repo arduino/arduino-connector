@@ -239,7 +239,7 @@ func (u *Updater) update() error {
 
 	if len(v2.Pre) > 0 {
 		log.Println("Prerelease versions:")
-		for i, pre := range v2.Pre {
+		for _, pre := range v2.Pre {
 			if pre.String() == "dev" {
 				return errors.New("dev version")
 			}
