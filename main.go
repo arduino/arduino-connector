@@ -44,7 +44,7 @@ const (
 )
 
 var (
-	version = "x.x.x"
+	version   = "0.0.0-dev"
 	debugMqtt = false
 )
 

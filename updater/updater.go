@@ -232,9 +232,19 @@ func (u *Updater) update() error {
 		return err
 	}
 
+	// this is the version publically available (GA)
 	v1, _ := semver.Make(u.Info.Version)
+	// this is the version of the actual binary at start
 	v2, _ := semver.Make(u.CurrentVersion)
 
+	if len(v2.Pre) > 0 {
+		log.Println("Prerelease versions:")
+		for _, pre := range v2.Pre {
+			if pre.String() == "dev" {
+				return errors.New("dev version")
+			}
+		}
+	}
 	if v1.Compare(v2) <= 0 {
 		return errors.New("already at latest version")
 	}
