@@ -220,7 +220,7 @@ func generateCsr(priv interface{}) ([]byte, error) {
 
 func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	client := http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	pemData := bytes.NewBuffer([]byte{})
@@ -260,7 +260,7 @@ func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 
 func requestURL(apiURL, token string) (string, error) {
 	client := http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	req, err := http.NewRequest("POST", apiURL+"/devices/v1/connect", nil)
