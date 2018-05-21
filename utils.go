@@ -21,6 +21,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -30,7 +31,12 @@ func addIntelLibrariesToLdPath() {
 		//scan /opt/intel searching for sdks
 		var extraPaths []string
 		filepath.Walk("/opt/intel", func(path string, f os.FileInfo, err error) error {
-			if strings.Contains(f.Name(), ".so") && !strings.Contains(path, "uninstall") {
+			libs := strings.Split(filepath.Dir(path), "/")
+			if len(libs) > 3 {
+				libs[3] = strings.ToLower(libs[3])
+			}
+			regex := regexp.MustCompile(".*system.*studio.*")
+			if strings.Contains(f.Name(), ".so") && !strings.Contains(path, "uninstall") && !regex.MatchString(libs[3]) {
 				extraPaths = appendIfUnique(extraPaths, filepath.Dir(path))
 			}
 			return nil
