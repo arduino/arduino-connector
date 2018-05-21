@@ -260,6 +260,10 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status.AptRepositoryAddEvent)
 	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status.AptRepositoryRemoveEvent)
 	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status.AptRepositoryEditEvent)
+
+	subscribeTopic(mqttClient, id, "/containers/ps", status.ContainersPsEvent)
+	subscribeTopic(mqttClient, id, "/containers/images", status.ContainersListImagesEvent)
+	
 }
 
 func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.MessageHandler) {
