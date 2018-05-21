@@ -28,12 +28,8 @@ import (
 	"github.com/arduino/go-system-stats/disk"
 	"github.com/arduino/go-system-stats/mem"
 	"github.com/arduino/go-system-stats/network"
-	"github.com/docker/docker/api/types"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
-
-	docker "github.com/docker/docker/client"
-	"golang.org/x/net/context"
 )
 
 // WiFiEvent tries to connect to the specified wifi network
@@ -83,58 +79,6 @@ func checkAndInstallNetworkManager() {
 			}
 		}()
 	}
-}
-
-func checkAndInstallDocker() {
-	// fmt.Println("try to install docker-ce")
-	cli, err := docker.NewEnvClient()
-	if err != nil {
-		fmt.Println("Docker daemon not found!")
-		fmt.Println(err.Error())
-	}
-	_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err != nil {
-		fmt.Println("Docker daemon not found!")
-		fmt.Println(err.Error())
-	}
-
-	if err != nil {
-		go func() {
-			//steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
-			apt.CheckForUpdates()
-			dockerPrerequisitesPackages := []*apt.Package{&apt.Package{Name: "apt-transport-https"}, &apt.Package{Name: "ca-certificates"}, &apt.Package{Name: "curl"}, &apt.Package{Name: "software-properties-common"}}
-			for _, pac := range dockerPrerequisitesPackages {
-				if out, err := apt.Install(pac); err != nil {
-					fmt.Println("Failed to install: ", pac.Name)
-					fmt.Println(string(out))
-					return
-				}
-			}
-			cmdString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
-			cmd := exec.Command("bash", "-c", cmdString)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to add Docker’s official GPG key:")
-				fmt.Println(string(out))
-			}
-
-			repoString := "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-			cmd = exec.Command("add-apt-repository", repoString)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to set up the stable repository:")
-				fmt.Println(string(out))
-			}
-
-			apt.CheckForUpdates()
-			toInstall := &apt.Package{Name: "docker-ce"}
-			if out, err := apt.Install(toInstall); err != nil {
-				fmt.Println("Failed to install docker-ce:")
-				fmt.Println(string(out))
-				return
-			}
-			// fmt.Println("done to install docker-ce")
-		}()
-	}
-
 }
 
 // StatsEvent sends statistics about resource used in the system (RAM, Disk, Network, etc...)
