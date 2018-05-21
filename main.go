@@ -124,6 +124,7 @@ func main() {
 	}
 
 	checkAndInstallNetworkManager()
+	checkAndInstallDocker()
 
 	err = s.Run()
 	check(err, "RunService")
