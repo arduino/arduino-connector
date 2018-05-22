@@ -37,6 +37,7 @@ func checkAndInstallDocker() {
 	if err != nil {
 		fmt.Println("Docker daemon not found!")
 		fmt.Println(err.Error())
+		// err should be "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 	}
 	_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
