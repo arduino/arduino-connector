@@ -66,6 +66,13 @@ func checkAndInstallNetworkManager() {
 	}
 	if strings.Contains(err.Error(), "NetworkManager") {
 		go func() {
+			// dpkg --configure -a for prevent block of installation
+			dpkgCmd := exec.Command("dpkg", "--configure", "-a")
+			if out, err := dpkgCmd.CombinedOutput(); err != nil {
+				fmt.Println("Failed to dpkg configure all:")
+				fmt.Println(string(out))
+			}
+
 			toInstall := &apt.Package{Name: "network-manager"}
 			if out, err := apt.Install(toInstall); err != nil {
 				fmt.Println("Failed to install network-manager:")
