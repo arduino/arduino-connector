@@ -21,6 +21,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 
 	apt "github.com/arduino/go-apt-client"
@@ -191,15 +193,16 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	if runParams.Action == "start" {
+	switch runParams.Action {
+	case "run":
 		// out, err := cli.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
-		_, err := cli.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
+		out, err := cli.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("image pull result: %s", err))
 			return
 		}
 
-		//io.Copy(os.Stdout, out)
+		io.Copy(os.Stdout, out)
 
 		resp, err := cli.ContainerCreate(ctx, &container.Config{
 			Image: runParams.ImageName,
@@ -221,7 +224,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			Action:        runParams.Action,
 		}
 
-	} else if runParams.Action == "stop" {
+	case "stop":
 
 		if err := cli.ContainerStop(ctx, runParams.ContainerId, nil); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
@@ -232,9 +235,39 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			ImageName:     runParams.ImageName,
 			ContainerName: runParams.ContainerName,
 			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerId:   "",
+			ContainerId:   runParams.ContainerId,
 			Action:        runParams.Action,
 		}
+
+	case "start":
+		// containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+		// if err != nil {
+		// 	s.Error("/containers/action", fmt.Errorf("Json marshal result: %s", err))
+		// 	return
+		// }
+
+		// containerID, err:= findContainer(runParams.ContainerName, containers)
+		// if err != nil {
+		// 	s.Error("/containers/action", fmt.Errorf("container not found: %s", err))
+		// 	return
+		// }
+
+		if err := cli.ContainerStart(ctx, runParams.ContainerId, types.ContainerStartOptions{}); err != nil {
+			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
+			return
+		}
+
+		runResponse = RunPayload{
+			ImageName:     runParams.ImageName,
+			ContainerName: runParams.ContainerName,
+			RunAsDaemon:   runParams.RunAsDaemon,
+			ContainerId:   runParams.ContainerId,
+			Action:        runParams.Action,
+		}
+
+	default:
+		s.Error("/containers/action", fmt.Errorf("container command %s not found", runParams.Action))
+		return
 	}
 
 	// Send result
@@ -250,4 +283,13 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 
 	s.Info("/containers/action", string(data)+"\n")
 
+}
+func findContainer(containerName string, containers []types.Container) (string, error) {
+	for _, container := range containers {
+		// docker seems to have in its apis multiple names binded to a container but for convention we take the first as the container name
+		if container.Names[0] == containerName {
+			return container.ID, nil
+		}
+	}
+	return "", fmt.Errorf("container  %s not found", containerName)
 }
