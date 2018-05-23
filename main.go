@@ -263,7 +263,7 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 
 	subscribeTopic(mqttClient, id, "/containers/ps/post", status.ContainersPsEvent)
 	subscribeTopic(mqttClient, id, "/containers/images/post", status.ContainersListImagesEvent)
-	
+	subscribeTopic(mqttClient, id, "/containers/action/post", status.ContainersActionEvent)
 }
 
 func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.MessageHandler) {
