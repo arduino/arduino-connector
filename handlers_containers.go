@@ -230,18 +230,19 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	case "remove":
 		forceAllOption := types.ContainerRemoveOptions{
 			Force:         true,
-			RemoveLinks:   true,
+			RemoveLinks:   false,
 			RemoveVolumes: true,
 		}
 
 		if err := s.dockerClient.ContainerRemove(ctx, runParams.ContainerID, forceAllOption); err != nil {
-			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
+			s.Error("/containers/action", fmt.Errorf("container remove result: %s", err))
 			return
 		}
 
-		forceDanglingImagesArg := filters.NewArgs(filters.KeyValuePair{Key: "dangling", Value: "true"})
-		if _, err := s.dockerClient.ImagesPrune(ctx, forceDanglingImagesArg); err != nil {
-			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
+		forceAllImagesArg , _ := filters.FromJSON(`{"dangling": false}`)
+		//forceDanglingImagesArg := filters.NewArgs()
+		if _, err := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
+			s.Error("/containers/action", fmt.Errorf("images prune result: %s", err))
 			return
 		}
 
