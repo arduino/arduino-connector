@@ -28,6 +28,7 @@ import (
 	apt "github.com/arduino/go-apt-client"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 
@@ -38,17 +39,14 @@ import (
 func checkAndInstallDocker() {
 	// fmt.Println("try to install docker-ce")
 	cli, err := docker.NewEnvClient()
-	if err != nil {
-		fmt.Println("Docker daemon not found!")
-		fmt.Println(err.Error())
-		// err should be "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+	defer cli.Close()
+	if cli != nil {
+		_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
+		if err != nil {
+			fmt.Println("Docker daemon not found!")
+			fmt.Println(err.Error())
+		}
 	}
-	_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err != nil {
-		fmt.Println("Docker daemon not found!")
-		fmt.Println(err.Error())
-	}
-
 	if err != nil {
 		go func() {
 			// dpkg --configure -a for prevent block of installation
@@ -105,13 +103,8 @@ func checkAndInstallDocker() {
 
 // ContainersPsEvent implements docker ps
 func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
-	cli, err := docker.NewEnvClient()
-	if err != nil {
-		s.Error("/containers/ps", fmt.Errorf("Json marsahl result: %s", err))
-		return
-	}
 
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	containers, err := s.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		s.Error("/containers/ps", fmt.Errorf("Json marshal result: %s", err))
 		return
@@ -124,23 +117,13 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	//var out bytes.Buffer
-	//json.Indent(&out, data, "", "  ")
-	//fmt.Println(string(out.Bytes()))
-
 	s.Info("/containers/ps", string(data)+"\n")
 }
 
 // ContainersListImagesEvent implements docker images
 func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message) {
-	// Gather images
-	cli, err := docker.NewEnvClient()
-	if err != nil {
-		s.Error("/containers/images", fmt.Errorf("images result: %s", err))
-		return
-	}
 
-	images, err := cli.ImageList(context.Background(), types.ImageListOptions{})
+	images, err := s.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
 		s.Error("/containers/images", fmt.Errorf("images result: %s", err))
 		return
@@ -153,19 +136,15 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 		return
 	}
 
-	//var out bytes.Buffer
-	//json.Indent(&out, data, "", "  ")
-	//fmt.Println(string(out.Bytes()))
-
 	s.Info("/containers/images", string(data)+"\n")
 }
 
-// ContainersRunEvent implements docker images
+// ContainersActionEvent implements docker action like run, start and stop
 func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	var runParams struct {
 		ImageName     string `json:"image"`
 		ContainerName string `json:"name"`
-		ContainerId   string `json:"id"`
+		ContainerID   string `json:"id"`
 		RunAsDaemon   bool   `json:"background"`
 		Action        string `json:"action"`
 	}
@@ -174,7 +153,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		ImageName     string `json:"image"`
 		ContainerName string `json:"name"`
 		RunAsDaemon   bool   `json:"background"`
-		ContainerId   string `json:"id"`
+		ContainerID   string `json:"id"`
 		Action        string `json:"action"`
 	}
 
@@ -187,24 +166,19 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	ctx := context.Background()
-	cli, err := docker.NewEnvClient()
-	if err != nil {
-		s.Error("/containers/action", fmt.Errorf("run result: %s", err))
-		return
-	}
 
 	switch runParams.Action {
 	case "run":
-		// out, err := cli.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
-		out, err := cli.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
+		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("image pull result: %s", err))
 			return
 		}
 
 		io.Copy(os.Stdout, out)
+		defer out.Close()
 
-		resp, err := cli.ContainerCreate(ctx, &container.Config{
+		resp, err := s.dockerClient.ContainerCreate(ctx, &container.Config{
 			Image: runParams.ImageName,
 		}, nil, nil, runParams.ContainerName)
 		if err != nil {
@@ -212,7 +186,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		if err := s.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container start result: %s", err))
 			return
 		}
@@ -220,13 +194,13 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			ImageName:     runParams.ImageName,
 			ContainerName: runParams.ContainerName,
 			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerId:   resp.ID,
+			ContainerID:   resp.ID,
 			Action:        runParams.Action,
 		}
 
 	case "stop":
 
-		if err := cli.ContainerStop(ctx, runParams.ContainerId, nil); err != nil {
+		if err := s.dockerClient.ContainerStop(ctx, runParams.ContainerID, nil); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
@@ -235,24 +209,12 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			ImageName:     runParams.ImageName,
 			ContainerName: runParams.ContainerName,
 			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerId:   runParams.ContainerId,
+			ContainerID:   runParams.ContainerID,
 			Action:        runParams.Action,
 		}
 
 	case "start":
-		// containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-		// if err != nil {
-		// 	s.Error("/containers/action", fmt.Errorf("Json marshal result: %s", err))
-		// 	return
-		// }
-
-		// containerID, err:= findContainer(runParams.ContainerName, containers)
-		// if err != nil {
-		// 	s.Error("/containers/action", fmt.Errorf("container not found: %s", err))
-		// 	return
-		// }
-
-		if err := cli.ContainerStart(ctx, runParams.ContainerId, types.ContainerStartOptions{}); err != nil {
+		if err := s.dockerClient.ContainerStart(ctx, runParams.ContainerID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
@@ -261,7 +223,33 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			ImageName:     runParams.ImageName,
 			ContainerName: runParams.ContainerName,
 			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerId:   runParams.ContainerId,
+			ContainerID:   runParams.ContainerID,
+			Action:        runParams.Action,
+		}
+
+	case "remove":
+		forceAllOption := types.ContainerRemoveOptions{
+			Force:         true,
+			RemoveLinks:   true,
+			RemoveVolumes: true,
+		}
+
+		if err := s.dockerClient.ContainerRemove(ctx, runParams.ContainerID, forceAllOption); err != nil {
+			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
+			return
+		}
+
+		forceDanglingImagesArg := filters.NewArgs(filters.KeyValuePair{Key: "dangling", Value: "true"})
+		if _, err := s.dockerClient.ImagesPrune(ctx, forceDanglingImagesArg); err != nil {
+			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
+			return
+		}
+
+		runResponse = RunPayload{
+			ImageName:     runParams.ImageName,
+			ContainerName: runParams.ContainerName,
+			RunAsDaemon:   runParams.RunAsDaemon,
+			ContainerID:   runParams.ContainerID,
 			Action:        runParams.Action,
 		}
 
@@ -277,19 +265,6 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	//var out bytes.Buffer
-	//json.Indent(&out, data, "", "  ")
-	//fmt.Println(string(out.Bytes()))
-
 	s.Info("/containers/action", string(data)+"\n")
 
-}
-func findContainer(containerName string, containers []types.Container) (string, error) {
-	for _, container := range containers {
-		// docker seems to have in its apis multiple names binded to a container but for convention we take the first as the container name
-		if container.Names[0] == containerName {
-			return container.ID, nil
-		}
-	}
-	return "", fmt.Errorf("container  %s not found", containerName)
 }

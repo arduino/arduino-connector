@@ -35,6 +35,7 @@ import (
 	logger "github.com/nats-io/gnatsd/logger"
 	server "github.com/nats-io/gnatsd/server"
 	nats "github.com/nats-io/go-nats"
+	docker "github.com/docker/docker/client"
 
 	"github.com/pkg/errors"
 )
@@ -163,7 +164,7 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config.ID, nil)
+	status := NewStatus(p.Config.ID, nil, nil)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
@@ -182,6 +183,13 @@ func (p program) run() {
 		go tailAndReport(p.listenFile, status)
 	}
 
+	// Setup docker daemon connection
+	cli, err := docker.NewEnvClient()
+	if err != nil {
+		log.Println("Connection to Docker Daemon failed, containers features unavailable")
+	}
+	status.dockerClient = cli
+	
 	// Start nats-client for local server
 	nc, err := nats.Connect(nats.DefaultURL)
 	check(err, "ConnectNATS")
