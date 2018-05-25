@@ -29,15 +29,14 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
-
-	docker "github.com/docker/docker/client"
 	"golang.org/x/net/context"
 )
 
+// checkAndInstallDocker implements steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
 func checkAndInstallDocker() {
-	// fmt.Println("try to install docker-ce")
 	cli, err := docker.NewEnvClient()
 	defer cli.Close()
 	if cli != nil {
@@ -54,9 +53,13 @@ func checkAndInstallDocker() {
 			fmt.Println(string(out))
 		}
 
-		//steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
 		apt.CheckForUpdates()
-		dockerPrerequisitesPackages := []*apt.Package{&apt.Package{Name: "apt-transport-https"}, &apt.Package{Name: "ca-certificates"}, &apt.Package{Name: "curl"}, &apt.Package{Name: "software-properties-common"}}
+		dockerPrerequisitesPackages := []*apt.Package{
+			&apt.Package{Name: "apt-transport-https"},
+			&apt.Package{Name: "ca-certificates"},
+			&apt.Package{Name: "curl"},
+			&apt.Package{Name: "software-properties-common"},
+		}
 		for _, pac := range dockerPrerequisitesPackages {
 			if out, err := apt.Install(pac); err != nil {
 				fmt.Println("Failed to install: ", pac.Name)
@@ -64,6 +67,7 @@ func checkAndInstallDocker() {
 				return
 			}
 		}
+
 		curlString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
 		curlCmd := exec.Command("bash", "-c", curlString)
 		if out, err := curlCmd.CombinedOutput(); err != nil {
@@ -86,19 +90,15 @@ func checkAndInstallDocker() {
 			return
 		}
 
-		// systemctl enable docker
 		sysCmd := exec.Command("systemctl", "enable", "docker")
 		if out, err := sysCmd.CombinedOutput(); err != nil {
 			fmt.Println("Failed to systemctl enable docker:")
 			fmt.Println(string(out))
 		}
-
-		// fmt.Println("done to install docker-ce")
 	}
-
 }
 
-// ContainersPsEvent implements docker ps
+// ContainersPsEvent implements docker ps -a
 func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 
 	containers, err := s.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: true})
@@ -113,13 +113,11 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 		s.Error("/containers/ps", fmt.Errorf("Json marsahl result: %s", err))
 		return
 	}
-
 	s.Info("/containers/ps", string(data)+"\n")
 }
 
 // ContainersListImagesEvent implements docker images
 func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message) {
-
 	images, err := s.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
 		s.Error("/containers/images", fmt.Errorf("images result: %s", err))
@@ -136,15 +134,8 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 	s.Info("/containers/images", string(data)+"\n")
 }
 
-// ContainersActionEvent implements docker action like run, start and stop
+// ContainersActionEvent implements docker container action like run, start and stop, remove
 func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
-	var runParams struct {
-		ImageName     string `json:"image"`
-		ContainerName string `json:"name"`
-		ContainerID   string `json:"id"`
-		RunAsDaemon   bool   `json:"background"`
-		Action        string `json:"action"`
-	}
 
 	type RunPayload struct {
 		ImageName     string `json:"image"`
@@ -154,30 +145,38 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		Action        string `json:"action"`
 	}
 
-	runResponse := RunPayload{}
-
+	runParams := RunPayload{}
 	err := json.Unmarshal(msg.Payload(), &runParams)
 	if err != nil {
 		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
 
-	ctx := context.Background()
+	runResponse := RunPayload{
+		ImageName:     runParams.ImageName,
+		ContainerName: runParams.ContainerName,
+		RunAsDaemon:   runParams.RunAsDaemon,
+		ContainerID:   runParams.ContainerID,
+		Action:        runParams.Action,
+	}
 
+	ctx := context.Background()
 	switch runParams.Action {
+
 	case "run":
 		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("image pull result: %s", err))
 			return
 		}
-
+		// waiting the complete download of the image
 		io.Copy(os.Stdout, out)
 		defer out.Close()
 
 		resp, err := s.dockerClient.ContainerCreate(ctx, &container.Config{
 			Image: runParams.ImageName,
 		}, nil, nil, runParams.ContainerName)
+
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("container create result: %s", err))
 			return
@@ -187,41 +186,18 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			s.Error("/containers/action", fmt.Errorf("container start result: %s", err))
 			return
 		}
-		runResponse = RunPayload{
-			ImageName:     runParams.ImageName,
-			ContainerName: runParams.ContainerName,
-			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerID:   resp.ID,
-			Action:        runParams.Action,
-		}
+		runResponse.ContainerID = resp.ID
 
 	case "stop":
-
 		if err := s.dockerClient.ContainerStop(ctx, runParams.ContainerID, nil); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
-		}
-
-		runResponse = RunPayload{
-			ImageName:     runParams.ImageName,
-			ContainerName: runParams.ContainerName,
-			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerID:   runParams.ContainerID,
-			Action:        runParams.Action,
 		}
 
 	case "start":
 		if err := s.dockerClient.ContainerStart(ctx, runParams.ContainerID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
-		}
-
-		runResponse = RunPayload{
-			ImageName:     runParams.ImageName,
-			ContainerName: runParams.ContainerName,
-			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerID:   runParams.ContainerID,
-			Action:        runParams.Action,
 		}
 
 	case "remove":
@@ -235,20 +211,11 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			s.Error("/containers/action", fmt.Errorf("container remove result: %s", err))
 			return
 		}
-
+		// implements docker image prune -a that removes all images not associated to a container
 		forceAllImagesArg, _ := filters.FromJSON(`{"dangling": false}`)
-		//forceDanglingImagesArg := filters.NewArgs()
 		if _, err := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
 			s.Error("/containers/action", fmt.Errorf("images prune result: %s", err))
 			return
-		}
-
-		runResponse = RunPayload{
-			ImageName:     runParams.ImageName,
-			ContainerName: runParams.ContainerName,
-			RunAsDaemon:   runParams.RunAsDaemon,
-			ContainerID:   runParams.ContainerID,
-			Action:        runParams.Action,
 		}
 
 	default:
