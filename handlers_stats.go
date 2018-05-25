@@ -71,7 +71,6 @@ func checkAndInstallNetworkManager() {
 			fmt.Println("Failed to dpkg configure all:")
 			fmt.Println(string(out))
 		}
-
 		toInstall := &apt.Package{Name: "network-manager"}
 		if out, err := apt.Install(toInstall); err != nil {
 			fmt.Println("Failed to install network-manager:")

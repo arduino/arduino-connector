@@ -459,6 +459,7 @@ func configureNatsdLogger(s *server.Server, opts *server.Options) {
 	s.SetLogger(log, opts.Debug, opts.Trace)
 }
 
+// checkAndInstallDependencies wraps all the dependencies installation steps that uses apt and needs to be executed sequentially
 func checkAndInstallDependencies(){
 	checkAndInstallDocker()
 	checkAndInstallNetworkManager()
