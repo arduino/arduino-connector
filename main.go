@@ -124,8 +124,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	checkAndInstallNetworkManager()
-	checkAndInstallDocker()
+	go checkAndInstallDependencies()
 
 	err = s.Run()
 	check(err, "RunService")
@@ -458,4 +457,9 @@ func configureNatsdLogger(s *server.Server, opts *server.Options) {
 	log = logger.NewStdLogger(opts.Logtime, opts.Debug, opts.Trace, colors, true)
 
 	s.SetLogger(log, opts.Debug, opts.Trace)
+}
+
+func checkAndInstallDependencies(){
+	checkAndInstallDocker()
+	checkAndInstallNetworkManager()
 }
