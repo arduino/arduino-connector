@@ -413,6 +413,199 @@ INFO: 162653.88
 
 The number is the uptime in seconds
 
+### Containers Management
+
+#### Containers ps
+
+implements ```docker ps -a``` and gives back the docker api response transparently
+
+```
+{}
+--> $aws/things/{{id}}/containers/ps/post
+
+INFO: [
+  {
+    "Command": "docker-entrypoint.sh redis-server",
+    "Created": 1527232692,
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "Id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f",
+    "Image": "docker.io/library/redis",
+    "ImageID": "sha256:bfcb1f6df2db8a62694aaa732a3133799db59c6fec58bfeda84e34299e7270a8",
+    "Labels": {},
+    "Mounts": [
+      {
+        "Destination": "/data",
+        "Driver": "local",
+        "Mode": "",
+        "Name": "6cb1395830bd65cfac62dd55d4ed19499911191a92a759b2410250608f5df6f0",
+        "Propagation": "",
+        "RW": true,
+        "Source": "",
+        "Type": "volume"
+      }
+    ],
+    "Names": [
+      "/fabrizio-redis"
+    ],
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": null,
+          "DriverOpts": null,
+          "EndpointID": "4cc1922ef56f401668ee745d3e819cc21b804dfc119b2c4928e3819175522f66",
+          "Gateway": "172.17.0.1",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "IPAMConfig": null,
+          "IPAddress": "172.17.0.2",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "Links": null,
+          "MacAddress": "02:42:ac:11:00:02",
+          "NetworkID": "8459eb5e58305845527f1e6c737c059f6b409ef581ec8f0b168c1efe67304887"
+        }
+      }
+    },
+    "Ports": [
+      {
+        "PrivatePort": 6379,
+        "Type": "tcp"
+      }
+    ],
+    "State": "running",
+    "Status": "Up 6 hours"
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/ps/post
+```
+
+#### Containers Images
+
+implements ```docker images``` and gives back the docker api response transparently
+ 
+```
+{}
+--> $aws/things/{{id}}/containers/images/post
+
+INFO: [
+    {
+    "Containers": -1,
+    "Created": 1527112010,
+    "Id": "sha256:316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+    "Labels": null,
+    "ParentId": "",
+    "RepoDigests": [
+      "postgres@sha256:db7a4b960bfbe98ad94799f4a00a4203284c9804177ba317e1f9829fa1237632"
+    ],
+    "RepoTags": [
+      "postgres:latest"
+    ],
+    "SharedSize": -1,
+    "Size": 235337390,
+    "VirtualSize": 235337390
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/images/post
+```
+
+
+#### Containers Action
+
+```docker run <image>``` 
+
+```
+{
+  "action": "run",
+  "background": true,
+  "image": "redis",
+  "name": "my-redis-container"
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "run",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+
+```docker start <container-id>``` 
+
+```
+{
+  "action": "start",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "start",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+```docker stop <container-id>``` 
+
+```
+{
+  "action": "stop",
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "stop",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+```docker remove <container-id>``` and ```docker image prune -a```
+```
+{
+  "action": "remove",
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "remove",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+
+
+
+
 ## Compile
 ```
 go get github.com/arduino/arduino-connector
