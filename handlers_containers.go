@@ -44,59 +44,56 @@ func checkAndInstallDocker() {
 		_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err != nil {
 			fmt.Println("Docker daemon not found!")
-			fmt.Println(err.Error())
 		}
 	}
 	if err != nil {
-		go func() {
-			// dpkg --configure -a for prevent block of installation
-			dpkgCmd := exec.Command("dpkg", "--configure", "-a")
-			if out, err := dpkgCmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to reconfigure dpkg:")
-				fmt.Println(string(out))
-			}
+		// dpkg --configure -a for prevent block of installation
+		dpkgCmd := exec.Command("dpkg", "--configure", "-a")
+		if out, err := dpkgCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to reconfigure dpkg:")
+			fmt.Println(string(out))
+		}
 
-			//steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
-			apt.CheckForUpdates()
-			dockerPrerequisitesPackages := []*apt.Package{&apt.Package{Name: "apt-transport-https"}, &apt.Package{Name: "ca-certificates"}, &apt.Package{Name: "curl"}, &apt.Package{Name: "software-properties-common"}}
-			for _, pac := range dockerPrerequisitesPackages {
-				if out, err := apt.Install(pac); err != nil {
-					fmt.Println("Failed to install: ", pac.Name)
-					fmt.Println(string(out))
-					return
-				}
-			}
-			cmdString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
-			cmd := exec.Command("bash", "-c", cmdString)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to add Docker’s official GPG key:")
-				fmt.Println(string(out))
-			}
-
-			repoString := "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-			cmd = exec.Command("add-apt-repository", repoString)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to set up the stable docker repository:")
-				fmt.Println(string(out))
-			}
-
-			apt.CheckForUpdates()
-			toInstall := &apt.Package{Name: "docker-ce"}
-			if out, err := apt.Install(toInstall); err != nil {
-				fmt.Println("Failed to install docker-ce:")
+		//steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
+		apt.CheckForUpdates()
+		dockerPrerequisitesPackages := []*apt.Package{&apt.Package{Name: "apt-transport-https"}, &apt.Package{Name: "ca-certificates"}, &apt.Package{Name: "curl"}, &apt.Package{Name: "software-properties-common"}}
+		for _, pac := range dockerPrerequisitesPackages {
+			if out, err := apt.Install(pac); err != nil {
+				fmt.Println("Failed to install: ", pac.Name)
 				fmt.Println(string(out))
 				return
 			}
+		}
+		curlString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+		curlCmd := exec.Command("bash", "-c", curlString)
+		if out, err := curlCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to add Docker’s official GPG key:")
+			fmt.Println(string(out))
+		}
 
-			// systemctl enable docker
-			sysCmd := exec.Command("systemctl", "enable", "docker")
-			if out, err := sysCmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to systemctl enable docker:")
-				fmt.Println(string(out))
-			}
+		repoString := `add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"`
+		repoCmd := exec.Command("bash", "-c", repoString)
+		if out, err := repoCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to set up the stable docker repository:")
+			fmt.Println(string(out))
+		}
 
-			// fmt.Println("done to install docker-ce")
-		}()
+		apt.CheckForUpdates()
+		toInstall := &apt.Package{Name: "docker-ce"}
+		if out, err := apt.Install(toInstall); err != nil {
+			fmt.Println("Failed to install docker-ce:")
+			fmt.Println(string(out))
+			return
+		}
+
+		// systemctl enable docker
+		sysCmd := exec.Command("systemctl", "enable", "docker")
+		if out, err := sysCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to systemctl enable docker:")
+			fmt.Println(string(out))
+		}
+
+		// fmt.Println("done to install docker-ce")
 	}
 
 }
@@ -239,7 +236,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		forceAllImagesArg , _ := filters.FromJSON(`{"dangling": false}`)
+		forceAllImagesArg, _ := filters.FromJSON(`{"dangling": false}`)
 		//forceDanglingImagesArg := filters.NewArgs()
 		if _, err := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
 			s.Error("/containers/action", fmt.Errorf("images prune result: %s", err))
