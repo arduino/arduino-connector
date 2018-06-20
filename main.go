@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
@@ -35,7 +36,6 @@ import (
 	logger "github.com/nats-io/gnatsd/logger"
 	server "github.com/nats-io/gnatsd/server"
 	nats "github.com/nats-io/go-nats"
-	docker "github.com/docker/docker/client"
 
 	"github.com/pkg/errors"
 )
@@ -188,7 +188,7 @@ func (p program) run() {
 		log.Println("Connection to Docker Daemon failed, containers features unavailable")
 	}
 	status.dockerClient = cli
-	
+
 	// Start nats-client for local server
 	nc, err := nats.Connect(nats.DefaultURL)
 	check(err, "ConnectNATS")
@@ -460,7 +460,7 @@ func configureNatsdLogger(s *server.Server, opts *server.Options) {
 }
 
 // checkAndInstallDependencies wraps all the dependencies installation steps that uses apt and needs to be executed sequentially
-func checkAndInstallDependencies(){
+func checkAndInstallDependencies() {
 	checkAndInstallDocker()
 	checkAndInstallNetworkManager()
 }
