@@ -68,6 +68,19 @@ func register(config Config, token string) {
 		check(err, "AskCredentials")
 	}
 
+	// Generate a Private Key and CSR
+	csr := generateKeyAndCsr()
+
+	// Request Certificate and service URL to iot service
+	requestCertAndBrokerURL(csr, config, token)
+
+	// Connect to MQTT and communicate back
+	registerDeviceViaMQTT(config)
+
+	fmt.Println("Setup completed")
+}
+
+func generateKeyAndCsr() []byte {
 	// Create a private key
 	fmt.Println("Generate private key")
 	key, err := generateKey("P256")
@@ -84,7 +97,10 @@ func register(config Config, token string) {
 	fmt.Println("Generate csr")
 	csr, err := generateCsr(config.ID, key)
 	check(err, "generateCsr")
+	return csr
+}
 
+func requestCertAndBrokerURL(csr []byte, config Config, token string) {
 	// Request a certificate
 	fmt.Println("Request certificate")
 	pem, err := requestCert(config.APIURL, config.ID, token, csr)
@@ -103,7 +119,9 @@ func register(config Config, token string) {
 	data := config.String()
 	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
 	check(err, "WriteConf")
+}
 
+func registerDeviceViaMQTT(config Config){
 	// Connect to MQTT and communicate back
 	fmt.Println("Check successful mqtt connection")
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
@@ -113,8 +131,6 @@ func register(config Config, token string) {
 	check(err, "RegisterDevice")
 
 	client.Disconnect(0)
-
-	fmt.Println("Setup completed")
 }
 
 func askCredentials(authURL string) (token string, err error) {

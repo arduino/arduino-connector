@@ -82,6 +82,8 @@ func main() {
 	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
 	var doInstall = flag.Bool("install", false, "Install as a service")
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
+	var doProvision = flag.Bool("provision", false, "Provision key and CSR for the device")
+	var doConfigure = flag.Bool("configure", false, "Connect and register on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
 	flag.StringVar(&config.updateURL, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
@@ -116,6 +118,16 @@ func main() {
 
 	if *doRegister {
 		register(config, *token)
+	}
+
+	if *doProvision {
+		csr:= generateKeyAndCsr()
+		fmt.Println("CSR: ", csr)
+	}
+
+	// if configure flag is used the connector assumes that the config file is correctly written and the certificate.pem file is present 
+	if *doConfigure {
+		registerDeviceViaMQTT(config)
 	}
 
 	if *doInstall {
