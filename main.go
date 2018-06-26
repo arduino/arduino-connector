@@ -121,13 +121,19 @@ func main() {
 	}
 
 	if *doProvision {
-		csr:= generateKeyAndCsr()
-		fmt.Println("CSR: ", csr)
+		csr := generateKeyAndCsr()
+		formattedCSR := formatCSR(csr)
+		formattedCSR = strings.Replace(formattedCSR, "\n", "\\n", -1)
+		fmt.Println(formattedCSR)
+		// provision should return cleanly if succeeded
+		os.Exit(0)
 	}
 
-	// if configure flag is used the connector assumes that the config file is correctly written and the certificate.pem file is present 
+	// if configure flag is used the connector assumes that the config file is correctly written and the certificate.pem file is present
 	if *doConfigure {
 		registerDeviceViaMQTT(config)
+		// configure should return cleanly if succeeded
+		os.Exit(0)
 	}
 
 	if *doInstall {

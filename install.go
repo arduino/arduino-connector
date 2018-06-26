@@ -123,7 +123,7 @@ func requestCertAndBrokerURL(csr []byte, config Config, token string) {
 
 func registerDeviceViaMQTT(config Config){
 	// Connect to MQTT and communicate back
-	fmt.Println("Check successful mqtt connection")
+	fmt.Println("Check successful MQTT connection")
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
 	check(err, "ConnectMQTT")
 
@@ -131,6 +131,8 @@ func registerDeviceViaMQTT(config Config){
 	check(err, "RegisterDevice")
 
 	client.Disconnect(0)
+	fmt.Println("MQTT connection successful")
+
 }
 
 func askCredentials(authURL string) (token string, err error) {
@@ -234,14 +236,18 @@ func generateCsr(id string, priv interface{}) ([]byte, error) {
 	return csr, nil
 }
 
+func formatCSR(csr []byte) string{
+	pemData := bytes.NewBuffer([]byte{})
+	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+	return pemData.String()
+}
+
 func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	client := http.Client{
 		Timeout: 30 * time.Second,
 	}
-
-	pemData := bytes.NewBuffer([]byte{})
-	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
-	payload := `{"csr":"` + pemData.String() + `"}`
+	formattedCSR:=formatCSR(csr)
+	payload := `{"csr":"` + formattedCSR + `"}`
 	payload = strings.Replace(payload, "\n", "\\n", -1)
 
 	req, err := http.NewRequest("POST", apiURL+"/iot/v1/devices/"+id, strings.NewReader(payload))
