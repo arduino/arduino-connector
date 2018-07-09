@@ -228,7 +228,7 @@ func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	payload := `{"csr":"` + pemData.String() + `"}`
 	payload = strings.Replace(payload, "\n", "\\n", -1)
 
-	req, err := http.NewRequest("POST", apiURL+"/devices/v1/"+id, strings.NewReader(payload))
+	req, err := http.NewRequest("POST", apiURL+"/iot/v1/devices/"+id, strings.NewReader(payload))
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +241,7 @@ func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	}
 
 	if res.StatusCode != 200 {
-		return "", errors.New("POST " + apiURL + "/devices/v1/" + id + ": expected 200 OK, got " + res.Status)
+		return "", errors.New("POST " + apiURL + "/iot/v1/devices/" + id + ": expected 200 OK, got " + res.Status)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
@@ -263,7 +263,7 @@ func requestURL(apiURL, token string) (string, error) {
 		Timeout: 30 * time.Second,
 	}
 
-	req, err := http.NewRequest("POST", apiURL+"/devices/v1/connect", nil)
+	req, err := http.NewRequest("POST", apiURL+"/iot/v1/devices/connect", nil)
 	if err != nil {
 		return "", err
 	}
