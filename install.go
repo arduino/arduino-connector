@@ -72,8 +72,9 @@ func register(config Config, token string) {
 	csr := generateKeyAndCsr()
 
 	// Request Certificate and service URL to iot service
-	requestCertAndBrokerURL(csr, config, token)
+	config = requestCertAndBrokerURL(csr, config, token)
 
+	
 	// Connect to MQTT and communicate back
 	registerDeviceViaMQTT(config)
 
@@ -100,7 +101,7 @@ func generateKeyAndCsr() []byte {
 	return csr
 }
 
-func requestCertAndBrokerURL(csr []byte, config Config, token string) {
+func requestCertAndBrokerURL(csr []byte, config Config, token string) Config{
 	// Request a certificate
 	fmt.Println("Request certificate")
 	pem, err := requestCert(config.APIURL, config.ID, token, csr)
@@ -119,6 +120,8 @@ func requestCertAndBrokerURL(csr []byte, config Config, token string) {
 	data := config.String()
 	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
 	check(err, "WriteConf")
+
+	return config
 }
 
 func registerDeviceViaMQTT(config Config){
