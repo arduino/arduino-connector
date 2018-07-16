@@ -22,8 +22,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
+	"strings"
 
 	apt "github.com/arduino/go-apt-client"
 	"github.com/docker/docker/api/types"
@@ -32,6 +36,7 @@ import (
 	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/host"
 	"golang.org/x/net/context"
 )
 
@@ -46,55 +51,91 @@ func checkAndInstallDocker() {
 		}
 	}
 	if err != nil {
-		// dpkg --configure -a for prevent block of installation
-		dpkgCmd := exec.Command("dpkg", "--configure", "-a")
-		if out, err := dpkgCmd.CombinedOutput(); err != nil {
-			fmt.Println("Failed to reconfigure dpkg:")
-			fmt.Println(string(out))
+		//returns  platform string, family string, version string, err error
+		platform, family, version, err := host.PlatformInformation()
+		distroVer, cerr := strconv.Atoi(strings.Replace(version, ".", "", -1))
+		if err != nil && cerr != nil {
+			fmt.Println("Failed to fetch system info")
 		}
-
-		apt.CheckForUpdates()
-		dockerPrerequisitesPackages := []*apt.Package{
-			&apt.Package{Name: "apt-transport-https"},
-			&apt.Package{Name: "ca-certificates"},
-			&apt.Package{Name: "curl"},
-			&apt.Package{Name: "software-properties-common"},
-		}
-		for _, pac := range dockerPrerequisitesPackages {
-			if out, err := apt.Install(pac); err != nil {
-				fmt.Println("Failed to install: ", pac.Name)
-				fmt.Println(string(out))
-				return
+		fmt.Printf("Fetched system info: %s %s %s on arch: %s\n", platform, family, version, runtime.GOARCH)
+		if runtime.GOARCH == "amd64" {
+			if platform == "ubuntu" {
+				if distroVer >= 1604 {
+					installDockerCEOnXenialAndNewer()
+				}
+			}
+		} else if runtime.GOARCH == "arm" {
+			if platform == "raspbian" {
+				installDockerCEViaConvenienceScript()
 			}
 		}
+	}
+}
 
-		curlString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
-		curlCmd := exec.Command("bash", "-c", curlString)
-		if out, err := curlCmd.CombinedOutput(); err != nil {
-			fmt.Println("Failed to add Docker’s official GPG key:")
-			fmt.Println(string(out))
-		}
+func installDockerCEViaConvenienceScript() {
+	curlString := "curl -fsSL get.docker.com -o get-docker.sh"
+	curlCmd := exec.Command("bash", "-c", curlString)
+	if out, err := curlCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to Download Docker CE Convenience Script Installer:")
+		fmt.Println(string(out))
+	}
 
-		repoString := `add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"`
-		repoCmd := exec.Command("bash", "-c", repoString)
-		if out, err := repoCmd.CombinedOutput(); err != nil {
-			fmt.Println("Failed to set up the stable docker repository:")
-			fmt.Println(string(out))
-		}
+	installCmd := exec.Command("sh", "get-docker.sh")
+	if out, err := installCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to Run Docker CE Convenience Script Installer:")
+		fmt.Println(string(out))
+	}
+}
 
-		apt.CheckForUpdates()
-		toInstall := &apt.Package{Name: "docker-ce"}
-		if out, err := apt.Install(toInstall); err != nil {
-			fmt.Println("Failed to install docker-ce:")
+func installDockerCEOnXenialAndNewer() {
+	// dpkg --configure -a for prevent block of installation
+	dpkgCmd := exec.Command("dpkg", "--configure", "-a")
+	if out, err := dpkgCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to reconfigure dpkg:")
+		fmt.Println(string(out))
+	}
+
+	apt.CheckForUpdates()
+	dockerPrerequisitesPackages := []*apt.Package{
+		&apt.Package{Name: "apt-transport-https"},
+		&apt.Package{Name: "ca-certificates"},
+		&apt.Package{Name: "curl"},
+		&apt.Package{Name: "software-properties-common"},
+	}
+	for _, pac := range dockerPrerequisitesPackages {
+		if out, err := apt.Install(pac); err != nil {
+			fmt.Println("Failed to install: ", pac.Name)
 			fmt.Println(string(out))
 			return
 		}
+	}
 
-		sysCmd := exec.Command("systemctl", "enable", "docker")
-		if out, err := sysCmd.CombinedOutput(); err != nil {
-			fmt.Println("Failed to systemctl enable docker:")
-			fmt.Println(string(out))
-		}
+	curlString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+	curlCmd := exec.Command("bash", "-c", curlString)
+	if out, err := curlCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to add Docker’s official GPG key:")
+		fmt.Println(string(out))
+	}
+
+	repoString := `add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"`
+	repoCmd := exec.Command("bash", "-c", repoString)
+	if out, err := repoCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to set up the stable docker repository:")
+		fmt.Println(string(out))
+	}
+
+	apt.CheckForUpdates()
+	toInstall := &apt.Package{Name: "docker-ce"}
+	if out, err := apt.Install(toInstall); err != nil {
+		fmt.Println("Failed to install docker-ce:")
+		fmt.Println(string(out))
+		return
+	}
+
+	sysCmd := exec.Command("systemctl", "enable", "docker")
+	if out, err := sysCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to systemctl enable docker:")
+		fmt.Println(string(out))
 	}
 }
 
@@ -162,7 +203,6 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 
 	ctx := context.Background()
 	switch runParams.Action {
-
 	case "run":
 		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
 		if err != nil {
@@ -170,9 +210,9 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 		// waiting the complete download of the image
-		io.Copy(os.Stdout, out)
+		io.Copy(ioutil.Discard, out)
 		defer out.Close()
-
+		fmt.Fprintf(os.Stdout, "Successfully Downloaded Image: %s\n", runParams.ImageName)
 		resp, err := s.dockerClient.ContainerCreate(ctx, &container.Config{
 			Image: runParams.ImageName,
 		}, nil, nil, runParams.ContainerName)
