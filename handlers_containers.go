@@ -33,6 +33,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
@@ -179,11 +180,14 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 
 	type RunPayload struct {
-		ImageName     string `json:"image"`
-		ContainerName string `json:"name"`
-		RunAsDaemon   bool   `json:"background"`
-		ContainerID   string `json:"id"`
-		Action        string `json:"action"`
+		ImageName               string                   `json:"image"`
+		ContainerName           string                   `json:"name"`
+		RunAsDaemon             bool                     `json:"background"`
+		ContainerID             string                   `json:"id"`
+		Action                  string                   `json:"action"`
+		ContainerConfig         container.Config         `json:"container_config",omitempty`
+		ContainerHostConfig     container.HostConfig     `json:"host_config",omitempty`
+		NetworkNetworkingConfig network.NetworkingConfig `json:"networking_config",omitempty`
 	}
 
 	runParams := RunPayload{}
@@ -213,9 +217,11 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		io.Copy(ioutil.Discard, out)
 		defer out.Close()
 		fmt.Fprintf(os.Stdout, "Successfully Downloaded Image: %s\n", runParams.ImageName)
-		resp, err := s.dockerClient.ContainerCreate(ctx, &container.Config{
-			Image: runParams.ImageName,
-		}, nil, nil, runParams.ContainerName)
+
+		// overwrite imagename in container.Config
+		runParams.ContainerConfig.Image = runParams.ImageName
+
+		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig, &runParams.NetworkNetworkingConfig, runParams.ContainerName)
 
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("container create result: %s", err))
