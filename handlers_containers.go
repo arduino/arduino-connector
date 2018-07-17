@@ -216,14 +216,14 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		// waiting the complete download of the image
 		io.Copy(ioutil.Discard, out)
 		defer out.Close()
-		fmt.Fprintf(os.Stdout, "Successfully Downloaded Image: %s\n", runParams.ImageName)
+		fmt.Fprintf(os.Stdout, "Successfully downloaded image: %s\n", runParams.ImageName)
 
 		// overwrite imagename in container.Config
 		runParams.ContainerConfig.Image = runParams.ImageName
 		// by default bind all the exposed ports via PublishAllPorts if the field PortBindings is empty
 		// note that in this case docker decide the host port an the port changes if the container is restarted
 		if len(runParams.ContainerHostConfig.PortBindings) == 0 {
-			runParams.ContainerHostConfig.PublishAllPorts= true
+			runParams.ContainerHostConfig.PublishAllPorts = true
 		}
 
 		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig, &runParams.NetworkNetworkingConfig, runParams.ContainerName)
@@ -238,18 +238,22 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 		runResponse.ContainerID = resp.ID
+		fmt.Fprintf(os.Stdout, "Successfully started container %s from  Image: %s\n", resp.ID, runParams.ImageName)
 
 	case "stop":
 		if err := s.dockerClient.ContainerStop(ctx, runParams.ContainerID, nil); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
+		fmt.Fprintf(os.Stdout, "Successfully stopped container %s\n", runParams.ContainerID)
 
 	case "start":
 		if err := s.dockerClient.ContainerStart(ctx, runParams.ContainerID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
+		fmt.Fprintf(os.Stdout, "Successfully started container %s\n", runParams.ContainerID)
+
 
 	case "remove":
 		forceAllOption := types.ContainerRemoveOptions{
@@ -262,12 +266,14 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			s.Error("/containers/action", fmt.Errorf("container remove result: %s", err))
 			return
 		}
+		fmt.Fprintf(os.Stdout, "Successfully removed container %s\n", runParams.ContainerID)
 		// implements docker image prune -a that removes all images not associated to a container
 		forceAllImagesArg, _ := filters.FromJSON(`{"dangling": false}`)
 		if _, err := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
 			s.Error("/containers/action", fmt.Errorf("images prune result: %s", err))
 			return
 		}
+		fmt.Fprintf(os.Stdout, "Successfully pruned container images\n")
 
 	default:
 		s.Error("/containers/action", fmt.Errorf("container command %s not found", runParams.Action))
