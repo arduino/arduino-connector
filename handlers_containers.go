@@ -220,6 +220,11 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 
 		// overwrite imagename in container.Config
 		runParams.ContainerConfig.Image = runParams.ImageName
+		// by default bind all the exposed ports via PublishAllPorts if the field PortBindings is empty
+		// note that in this case docker decide the host port an the port changes if the container is restarted
+		if len(runParams.ContainerHostConfig.PortBindings) == 0 {
+			runParams.ContainerHostConfig.PublishAllPorts= true
+		}
 
 		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig, &runParams.NetworkNetworkingConfig, runParams.ContainerName)
 
