@@ -70,7 +70,7 @@ fi
 
 echo download connector
 echo ---------
-download https://downloads.arduino.cc/tools/arduino-connector
+download https://downloads.arduino.cc/tools/feed/arduino-connector/arduino-connector
 chmod +x arduino-connector
 
 echo install connector
