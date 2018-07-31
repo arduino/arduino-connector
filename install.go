@@ -82,7 +82,7 @@ func register(config Config, token string) {
 
 	// Create a csr
 	fmt.Println("Generate csr")
-	csr, err := generateCsr(key)
+	csr, err := generateCsr(config.ID, key)
 	check(err, "generateCsr")
 
 	// Request a certificate
@@ -188,15 +188,15 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 
 var oidEmailAddress = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
 
-func generateCsr(priv interface{}) ([]byte, error) {
-	emailAddress := "test@example.com"
+func generateCsr(id string, priv interface{}) ([]byte, error) {
+	emailAddress := id + "@arduino.cc"
 	subj := pkix.Name{
-		CommonName:         "example.com",
-		Country:            []string{"AU"},
-		Province:           []string{"Some-State"},
-		Locality:           []string{"MyCity"},
-		Organization:       []string{"Company Ltd"},
-		OrganizationalUnit: []string{"IT"},
+		CommonName:         id,
+		Country:            []string{"IT"},
+		Province:           []string{"Piemonte"},
+		Locality:           []string{"Torino"},
+		Organization:       []string{"Arduino AG"},
+		OrganizationalUnit: []string{"Cloud"},
 	}
 	rawSubj := subj.ToRDNSequence()
 	rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
