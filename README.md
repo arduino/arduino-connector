@@ -646,3 +646,9 @@ chmod +x install.sh
 
 ```
 
+## run tests with vagrant
+1. install vagrant from upstream link https://www.vagrantup.com/downloads.html
+2. `cd test`
+3. `vagrant up`
+4. `vagrant provision`
+5. profit
