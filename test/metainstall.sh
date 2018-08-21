@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# this device was created for the test user in devices-dev environment
+export AUTHURL='https://hydra-dev.arduino.cc/'
+export APIURL='https://api-dev.arduino.cc'
+export id=devops-test:75b87fe3-169d-4603-a018-7fde9c667850
+
+wget -O install.sh "https://arduino-tmp.s3.amazonaws.com/arduino-connector.sh?AWSAccessKeyId=ASIA2FO44WIRDJTB2B2Z&Expires=1535125986&x-amz-security-token=FQoGZXIvYXdzEPr%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaDDjqECb1zeuc7Ss0TyLPAq9RP7JFxPolKHKAQC4GIvKPWjv3NTM0iFO44dIeYhbUEB1VN95%2FUeNdRyPtGtVWfIsq8C440pFmYgJgpaIcK%2BwmQM1TWQ3Gkhd8d3Jovff3OKetrRgNEcmIpFaUrspQrqdFPaFs3RwmnOMKhO1J0lwBR9Xofeib7ybzOrGE4Uc0Xywlhmv37eLfPF%2BMSOzVg25qeK0i1WzujVbKI96sAMUVUFmT%2FbzH6t7C2ISU0vTQfkR6WNZn3hSWh%2BnNtra6%2Bbj6ugvWpMRlgT%2BWFEXrPhsYIP8iqnBj%2FBs7JbMEO64407zRoWQy6iZcfjJpFgxjfo4sHiUk28O6Rzo28hb5zfQZ%2FPGl9lA7wMH6Gt6kT6xtVqln4V7Xv%2BzzfNwD%2BlKQjrHHWadY7zniGN3Krik8jPOI0uV5FMbvSKG%2BbrJbYcdxhaDN1k4nIgsCWlZUpox4KPue79sF&Signature=ZRuIQ2r%2F530UJKi43ffRd2HoKho%3D"
+chmod +x install.sh
+./install.sh "https://arduino-tmp.s3.amazonaws.com/arduino-connector?AWSAccessKeyId=ASIA2FO44WIRDJTB2B2Z&Expires=1535126126&x-amz-security-token=FQoGZXIvYXdzEPr%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaDDjqECb1zeuc7Ss0TyLPAq9RP7JFxPolKHKAQC4GIvKPWjv3NTM0iFO44dIeYhbUEB1VN95%2FUeNdRyPtGtVWfIsq8C440pFmYgJgpaIcK%2BwmQM1TWQ3Gkhd8d3Jovff3OKetrRgNEcmIpFaUrspQrqdFPaFs3RwmnOMKhO1J0lwBR9Xofeib7ybzOrGE4Uc0Xywlhmv37eLfPF%2BMSOzVg25qeK0i1WzujVbKI96sAMUVUFmT%2FbzH6t7C2ISU0vTQfkR6WNZn3hSWh%2BnNtra6%2Bbj6ugvWpMRlgT%2BWFEXrPhsYIP8iqnBj%2FBs7JbMEO64407zRoWQy6iZcfjJpFgxjfo4sHiUk28O6Rzo28hb5zfQZ%2FPGl9lA7wMH6Gt6kT6xtVqln4V7Xv%2BzzfNwD%2BlKQjrHHWadY7zniGN3Krik8jPOI0uV5FMbvSKG%2BbrJbYcdxhaDN1k4nIgsCWlZUpox4KPue79sF&Signature=f2F%2FQzYUOeJa33s1Et5YJzGmH6o%3D"
