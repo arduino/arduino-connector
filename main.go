@@ -121,7 +121,7 @@ func main() {
 	}
 
 	if *doProvision {
-		csr := generateKeyAndCsr()
+		csr := generateKeyAndCsr(config)
 		formattedCSR := formatCSR(csr)
 		formattedCSR = strings.Replace(formattedCSR, "\n", "\\n", -1)
 		fmt.Println(formattedCSR)
