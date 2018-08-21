@@ -22,11 +22,11 @@ Vagrant.configure("2") do |config|
   # Workaround
   config.vm.provision "shell", inline: "which python || sudo apt -y install python"
 
-  config.trigger.before :provision do |trigger|
-    trigger.name = "upload artifacts"
-    trigger.info = "uploading arduino connector artifacts!"
-    trigger.run = {path: "upload_dev_artifacts_on_s3.sh"}
-  end
+  # config.trigger.before :provision do |trigger|
+  #   trigger.name = "upload artifacts"
+  #   trigger.info = "uploading arduino connector artifacts!"
+  #   trigger.run = {path: "upload_dev_artifacts_on_s3.sh"}
+  # end
 
   # Disable the new default behavior introduced in Vagrant 1.7, to
   # ensure that all Vagrant machines will use the same SSH key pair.
@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
 
   config.vm.provision "ansible" do |ansible|
-    ansible.verbose = "v"
+    # ansible.verbose = "vv"
     ansible.playbook = "playbook.yml"
   end
 end

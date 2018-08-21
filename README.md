@@ -485,7 +485,7 @@ INFO: [
 #### Containers Images
 
 implements ```docker images``` and gives back the docker api response transparently
- 
+
 ```
 {}
 --> $aws/things/{{id}}/containers/images/post
@@ -515,7 +515,7 @@ INFO: [
 
 #### Containers Action
 
-```docker run <image>``` 
+```docker run <image>```
 
 ```
 {
@@ -539,7 +539,7 @@ INFO: [
 ```
 
 
-```docker start <container-id>``` 
+```docker start <container-id>```
 
 ```
 {
@@ -561,7 +561,7 @@ INFO: [
 <-- $aws/things/{{id}}/containers/action/post
 ```
 
-```docker stop <container-id>``` 
+```docker stop <container-id>```
 
 ```
 {
@@ -621,7 +621,7 @@ go get github.com/sanbornm/go-selfupdate
 
 ## Generate temporary installer script
 ```
-aws-google-auth -p arduino       
+aws-google-auth -p arduino
 go build -ldflags "-X main.version=2.0.21" github.com/arduino/arduino-connector
 aws --profile arduino s3 cp arduino-connector-dev.sh s3://arduino-tmp/arduino-connector.sh
 aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector.sh --expires-in $(expr 3600 \* 72)
@@ -647,8 +647,19 @@ chmod +x install.sh
 ```
 
 ## run tests with vagrant
+please note that:
+* the thing `devops-test:75b87fe3-169d-4603-a018-7fde9c667850`
+* the iot IAM policy `DevicePolicy`
+* the arduino user `devops-test`
+are resources already manually created in the Arduino / AWS IOT environment
+
 1. install vagrant from upstream link https://www.vagrantup.com/downloads.html
-2. `cd test`
-3. `vagrant up`
-4. `vagrant provision`
-5. profit
+2. launch `make test`
+3. profit
+
+`test` recipe:
+1. spins up a ubuntu machine
+2. installing your local s3 artifact after uploading it to s3
+3. creates certs and keys on aws iot in order to talk with the vagrant vm
+4. launch gotests (mqtt command -> vagrant ssh to check the result in the vm)
+5. teardowns the aws iot device cleaning up

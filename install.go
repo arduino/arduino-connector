@@ -69,19 +69,18 @@ func register(config Config, token string) {
 	}
 
 	// Generate a Private Key and CSR
-	csr := generateKeyAndCsr()
+	csr := generateKeyAndCsr(config)
 
 	// Request Certificate and service URL to iot service
 	config = requestCertAndBrokerURL(csr, config, token)
 
-	
 	// Connect to MQTT and communicate back
 	registerDeviceViaMQTT(config)
 
 	fmt.Println("Setup completed")
 }
 
-func generateKeyAndCsr() []byte {
+func generateKeyAndCsr(config Config) []byte {
 	// Create a private key
 	fmt.Println("Generate private key")
 	key, err := generateKey("P256")
@@ -101,7 +100,7 @@ func generateKeyAndCsr() []byte {
 	return csr
 }
 
-func requestCertAndBrokerURL(csr []byte, config Config, token string) Config{
+func requestCertAndBrokerURL(csr []byte, config Config, token string) Config {
 	// Request a certificate
 	fmt.Println("Request certificate")
 	pem, err := requestCert(config.APIURL, config.ID, token, csr)
@@ -124,7 +123,7 @@ func requestCertAndBrokerURL(csr []byte, config Config, token string) Config{
 	return config
 }
 
-func registerDeviceViaMQTT(config Config){
+func registerDeviceViaMQTT(config Config) {
 	// Connect to MQTT and communicate back
 	fmt.Println("Check successful MQTT connection")
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
@@ -239,7 +238,7 @@ func generateCsr(id string, priv interface{}) ([]byte, error) {
 	return csr, nil
 }
 
-func formatCSR(csr []byte) string{
+func formatCSR(csr []byte) string {
 	pemData := bytes.NewBuffer([]byte{})
 	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
 	return pemData.String()
@@ -249,7 +248,7 @@ func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	client := http.Client{
 		Timeout: 30 * time.Second,
 	}
-	formattedCSR:=formatCSR(csr)
+	formattedCSR := formatCSR(csr)
 	payload := `{"csr":"` + formattedCSR + `"}`
 	payload = strings.Replace(payload, "\n", "\\n", -1)
 

@@ -2,7 +2,25 @@
 - hosts: all
   sudo: true
   tasks:
-    - name: test writing file on remote
-      shell: "ls -lah"
-    - name: run local upload of dev scritps / binaries
-      shell: "ls -lah"
+    # setup
+    - name: Install python-pip
+      apt:
+        name: python-pip
+    - name: Installing pexpect python library using Ansible pip module
+      pip:
+        name: pexpect
+    # install testing
+    - name: emulate user install commands
+      copy:
+        src:  metainstall.sh
+        dest:  metainstall.sh
+        owner: vagrant
+        group: vagrant
+        mode: 0755
+    - name: install connector and emulate user registering device
+      expect:
+        command: ./metainstall.sh
+        timeout: 300
+        responses:
+          .*username: devops-test
+          .*password: devopstest
