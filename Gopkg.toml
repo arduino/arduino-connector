@@ -99,7 +99,12 @@
 
 [[constraint]]
   name = "github.com/docker/docker"
-  version = "v17.03.2-ce"
+  revision = "a0385f7ad7f8ebab4ca88e9b629a6b31423a10ee"
+
+# Taken from here https://github.com/moby/moby/blob/a0385f7ad7f8ebab4ca88e9b629a6b31423a10ee/vendor.conf#L67
+[[override]]
+  name = "github.com/docker/distribution"
+  revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
 
 [prune]
   go-tests = true
