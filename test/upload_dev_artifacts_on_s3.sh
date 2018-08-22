@@ -8,7 +8,7 @@ aws --profile arduino s3 cp ../arduino-connector s3://arduino-tmp/
 ARDUINO_CONNECTOR=$(aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector  --expires-in $(expr 3600 \* 72))
 # use the output as the argument of arduino-connector-dev.sh qhen launching getting started script:
 
-cat >metainstall.sh <<EOL
+cat >ui_gen_install.sh <<EOL
 #!/bin/bash
 
 # this device was created for the test user in devices-dev environment
@@ -21,4 +21,4 @@ chmod +x install.sh
 ./install.sh "${ARDUINO_CONNECTOR}"
 EOL
 
-chmod +x metainstall.sh
+chmod +x ui_gen_install.sh

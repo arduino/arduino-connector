@@ -19,58 +19,73 @@
 package main
 
 import (
-	"os/exec"
-	"strings"
-    "sync"
-    "testing"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"fmt"
 	"crypto/tls"
+	"fmt"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func TestConnectorProcessIsRunning(t *testing.T) {
-	vagrantCmd:="systemctl status ArduinoConnector | grep running"
-	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`,vagrantCmd)
-	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Error(err)
-	}
-	outputMessage:=string(out)
-	if !strings.Contains(outputMessage, "active (running)") {
-		t.Error(outputMessage)
+// testing helpers
+// assert fails the test if the condition is false.
+func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
+	if !condition {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+		tb.FailNow()
 	}
 }
 
-func TestConnectorDockerIsRunning(t *testing.T) {
-	vagrantCmd:="sudo docker version"
-	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`,vagrantCmd)
-	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
-	out, err := cmd.CombinedOutput()
+// ok fails the test if an err is not nil.
+func ok(tb testing.TB, err error) {
 	if err != nil {
-		t.Error(err)
-	}
-	outputMessage:=string(out)
-	if !strings.Contains(outputMessage, "Version:") {
-		t.Error(outputMessage)
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d: unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.FailNow()
 	}
 }
 
+// equals fails the test if exp is not equal to act.
+func equals(tb testing.TB, exp, act interface{}) {
+	if !reflect.DeepEqual(exp, act) {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033[39m\n\n", filepath.Base(file), line, exp, act)
+		tb.FailNow()
+	}
+}
 
-func TestContainerStatus(t *testing.T){
+// MqttTestClient is an ad-hoc mqtt client struct for test
+type MqttTestClient struct {
+	client mqtt.Client
+}
 
-	const TOPIC = "mytopic/test"
-	url:="a19g5nbe27wn47.iot.us-east-1.amazonaws.com"
+func NewMqttTestClient() *MqttTestClient {
+	cert := "test/cert.pem"
+	key := "test/privateKey.pem"
+	id := "testThingVagrant"
 	port := 8883
 	path := "/mqtt"
+	file, err := ioutil.ReadFile("test/cert_arn.sh")
+	if err != nil {
+        panic(err)
+	}
+	url:="endpoint.iot.com"
+    for _,line := range strings.Split(string(file),"\n"){
+		if strings.Contains(line,"IOT_ENDPOINT"){
+			url=strings.Split(line,"=")[1]
+		}
+	}
 	brokerURL := fmt.Sprintf("tcps://%s:%d%s", url, port, path)
-	cert:="test/cert.pem"
-	key:="test/privateKey.pem"
-	id:="testThingVagrant"
 	cer, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
-		t.Error(err, "read certificate")
+		panic(err)
 	}
 	opts := mqtt.NewClientOptions().AddBroker(brokerURL)
 	opts.SetClientID(id)
@@ -79,28 +94,76 @@ func TestContainerStatus(t *testing.T){
 		ServerName:   url,
 	})
 
-
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-			t.Fatal(token.Error())
+		panic(token.Error())
 	}
+
+	return &MqttTestClient{client}
+}
+
+func (tmc *MqttTestClient) Close() {
+	tmc.client.Disconnect(100)
+}
+
+func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request, goldResponse string) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	if token := client.Subscribe(TOPIC, 0, func(client mqtt.Client, msg mqtt.Message) {
-			if string(msg.Payload()) != "mymessagee" {
-				    wg.Done()
-					t.Fatalf("want mymessagee, got %s", msg.Payload())
-			}
+	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+		if string(msg.Payload()) != goldResponse {
 			wg.Done()
+			t.Fatalf("want %s, got %s", goldResponse, msg.Payload())
+		}
+		wg.Done()
 	}); token.Wait() && token.Error() != nil {
-			t.Fatal(token.Error())
+		t.Fatal(token.Error())
 	}
 
-	if token := client.Publish(TOPIC, 0, false, "mymessagee"); token.Wait() && token.Error() != nil {
-			t.Fatal(token.Error())
+	if token := tmc.client.Publish(topic, 0, false, request); token.Wait() && token.Error() != nil {
+		t.Fatal(token.Error())
 	}
 	wg.Wait()
 
+}
+
+// tests
+func TestConnectorProcessIsRunning(t *testing.T) {
+	vagrantCmd := "systemctl status ArduinoConnector | grep running"
+	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`, vagrantCmd)
+	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Error(err)
+	}
+	outputMessage := string(out)
+	if !strings.Contains(outputMessage, "active (running)") {
+		t.Error(outputMessage)
+	}
+}
+
+func TestConnectorDockerIsRunning(t *testing.T) {
+	vagrantCmd := "sudo docker version"
+	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`, vagrantCmd)
+	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Error(err)
+	}
+	outputMessage := string(out)
+	if !strings.Contains(outputMessage, "Version:") {
+		t.Error(outputMessage)
+	}
+}
+
+func TestContainerStatus(t *testing.T) {
+	topic := "mytopic/test"
+	goldMqttResponse := "mymessage"
+	MqttRequest := "mymessagee"
+
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	mqtt.MqttSendAndReceiveSync(t, topic, MqttRequest, goldMqttResponse)
 }
