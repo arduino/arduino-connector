@@ -254,7 +254,6 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		}
 		fmt.Fprintf(os.Stdout, "Successfully started container %s\n", runParams.ContainerID)
 
-
 	case "remove":
 		forceAllOption := types.ContainerRemoveOptions{
 			Force:         true,
