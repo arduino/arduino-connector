@@ -57,18 +57,16 @@ func (d *dbusBase) callError(value interface{}, method string, args ...interface
 	if value == nil {
 		call := d.obj.Call(method, 0, args...)
 		return call.Err
-	} else {
-		return d.obj.Call(method, 0, args...).Store(value)
 	}
+	return d.obj.Call(method, 0, args...).Store(value)
 }
 
 func (d *dbusBase) callErrorMultipleResults(value []interface{}, method string, args ...interface{}) error {
 	if value == nil {
 		call := d.obj.Call(method, 0, args...)
 		return call.Err
-	} else {
-		return d.obj.Call(method, 0, args...).Store(value...)
 	}
+	return d.obj.Call(method, 0, args...).Store(value...)
 }
 
 func (d *dbusBase) subscribe(iface, member string) {

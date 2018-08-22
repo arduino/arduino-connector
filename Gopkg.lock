@@ -40,11 +40,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c43750afdf8a8a4a64481eefc2abfe0469addf37bdd68aea56c72c852a9447c3"
+  digest = "1:b0c111dd410a833d1d093857bcf55f7b0bf1bf1d576f4d6269f9441b6c4220d8"
   name = "github.com/arduino/gonetworkmanager"
   packages = ["."]
   pruneopts = "UT"
-  revision = "793c32a95fe2174d8020091ef309e4ea492de66a"
+  revision = "c0a58e05a1548cf4dfa0957ae889e07f62692903"
 
 [[projects]]
   digest = "1:705c40022f5c03bf96ffeb6477858d88565064485a513abcd0f11a0911546cb6"

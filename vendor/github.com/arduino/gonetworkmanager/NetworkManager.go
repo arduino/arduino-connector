@@ -95,7 +95,7 @@ func (n *networkManager) AddWiredConnection(manual bool, config IpProxyConfig) (
 
 	settings["802-3-ethernet"]["duplex"] = "full"
 
-	id := uuid.Must(uuid.NewV4())
+	id := uuid.NewV4()
 	settings["connection"]["id"] = "MyWiredConnection"
 	settings["connection"]["uuid"] = id.String()
 	settings["connection"]["type"] = "802-3-ethernet"
@@ -122,7 +122,8 @@ func (n *networkManager) AddWiredConnection(manual bool, config IpProxyConfig) (
 	var ret1 dbus.ObjectPath
 	var ret2 dbus.ObjectPath
 	ret := []interface{}{&ret1, &ret2}
-	if err := n.callErrorMultipleResults(ret, NetworkManagerAddAndActivateConnection, settings, dev.GetObjectPath(), dbus.ObjectPath(conn)); err != nil {
+	if err := n.callErrorMultipleResults(
+		ret, NetworkManagerAddAndActivateConnection, settings, dev.GetObjectPath(), dbus.ObjectPath(conn)); err != nil {
 		return nil, err
 	}
 	return &ret1, nil
@@ -163,10 +164,10 @@ func (n *networkManager) AddWirelessConnection(name, password string) (*dbus.Obj
 		return nil, nil
 	}
 
-	wireless_dev, _ := NewWirelessDevice(dev.GetObjectPath())
+	wirelessDev, _ := NewWirelessDevice(dev.GetObjectPath())
 
 	// scan wifi, get path of network you want to conenct to
-	for _, conn = range wireless_dev.GetAccessPoints() {
+	for _, conn = range wirelessDev.GetAccessPoints() {
 		if conn.GetSSID() == name {
 			connFound = true
 			break
@@ -180,7 +181,8 @@ func (n *networkManager) AddWirelessConnection(name, password string) (*dbus.Obj
 	var ret1 dbus.ObjectPath
 	var ret2 dbus.ObjectPath
 	ret := []interface{}{&ret1, &ret2}
-	if err := n.callErrorMultipleResults(ret, NetworkManagerAddAndActivateConnection, settings, dev.GetObjectPath(), conn.GetObjectPath()); err != nil {
+	if err := n.callErrorMultipleResults(
+		ret, NetworkManagerAddAndActivateConnection, settings, dev.GetObjectPath(), conn.GetObjectPath()); err != nil {
 		return nil, err
 	}
 	return &ret1, nil

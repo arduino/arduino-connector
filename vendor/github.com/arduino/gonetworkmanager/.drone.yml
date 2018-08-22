@@ -4,27 +4,24 @@ workspace:
   path: src/github.com/arduino/${DRONE_REPO_NAME}
 
 pipeline:
-
   test:
     image: golang:1.10
-    environment:
-    - CGO_ENABLED=0
     commands:
     - go generate
     # Tools install dep, golangci-lint
     - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
     - go get -u github.com/golang/dep/cmd/dep
     # Check the dependency, the -skip-lock is useful because the version are not fixed but depends from the branch master of the libraries so they change very often
-    - dep check
+    - dep check -skip-lock
     # Check if the code is formatted
     -  $(exit $(go fmt ./... | wc -l))
+    # Lint
+    - golangci-lint run
     # Test
     - go test ./...  -v -cover -coverprofile cover.out
     # Print the test coverage
     - go tool cover -func=cover.out
     - go tool cover -html=cover.out -o ${DRONE_REPO_NAME}-${CI_COMMIT_SHA:0:7}.html
-    # Lint
-    - golangci-lint run
     when:
       event: [push, tag, deployment]
 
@@ -34,8 +31,6 @@ pipeline:
     - CGO_ENABLED=0
     commands:
     - go generate
-    - export VERSION=1.0-${CI_COMMIT_SHA:0:7}
     - go build
-    - GOOS=linux GOARCH=arm go build  -o=arduino-connector-arm
     when:
       event: [push, tag, deployment]
