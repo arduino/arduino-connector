@@ -12,15 +12,15 @@
     # install testing
     - name: emulate user install commands
       copy:
-        src:  metainstall.sh
-        dest:  metainstall.sh
+        src:  ui_gen_install.sh
+        dest:  ui_gen_install.sh
         owner: vagrant
         group: vagrant
         mode: 0755
     - name: install connector and emulate user registering device
       expect:
-        command: ./metainstall.sh
-        timeout: 300
+        command: ./ui_gen_install.sh
+        timeout: 600
         responses:
           .*username: devops-test
           .*password: devopstest
