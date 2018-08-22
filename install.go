@@ -162,7 +162,9 @@ func askCredentials(authURL string) (token string, err error) {
 		if err == nil || !strings.HasPrefix(err.Error(), "authenticate: CAPTCHA") {
 			break
 		}
-		fmt.Println("The authentication requested a captcha! We can't let you solve it in a terminal, so please visit https://auth.arduino.cc/login. When you managed to log in from the browser come back here and press [Enter]")
+		fmt.Println("The authentication requested a captcha! We can't let you solve it in a terminal, " +
+			"so please visit https://auth.arduino.cc/login. " +
+			"When you managed to log in from the browser come back here and press [Enter]")
 		var temp string
 		fmt.Scanln(&temp)
 	}
@@ -186,7 +188,7 @@ func generateKey(ecdsaCurve string) (interface{}, error) {
 	case "P521":
 		return ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
-		return nil, fmt.Errorf("Unrecognized elliptic curve: %q", ecdsaCurve)
+		return nil, fmt.Errorf("unrecognized elliptic curve: %q", ecdsaCurve)
 	}
 }
 
@@ -386,8 +388,8 @@ func registerDevice(client mqtt.Client, id string) error {
 
 // getMACs returns a list of MAC addresses found on the device
 func getMACs() ([]string, error) {
-	var macAddresses []string
 	interfaces, err := net.Interfaces()
+	var macAddresses = make([]string, len(interfaces))
 	if err != nil {
 		return nil, errors.Wrap(err, "get net interfaces")
 	}

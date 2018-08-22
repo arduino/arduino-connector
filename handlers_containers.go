@@ -98,10 +98,10 @@ func installDockerCEOnXenialAndNewer() {
 
 	apt.CheckForUpdates()
 	dockerPrerequisitesPackages := []*apt.Package{
-		&apt.Package{Name: "apt-transport-https"},
-		&apt.Package{Name: "ca-certificates"},
-		&apt.Package{Name: "curl"},
-		&apt.Package{Name: "software-properties-common"},
+		{Name: "apt-transport-https"},
+		{Name: "ca-certificates"},
+		{Name: "curl"},
+		{Name: "software-properties-common"},
 	}
 	for _, pac := range dockerPrerequisitesPackages {
 		if out, err := apt.Install(pac); err != nil {
@@ -145,14 +145,14 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 
 	containers, err := s.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
-		s.Error("/containers/ps", fmt.Errorf("Json marshal result: %s", err))
+		s.Error("/containers/ps", fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 
 	// Send result
 	data, err := json.Marshal(containers)
 	if err != nil {
-		s.Error("/containers/ps", fmt.Errorf("Json marsahl result: %s", err))
+		s.Error("/containers/ps", fmt.Errorf("json marsahl result: %s", err))
 		return
 	}
 	s.Info("/containers/ps", string(data)+"\n")
@@ -169,7 +169,7 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 	// Send result
 	data, err := json.Marshal(images)
 	if err != nil {
-		s.Error("/containers/images", fmt.Errorf("Json marsahl result: %s", err))
+		s.Error("/containers/images", fmt.Errorf("json marsahl result: %s", err))
 		return
 	}
 
@@ -282,7 +282,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	// Send result
 	data, err := json.Marshal(runResponse)
 	if err != nil {
-		s.Error("/containers/action", fmt.Errorf("Json marshal result: %s", err))
+		s.Error("/containers/action", fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 

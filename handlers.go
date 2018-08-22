@@ -239,7 +239,7 @@ func getSketchIDFromDB(name string) (string, error) {
 	// create folder if it doesn't exist
 	db, err := getSketchDB()
 	if err != nil {
-		return "", errors.New("Can't open DB")
+		return "", errors.New("can't open DB")
 	}
 	var c []SketchBinding
 	raw, err := ioutil.ReadFile(db)
@@ -250,7 +250,7 @@ func getSketchIDFromDB(name string) (string, error) {
 			return element.ID, nil
 		}
 	}
-	return "", errors.New("No matching sketch")
+	return "", errors.New("no matching sketch")
 }
 
 // SketchEvent listens to commands to start and stop sketches
@@ -411,14 +411,14 @@ func (d *dylibMap) Contains(match string) bool {
 func downloadDylibDependencies(library string) error {
 	resp, err := http.Get("https://downloads.arduino.cc/libArduino/dylib_dependencies.txt")
 	if err != nil {
-		return errors.New("Can't download dylibs registry")
+		return errors.New("can't download dylibs registry")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 { // OK
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return errors.New("Can't read dylibs registry")
+			return errors.New("can't read dylibs registry")
 		}
 		var v []dylibMap
 		err = json.Unmarshal(bodyBytes, &v)
@@ -466,7 +466,7 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 		if err := downloadDylibDependencies(library); err != nil {
 			status.Error("/upload", err)
 		}
-		status.Error("/upload", errors.New("Missing libraries, install them and relaunch the sketch"))
+		status.Error("/upload", errors.New("missing libraries, install them and relaunch the sketch"))
 	}
 }
 
@@ -512,7 +512,7 @@ func setupDisplay(usermode bool) error {
 				fmt.Println("If it's already ok, try setting up Xorg to accept incoming connection (-listen tcp)")
 				fmt.Println("On Ubuntu, add \n\n[SeatDefaults]\nxserver-allow-tcp=true\n\nto /etc/lightdm/lightdm.conf")
 				os.Setenv("DISPLAY", "NULL")
-				return errors.New("Unable to open display")
+				return errors.New("unable to open display")
 			}
 		} else {
 			return nil

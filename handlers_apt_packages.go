@@ -33,7 +33,7 @@ func (s *Status) AptGetEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/get", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/get", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -42,14 +42,14 @@ func (s *Status) AptGetEvent(client mqtt.Client, msg mqtt.Message) {
 	res, err = apt.Search(params.Package)
 
 	if err != nil {
-		s.Error("/apt/get", fmt.Errorf("Retrieving package data: %s", err))
+		s.Error("/apt/get", fmt.Errorf("retrieving package data: %s", err))
 		return
 	}
 
 	//If package is upgradable set the status to "upgradable"
 	allUpdates, err := apt.ListUpgradable()
 	if err != nil {
-		s.Error("/apt/get", fmt.Errorf("Retrieving package: %s", err))
+		s.Error("/apt/get", fmt.Errorf("retrieving package: %s", err))
 		return
 	}
 
@@ -73,7 +73,7 @@ func (s *Status) AptGetEvent(client mqtt.Client, msg mqtt.Message) {
 	// Send result
 	data, err := json.Marshal(info)
 	if err != nil {
-		s.Error("/apt/get", fmt.Errorf("Json marshal result: %s", err))
+		s.Error("/apt/get", fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 
@@ -94,7 +94,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/list", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/list", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -107,7 +107,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	if err != nil {
-		s.Error("/apt/list", fmt.Errorf("Retrieving packages: %s", err))
+		s.Error("/apt/list", fmt.Errorf("retrieving packages: %s", err))
 		return
 	}
 
@@ -127,7 +127,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	// On upgradable packages set the status to "upgradable"
 	allUpdates, err := apt.ListUpgradable()
 	if err != nil {
-		s.Error("/apt/list", fmt.Errorf("Retrieving packages: %s", err))
+		s.Error("/apt/list", fmt.Errorf("retrieving packages: %s", err))
 		return
 	}
 
@@ -157,7 +157,7 @@ func (s *Status) AptListEvent(client mqtt.Client, msg mqtt.Message) {
 	// Send result
 	data, err := json.Marshal(info)
 	if err != nil {
-		s.Error("/apt/list", fmt.Errorf("Json marshal result: %s", err))
+		s.Error("/apt/list", fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 
@@ -175,7 +175,7 @@ func (s *Status) AptInstallEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/install", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/install", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -185,7 +185,7 @@ func (s *Status) AptInstallEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	out, err := apt.Install(toInstall...)
 	if err != nil {
-		s.Error("/apt/install", fmt.Errorf("Running installer: %s\nOutput:\n%s", err, out))
+		s.Error("/apt/install", fmt.Errorf("running installer: %s\nOutput:\n%s", err, out))
 		return
 	}
 	s.InfoCommandOutput("/apt/install", out)
@@ -195,7 +195,7 @@ func (s *Status) AptInstallEvent(client mqtt.Client, msg mqtt.Message) {
 func (s *Status) AptUpdateEvent(client mqtt.Client, msg mqtt.Message) {
 	out, err := apt.CheckForUpdates()
 	if err != nil {
-		s.Error("/apt/update", fmt.Errorf("Checking for updates: %s\nOutput:\n%s", err, out))
+		s.Error("/apt/update", fmt.Errorf("checking for updates: %s\nOutput:\n%s", err, out))
 		return
 	}
 	s.InfoCommandOutput("/apt/update", out)
@@ -209,7 +209,7 @@ func (s *Status) AptUpgradeEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/upgrade", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/upgrade", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -221,14 +221,14 @@ func (s *Status) AptUpgradeEvent(client mqtt.Client, msg mqtt.Message) {
 	if len(toUpgrade) == 0 {
 		out, err := apt.UpgradeAll()
 		if err != nil {
-			s.Error("/apt/upgrade", fmt.Errorf("Upgrading all packages: %s\nOutput:\n%s", err, out))
+			s.Error("/apt/upgrade", fmt.Errorf("upgrading all packages: %s\nOutput:\n%s", err, out))
 			return
 		}
 		s.InfoCommandOutput("/apt/upgrade", out)
 	} else {
 		out, err := apt.Upgrade(toUpgrade...)
 		if err != nil {
-			s.Error("/apt/upgrade", fmt.Errorf("Upgrading %+v: %s\nOutput:\n%s", params, err, out))
+			s.Error("/apt/upgrade", fmt.Errorf("upgrading %+v: %s\nOutput:\n%s", params, err, out))
 			return
 		}
 		s.InfoCommandOutput("/apt/upgrade", out)
@@ -242,7 +242,7 @@ func (s *Status) AptRemoveEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/remove", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/remove", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -253,7 +253,7 @@ func (s *Status) AptRemoveEvent(client mqtt.Client, msg mqtt.Message) {
 
 	out, err := apt.Remove(toRemove...)
 	if err != nil {
-		s.Error("/apt/remove", fmt.Errorf("Removing %+v: %s\nOutput:\n%s", params, err, out))
+		s.Error("/apt/remove", fmt.Errorf("removing %+v: %s\nOutput:\n%s", params, err, out))
 		return
 	}
 	s.InfoCommandOutput("/apt/remove", out)

@@ -55,7 +55,8 @@ type Config struct {
 	// ClientID is the client id you are using
 	ClientID string
 
-	// RedirectURI is the redirectURI where the oauth process will redirect. It's only required since the oauth system checks for it, but we intercept the redirect before hitting it
+	// RedirectURI is the redirectURI where the oauth process will redirect.
+	// It's only required since the oauth system checks for it, but we intercept the redirect before hitting it
 	RedirectURI string
 
 	// Scopes is a space-separated list of scopes to require
@@ -158,7 +159,8 @@ func (c *Config) Refresh(token string) (*Token, error) {
 // cookies keeps track of the cookies for each request
 type cookies map[string][]*http.Cookie
 
-// requestAuth calls hydra and follows the redirects until it reaches the authentication page. It saves the cookie it finds so it can apply them to subsequent requests
+// requestAuth calls hydra and follows the redirects until it reaches the authentication page.
+// It saves the cookie it finds so it can apply them to subsequent requests
 func (c *Config) requestAuth(client *http.Client) (string, cookies, error) {
 	uri, err := url.Parse(c.CodeURL)
 	if err != nil {
@@ -300,7 +302,8 @@ func (c *Config) requestToken(client *http.Client, code string) (*Token, error) 
 }
 
 // randomString generates a string of random characters of fixed length.
-// stolen shamelessly from https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
+// stolen shamelessly from
+// https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index

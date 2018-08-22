@@ -161,7 +161,7 @@ func (s *Status) InfoCommandOutput(topic string, out []byte) {
 	info := response{Output: string(out)}
 	data, err := json.Marshal(info)
 	if err != nil {
-		s.Error(topic, fmt.Errorf("Json marshal result: %s", err))
+		s.Error(topic, fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 

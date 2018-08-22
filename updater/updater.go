@@ -31,11 +31,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/kr/binarydist"
-	update "gopkg.in/inconshreveable/go-update.v0"
+	"gopkg.in/inconshreveable/go-update.v0"
 
 	"github.com/kardianos/osext"
 )
@@ -70,8 +69,6 @@ const (
 	plat = runtime.GOOS + "-" + runtime.GOARCH
 )
 
-const devValidTime = 7 * 24 * time.Hour
-
 var errHashMismatch = errors.New("new file hash mismatch after patch")
 var up = update.New()
 
@@ -95,11 +92,13 @@ var up = update.New()
 type Updater struct {
 	CurrentVersion string // Currently running version.
 	APIURL         string // Base URL for API requests (json files).
-	CmdName        string // Command name is appended to the ApiURL like http://apiurl/CmdName/. This represents one binary.
-	BinURL         string // Base URL for full binary downloads.
-	DiffURL        string // Base URL for diff downloads.
-	Dir            string // Directory to store selfupdate state.
-	Info           struct {
+	// Command name is appended to the ApiURL like http://apiurl/CmdName/.
+	// This represents one binary.
+	CmdName string
+	BinURL  string // Base URL for full binary downloads.
+	DiffURL string // Base URL for diff downloads.
+	Dir     string // Directory to store selfupdate state.
+	Info    struct {
 		Version string
 		Sha256  []byte
 	}

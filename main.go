@@ -129,7 +129,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	// if configure flag is used the connector assumes that the config file is correctly written and the certificate.pem file is present
+	// if configure flag is used the connector assumes that the config file is correctly written
+	// and the certificate.pem file is present
 	if *doConfigure {
 		registerDeviceViaMQTT(config)
 		// configure should return cleanly if succeeded
@@ -221,7 +222,7 @@ func (p program) run() {
 	if status.mqttClient != nil {
 		newHeartbeat(func(payload string) error {
 			if !status.Info("/heartbeat", payload) {
-				return fmt.Errorf("Publish failed")
+				return fmt.Errorf("publish failed")
 			}
 			return nil
 		})
@@ -433,7 +434,9 @@ func setupMQTTConnection(cert, key, id, url string, status *Status) (mqtt.Client
 	// AutoReconnect option is true by default
 	// CleanSession option is true by default
 	// KeepAlive option is 30 seconds by default
-	opts := mqtt.NewClientOptions() // This line is different, we use the constructor function instead of creating the instance ourselves.
+
+	// This line is different, we use the constructor function instead of creating the instance ourselves.
+	opts := mqtt.NewClientOptions()
 	opts.SetClientID(id)
 	opts.SetMaxReconnectInterval(20 * time.Second)
 	opts.SetConnectTimeout(30 * time.Second)
@@ -477,7 +480,8 @@ func configureNatsdLogger(s *server.Server, opts *server.Options) {
 	s.SetLogger(log, opts.Debug, opts.Trace)
 }
 
-// checkAndInstallDependencies wraps all the dependencies installation steps that uses apt and needs to be executed sequentially
+// checkAndInstallDependencies wraps all the dependencies installation steps that uses apt
+// and needs to be executed sequentially
 func checkAndInstallDependencies() {
 	checkAndInstallDocker()
 	checkAndInstallNetworkManager()

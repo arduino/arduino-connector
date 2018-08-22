@@ -31,14 +31,14 @@ func (s *Status) AptRepositoryListEvent(client mqtt.Client, msg mqtt.Message) {
 	// Get packages from system
 	all, err := apt.ParseAPTConfigFolder("/etc/apt")
 	if err != nil {
-		s.Error("/apt/repos/list", fmt.Errorf("Retrieving repositories: %s", err))
+		s.Error("/apt/repos/list", fmt.Errorf("retrieving repositories: %s", err))
 		return
 	}
 
 	// Send result
 	data, err := json.Marshal(all)
 	if err != nil {
-		s.Error("/apt/repos/list", fmt.Errorf("Json marshal result: %s", err))
+		s.Error("/apt/repos/list", fmt.Errorf("json marshal result: %s", err))
 		return
 	}
 
@@ -56,13 +56,13 @@ func (s *Status) AptRepositoryAddEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/repos/add", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/add", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
 	err = apt.AddRepository(params.Repository, "/etc/apt")
 	if err != nil {
-		s.Error("/apt/repos/add", fmt.Errorf("Adding repository '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/add", fmt.Errorf("adding repository '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -76,13 +76,13 @@ func (s *Status) AptRepositoryRemoveEvent(client mqtt.Client, msg mqtt.Message) 
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/repos/remove", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/remove", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
 	err = apt.RemoveRepository(params.Repository, "/etc/apt")
 	if err != nil {
-		s.Error("/apt/repos/remove", fmt.Errorf("Removing repository '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/remove", fmt.Errorf("removing repository '%s': %s", msg.Payload(), err))
 		return
 	}
 
@@ -97,13 +97,13 @@ func (s *Status) AptRepositoryEditEvent(client mqtt.Client, msg mqtt.Message) {
 	}
 	err := json.Unmarshal(msg.Payload(), &params)
 	if err != nil {
-		s.Error("/apt/repos/edit", fmt.Errorf("Unmarshal '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/edit", fmt.Errorf("unmarshal '%s': %s", msg.Payload(), err))
 		return
 	}
 
 	err = apt.EditRepository(params.OldRepository, params.NewRepository, "/etc/apt")
 	if err != nil {
-		s.Error("/apt/repos/edit", fmt.Errorf("Changing repository '%s': %s", msg.Payload(), err))
+		s.Error("/apt/repos/edit", fmt.Errorf("changing repository '%s': %s", msg.Payload(), err))
 		return
 	}
 
