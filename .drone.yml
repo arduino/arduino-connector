@@ -1,6 +1,7 @@
 workspace:
   base: /go
-  path: src/github.com/bcmi-labs/${DRONE_REPO_NAME}
+  # This path (src/github.com/**arduino**/) is important the match with the organization
+  path: src/github.com/arduino/${DRONE_REPO_NAME}
 
 pipeline:
 
