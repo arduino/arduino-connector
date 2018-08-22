@@ -21,8 +21,12 @@ package main
 import (
 	"os/exec"
 	"strings"
-	"testing"
+    "sync"
+    "testing"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"fmt"
+	"crypto/tls"
+
 )
 
 func TestConnectorProcessIsRunning(t *testing.T) {
@@ -54,3 +58,49 @@ func TestConnectorDockerIsRunning(t *testing.T) {
 }
 
 
+func TestContainerStatus(t *testing.T){
+
+	const TOPIC = "mytopic/test"
+	url:="a19g5nbe27wn47.iot.us-east-1.amazonaws.com"
+	port := 8883
+	path := "/mqtt"
+	brokerURL := fmt.Sprintf("tcps://%s:%d%s", url, port, path)
+	cert:="test/cert.pem"
+	key:="test/privateKey.pem"
+	id:="testThingVagrant"
+	cer, err := tls.LoadX509KeyPair(cert, key)
+	if err != nil {
+		t.Error(err, "read certificate")
+	}
+	opts := mqtt.NewClientOptions().AddBroker(brokerURL)
+	opts.SetClientID(id)
+	opts.SetTLSConfig(&tls.Config{
+		Certificates: []tls.Certificate{cer},
+		ServerName:   url,
+	})
+
+
+	client := mqtt.NewClient(opts)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+			t.Fatal(token.Error())
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	if token := client.Subscribe(TOPIC, 0, func(client mqtt.Client, msg mqtt.Message) {
+			if string(msg.Payload()) != "mymessagee" {
+				    wg.Done()
+					t.Fatalf("want mymessagee, got %s", msg.Payload())
+			}
+			wg.Done()
+	}); token.Wait() && token.Error() != nil {
+			t.Fatal(token.Error())
+	}
+
+	if token := client.Publish(TOPIC, 0, false, "mymessagee"); token.Wait() && token.Error() != nil {
+			t.Fatal(token.Error())
+	}
+	wg.Wait()
+
+}
