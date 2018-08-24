@@ -19,6 +19,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -182,12 +183,14 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	type RunPayload struct {
 		ImageName               string                   `json:"image"`
 		ContainerName           string                   `json:"name"`
-		RunAsDaemon             bool                     `json:"background"`
+		RunAsDaemon             bool                     `json:"background,omitempty"`
 		ContainerID             string                   `json:"id"`
 		Action                  string                   `json:"action"`
-		ContainerConfig         container.Config         `json:"container_config",omitempty`
-		ContainerHostConfig     container.HostConfig     `json:"host_config",omitempty`
-		NetworkNetworkingConfig network.NetworkingConfig `json:"networking_config",omitempty`
+		User                    string                   `json:"user,omitempty"`
+		Password                string                   `json:"password,omitempty"`
+		ContainerConfig         container.Config         `json:"container_config,omitempty"`
+		ContainerHostConfig     container.HostConfig     `json:"host_config,omitempty"`
+		NetworkNetworkingConfig network.NetworkingConfig `json:"networking_config,omitempty"`
 	}
 
 	runParams := RunPayload{}
@@ -208,7 +211,24 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	ctx := context.Background()
 	switch runParams.Action {
 	case "run":
-		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, types.ImagePullOptions{})
+		// check if user and passw are present in order to add auth
+		// remember that the imageName should provide also the registry endpoint
+		// i.e 6435543362.dkr.ecr.eu-east-1.amazonaws.com/redis:latest
+		// the default is  docker.io/library/redis:latest
+		pullOpts:= types.ImagePullOptions{}
+		if runParams.User!="" && runParams.Password!="" {
+			authConfig := types.AuthConfig{
+				Username: runParams.User,
+				Password: runParams.Password,
+			}
+			encodedJSON, err := json.Marshal(authConfig)
+			if err != nil {
+				panic(err)
+			}
+			authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+			pullOpts=types.ImagePullOptions{RegistryAuth: authStr}
+		}
+		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, pullOpts)
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("image pull result: %s", err))
 			return
@@ -253,7 +273,6 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 		fmt.Fprintf(os.Stdout, "Successfully started container %s\n", runParams.ContainerID)
-
 
 	case "remove":
 		forceAllOption := types.ContainerRemoveOptions{

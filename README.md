@@ -646,20 +646,53 @@ chmod +x install.sh
 
 ```
 
-## run tests with vagrant
+## run integration tests with vagrant
 please note that:
 * the thing `devops-test:75b87fe3-169d-4603-a018-7fde9c667850`
 * the iot IAM policy `DevicePolicy`
 * the arduino user `devops-test`
-are resources already manually created in the Arduino / AWS IOT environment
+* the s3 bucket `arduino-tmp`
+are resources that must be manually created in the Arduino Cloud environment, in order to replicate the testing, you will need to create those resources on your environment and edit the test setup/teardown scripts:
+* `upload_dev_artifacts_on_s3.sh`
+* `create_iot_device.sh`
+* `teardown_dev_artifacts.sh`
+* `teardown_iot_device.sh`
 
+In order to launch the integration test in a CI fashion do the following:
 1. install vagrant from upstream link https://www.vagrantup.com/downloads.html
-2. launch `make test`
-3. profit
+2. export the arduino user credentials
 
-`test` recipe:
+```
+export CONNECTOR_USER=aaaaaaaa
+export CONNECTOR_PASS="bbbbbb"
+export CONNECTOR_PRIV_USER="cccccc"
+export CONNECTOR_PRIV_PASS="ddddd"
+export CONNECTOR_PRIV_IMAGE="<priv-registry-url>/<image>"
+```
+
+3. launch `make test`
+4. profit
+
+the `test` recipe:
 1. spins up a ubuntu machine
-2. installing your local s3 artifact after uploading it to s3
-3. creates certs and keys on aws iot in order to talk with the vagrant vm
-4. launch gotests (mqtt command -> vagrant ssh to check the result in the vm)
-5. teardowns the aws iot device cleaning up
+2. installing your local s3 artifact after uploading it to s3 (to emulate the user install)
+3. creates certs and keys on aws iot in order to talk with the connector instance in the vagrant vm
+4. launch gotests (that basically do mqtt command -> vagrant ssh to check the result in the vm)
+5. teardowns the aws iot things and perform all generated code and vm cleaning up
+this recipe has the purpose to be used in a CI/CD context
+
+The `test` recipe is split in 3 parts (`setup-test integ-test teardown-test`) that can be used separately to do TDD in this way:
+1. launch `make setup-test`
+2. write test and code
+3. export the arduino user credentials
+
+```
+export CONNECTOR_USER=aaaaaaaa
+export CONNECTOR_PASS="bbbbbb"
+export CONNECTOR_PRIV_USER="cccccc"
+export CONNECTOR_PRIV_PASS="ddddd"
+export CONNECTOR_PRIV_IMAGE="<priv-registry-url>/<image>"
+```
+
+4. launch `make integ-test` all the times you need
+5. launch `make teardown-test` when finished

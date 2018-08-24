@@ -19,14 +19,14 @@ Vagrant.configure("2") do |config|
 
   config.vm.box = "ubuntu/xenial64"
 
-  # Workaround
-  config.vm.provision "shell", inline: "which python || sudo apt -y install python"
+  config.vm.provider "virtualbox" do |v|
+    v.name = "connector_integ_vm"
+    # try to improve vm net speed
+    v.customize ["modifyvm", :id, "--nictype1", "virtio"]
+  end
 
-  # config.trigger.before :provision do |trigger|
-  #   trigger.name = "upload artifacts"
-  #   trigger.info = "uploading arduino connector artifacts!"
-  #   trigger.run = {path: "upload_dev_artifacts_on_s3.sh"}
-  # end
+  # Workaround for installing python 
+  config.vm.provision "shell", inline: "which python || sudo apt -y install python"
 
   # Disable the new default behavior introduced in Vagrant 1.7, to
   # ensure that all Vagrant machines will use the same SSH key pair.
