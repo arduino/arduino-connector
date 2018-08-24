@@ -9,7 +9,7 @@ RAW_IOT_ENDPOINT=$(aws iot --profile arduino describe-endpoint --query 'endpoint
 temp="${RAW_IOT_ENDPOINT%\"}"
 IOT_ENDPOINT="${temp#\"}"
 
-cat >cert_arn.sh <<EOL
+cat > cert_arn.sh <<EOL
 #!/bin/bash
 export CERT_ARN=${CERT_ARN}
 export IOT_ENDPOINT=${IOT_ENDPOINT}
