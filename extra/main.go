@@ -34,7 +34,7 @@ type DylibMap struct {
 }
 
 func main() {
-	var v = make([]DylibMap, len(os.Args[1:]))
+	var v = make([]DylibMap, 0, len(os.Args[1:]))
 
 	for _, arg := range os.Args[1:] {
 		var lib DylibMap

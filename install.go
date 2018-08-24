@@ -389,7 +389,7 @@ func registerDevice(client mqtt.Client, id string) error {
 // getMACs returns a list of MAC addresses found on the device
 func getMACs() ([]string, error) {
 	interfaces, err := net.Interfaces()
-	var macAddresses = make([]string, len(interfaces))
+	var macAddresses = make([]string, 0, len(interfaces))
 	if err != nil {
 		return nil, errors.Wrap(err, "get net interfaces")
 	}
