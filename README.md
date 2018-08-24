@@ -485,7 +485,6 @@ INFO: [
 #### Containers Images
 
 implements ```docker images``` and gives back the docker api response transparently
-
 ```
 {}
 --> $aws/things/{{id}}/containers/images/post
