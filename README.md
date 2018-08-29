@@ -1,10 +1,10 @@
 # Arduino Connector
 
-The Arduino Connector allows your device to connect to the Arduino Cloud, and push and receive message through the [MQTT protocol](http://mqtt.org/). You can see and control all your cloud-enabled devices via a web app called [My Devices](https://create.arduino.cc/devices).
+The Arduino Connector allows your device to connect to the Arduino Cloud, and push and receive messages through the [MQTT protocol](http://mqtt.org/). You can see and control all your cloud-enabled devices via a web app called [My Devices](https://create.arduino.cc/devices).
 
 ## Install
 
-Follow the Getting Started guides to install the connector and allow your devices to communincate with the cloud via Arduino Create. You can install the connector onto a [Up2 board](https://create.arduino.cc/getting-started/up2) or a generic [Intel-based platform running Linux](https://create.arduino.cc/getting-started/intel-platforms).
+Follow the "Getting Started" guides to install the connector and allow your devices to communicate with the cloud via Arduino Create. You can install the connector onto a [Up2 board](https://create.arduino.cc/getting-started/up2) or a generic [Intel-based platform running Linux](https://create.arduino.cc/getting-started/intel-platforms).
 
 ### How does it work?
 
@@ -18,18 +18,18 @@ The Arduino Connector gets installed on a device and does the following things:
 
 The Arduino Connector is tied to a specific device registered within the Arduino Cloud. The [getting started guide](https://create.arduino.cc/getting-started) does everything for you.
 
-Make sure you have an Arduino Account and you are able to log at: https://auth.arduino.cc/login
+Make sure you have an Arduino Account and are able to [log in](https://auth.arduino.cc/login).
 
-Please write us at auth@arduino.cc if you encounter any issue loggin in and you need support.
+Please write us at auth@arduino.cc if you encounter any issue logging in and you need support.
 
 ### API
 
 To control the arduino-connector you must have:
 
-- the ID of the device in which the arduino-connector has been installed (eg `username:0002251d-4e19-4cc8-a4a9-1de215bfb502`)
-- a working mqtt connection
+- the ID of the device in which the arduino-connector has been installed (eg. `username:0002251d-4e19-4cc8-a4a9-1de215bfb502`)
+- a working MQTT connection
 
-Send messages to the topic ending with /post, Receive the answer from the topic ending with /. Errors are sent to the same endpoint.
+Send messages to the topic ending with /post, receive the answer from the topic ending with /. Errors are sent to the same endpoint.
 
 You can distinguish between errors and non-errors because of the INFO: or ERROR: prefix of the message
 
