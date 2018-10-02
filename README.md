@@ -619,15 +619,22 @@ go get github.com/sanbornm/go-selfupdate
 # scp -r public/* user@server:/var/www/files/arduino-connector
 ```
 
+## Integration tests discaimer
+
+You will see in the following paragraphs that the testing environment and procedures are strictly coupled with the
+Arduino web services. We're sorry of this behaviour because is not so "community friendly" but we are aiming to improve 
+both the quality of the connector code and its testing process. Obviously no code quality improvement is possible without
+the safety net that tests provide :). So please be patient while we improve the whole process.
+
 ## Generate temporary installer script
 ```
 aws-google-auth -p arduino
-go build -ldflags "-X main.version=2.0.21" github.com/arduino/arduino-connector
+go build -ldflags "-X main.version=2.0.22" github.com/arduino/arduino-connector
 aws --profile arduino s3 cp arduino-connector-dev.sh s3://arduino-tmp/arduino-connector.sh
-aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector.sh --expires-in $(expr 3600 \* 72)
+aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector.sh --expires-in $(expr 3600 \* 24)
 #use this link i the wget of the getting started script
 aws --profile arduino s3 cp arduino-connector s3://arduino-tmp/
-aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector  --expires-in $(expr 3600 \* 72)
+aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector  --expires-in $(expr 3600 \* 24)
 # use the output as the argument of arduino-connector-dev.sh qhen launching getting started script:
 
 export id=containtel:a4ae70c4-b7ff-40c8-83c1-1e10ee166241
