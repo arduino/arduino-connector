@@ -343,6 +343,7 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 	equals(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
+
 func TestContainersRunWithAuthRemove(t *testing.T) {
 	mqtt := NewMqttTestClient()
 	defer mqtt.Close()
@@ -425,4 +426,25 @@ func TestContainersRunWithAuthRemove(t *testing.T) {
 	t.Log(outputMessage)
 	equals(t, 2, len(strings.Split(outputMessage, "\n")))
 
+}
+
+func TestContainersRunWithAuthTestFail(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	topic := "containers/action"
+	// container run both test mqtt response andon VM
+	RunMqttRequest := fmt.Sprintf(`{
+		"action": "run",
+		"background": true,
+		"image": "%s",
+		"user": "%s",
+		"password":"%s",
+		"name": "my-private-img"
+	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"), os.Getenv("CONNECTOR_PRIV_USER"), "MYWRONGPASSWORD")
+
+	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
+	t.Log(response)
+	equals(t, true, strings.Contains(response, "ERROR: "))
+	equals(t, true, strings.Contains(response, "auth test failed"))
 }
