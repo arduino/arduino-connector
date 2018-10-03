@@ -215,8 +215,8 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		// remember that the imageName should provide also the registry endpoint
 		// i.e 6435543362.dkr.ecr.eu-east-1.amazonaws.com/redis:latest
 		// the default is  docker.io/library/redis:latest
-		pullOpts:= types.ImagePullOptions{}
-		if runParams.User!="" && runParams.Password!="" {
+		pullOpts := types.ImagePullOptions{}
+		if runParams.User != "" && runParams.Password != "" {
 			authConfig := types.AuthConfig{
 				Username: runParams.User,
 				Password: runParams.Password,
@@ -226,7 +226,15 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 				panic(err)
 			}
 			authStr := base64.URLEncoding.EncodeToString(encodedJSON)
-			pullOpts=types.ImagePullOptions{RegistryAuth: authStr}
+			pullOpts = types.ImagePullOptions{RegistryAuth: authStr}
+			//test login in order to send back  specific authentication error in case of wrong user/pass
+			imageServerEndpoint := strings.Split(runParams.ImageName,"/")[0]
+			authConfig.ServerAddress = imageServerEndpoint
+			_, err = s.dockerClient.RegistryLogin(ctx, authConfig)
+			if err != nil {
+				s.Error("/containers/action", fmt.Errorf("auth test failed: %s", err))
+				return
+			}
 		}
 		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, pullOpts)
 		if err != nil {
