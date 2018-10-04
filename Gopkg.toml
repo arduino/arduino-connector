@@ -106,6 +106,10 @@
   name = "github.com/docker/distribution"
   revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
 
+[[override]]
+  name = "github.com/prometheus/client_golang"
+  version = "v0.9.0-pre1"
+
 [prune]
   go-tests = true
   unused-packages = true
