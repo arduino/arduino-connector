@@ -536,7 +536,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	topic := "containers/action"
 	// container run both test mqtt response andon VM
 
-	responseAlfa := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-alfa"  }`)
+	responseAlfa := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-alfa"}`)
 	responseAlfa = strings.Replace(responseAlfa, "INFO: ", "", 1)
 	t.Log(responseAlfa)
 	alfaParams := RunPayload{}
@@ -545,7 +545,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 		t.Fatalf("Unmarshal error: %s", responseAlfa)
 
 	}
-	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-beta"  }`)
+	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-beta"}`)
 	responseBeta = strings.Replace(responseBeta, "INFO: ", "", 1)
 	t.Log(responseBeta)
 	betaParams := RunPayload{}
@@ -592,6 +592,82 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	isContainerNotRemoved := true
 	outputMessage = ""
 	waitTimeoutInSecs = 20
+	for isContainerNotRemoved {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RemoveMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker images")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
+	}
+	t.Log(outputMessage)
+	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+
+}
+
+func TestContainersRunWithRenameAndRemove(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	topic := "containers/action"
+	// container run both test mqtt response andon VM
+	RunMqttRequest := fmt.Sprintf(`{
+		"action": "run",
+		"image": "redis",
+		"name": "banana"
+	  }`)
+
+	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
+	t.Log(response)
+	equals(t, false, strings.Contains(response, "ERROR: "))
+	equals(t, true, strings.Contains(response, "banana"))
+	equals(t, true, strings.Contains(response, "run"))
+	isContainerNotReady := true
+	outputMessage := ""
+	var err error
+	waitTimeoutInSecs := 10
+	for isContainerNotReady {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RunMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker ps -a | grep 'banana'")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotReady = !strings.Contains(outputMessage, "banana")
+	}
+	t.Log(outputMessage)
+	equals(t, true, strings.Contains(outputMessage, "banana"))
+	containerID := strings.Split(outputMessage, " ")[0]
+
+	// rename the container and test
+	response = mqtt.MqttSendAndReceiveSync(t, "containers/rename",
+		fmt.Sprintf(`{"id": "%s","name":"mango"}`, containerID))
+	t.Log(response)
+	outputMessage, err = ExecAsVagrantSshCmd("sudo docker ps -a | grep 'mango'")
+	t.Log(outputMessage)
+	if err != nil {
+		t.Error(err)
+	}
+	equals(t, true, strings.Contains(outputMessage, "mango"))
+
+	//container remove test
+	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
+	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
+	t.Log(response)
+	equals(t, false, strings.Contains(response, "ERROR: "))
+	equals(t, true, strings.Contains(response, containerID))
+	equals(t, true, strings.Contains(response, "remove"))
+
+	isContainerNotRemoved := true
+	outputMessage = ""
+	waitTimeoutInSecs = 10
 	for isContainerNotRemoved {
 		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
 			t.Fatalf("timeout waiting for: %s", RemoveMqttRequest)

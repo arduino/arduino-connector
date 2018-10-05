@@ -114,6 +114,30 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 	s.Info("/containers/images", string(data)+"\n")
 }
 
+// ContainersListImagesEvent implements docker images
+func (s *Status) ContainersRenameEvent(client mqtt.Client, msg mqtt.Message) {
+	cnPayload := ChangeNamePayload{}
+	err := json.Unmarshal(msg.Payload(), &cnPayload)
+	if err != nil {
+		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
+	}
+	err = s.dockerClient.ContainerRename(context.Background(), cnPayload.ContainerID, cnPayload.ContainerName)
+	if err != nil {
+		s.Error("/containers/rename", fmt.Errorf("rename result: %s", err))
+		return
+	}
+
+	// Send result
+	data, err := json.Marshal(cnPayload)
+	if err != nil {
+		s.Error("/containers/rename", fmt.Errorf("Json marsahl result: %s", err))
+		return
+	}
+
+	s.Info("/containers/rename", string(data)+"\n")
+}
+
 // ContainersActionEvent implements docker container action like run, start and stop, remove
 func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 
