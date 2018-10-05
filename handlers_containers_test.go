@@ -217,7 +217,6 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 	// container run both test mqtt response andon VM
 	RunMqttRequest := `{
 		"action": "run",
-		"background": true,
 		"image": "redis",
 		"name": "my-redis-container"
 	  }`
@@ -352,7 +351,6 @@ func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
 	// container run both test mqtt response andon VM
 	RunMqttRequest := fmt.Sprintf(`{
 		"action": "run",
-		"background": true,
 		"save_registry_credentials":true,
 		"image": "%s",
 		"user": "%s",
@@ -437,7 +435,6 @@ func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 	// container run both test mqtt response andon VM
 	RunMqttRequest := fmt.Sprintf(`{
 		"action": "run",
-		"background": true,
 		"image": "%s",
 		"name": "my-private-img"
 	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"))
@@ -519,7 +516,6 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 	// container run both test mqtt response andon VM
 	RunMqttRequest := fmt.Sprintf(`{
 		"action": "run",
-		"background": true,
 		"image": "%s",
 		"user": "%s",
 		"password":"%s",

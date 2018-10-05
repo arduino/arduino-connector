@@ -48,7 +48,6 @@ import (
 type RunPayload struct {
 	ImageName               string                   `json:"image"`
 	ContainerName           string                   `json:"name"`
-	RunAsDaemon             bool                     `json:"background,omitempty"`
 	ContainerID             string                   `json:"id"`
 	Action                  string                   `json:"action"`
 	User                    string                   `json:"user,omitempty"`
@@ -108,7 +107,6 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 	runResponse := RunPayload{
 		ImageName:     runParams.ImageName,
 		ContainerName: runParams.ContainerName,
-		RunAsDaemon:   runParams.RunAsDaemon,
 		ContainerID:   runParams.ContainerID,
 		Action:        runParams.Action,
 	}
@@ -146,7 +144,8 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			runParams.ContainerHostConfig.PublishAllPorts = true
 		}
 
-		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig, &runParams.NetworkNetworkingConfig, runParams.ContainerName)
+		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig,
+			&runParams.NetworkNetworkingConfig, runParams.ContainerName)
 
 		if err != nil {
 			s.Error("/containers/action", fmt.Errorf("container create result: %s", err))
