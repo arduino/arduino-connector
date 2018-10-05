@@ -58,10 +58,30 @@ type RunPayload struct {
 	NetworkNetworkingConfig network.NetworkingConfig `json:"networking_config,omitempty"`
 }
 
+type PsPayload struct {
+	ContainerID string `json:"id,omitempty"`
+}
+
+type ChangeNamePayload struct {
+	ContainerID   string `json:"id"`
+	ContainerName string `json:"name"`
+}
+
 // ContainersPsEvent implements docker ps -a
 func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
+	psPayload := PsPayload{}
+	err := json.Unmarshal(msg.Payload(), &psPayload)
+	if err != nil {
+		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
+	}
 
-	containers, err := s.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	containerListOptions := types.ContainerListOptions{All: true}
+	if psPayload.ContainerID != "" {
+		containerListOptions.Filters = filters.NewArgs(filters.Arg("id", psPayload.ContainerID))
+	}
+
+	containers, err := s.dockerClient.ContainerList(context.Background(), containerListOptions)
 	if err != nil {
 		s.Error("/containers/ps", fmt.Errorf("Json marshal result: %s", err))
 		return

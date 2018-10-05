@@ -20,6 +20,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -32,7 +33,7 @@ import (
 	"testing"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 )
 
 // testing helpers
@@ -526,4 +527,84 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 	t.Log(response)
 	equals(t, true, strings.Contains(response, "ERROR: "))
 	equals(t, true, strings.Contains(response, "auth test failed"))
+}
+
+func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	topic := "containers/action"
+	// container run both test mqtt response andon VM
+
+	responseAlfa := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-alfa"  }`)
+	responseAlfa = strings.Replace(responseAlfa, "INFO: ", "", 1)
+	t.Log(responseAlfa)
+	alfaParams := RunPayload{}
+	merr := json.Unmarshal([]byte(responseAlfa), &alfaParams)
+	if merr != nil {
+		t.Fatalf("Unmarshal error: %s", responseAlfa)
+
+	}
+	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-beta"  }`)
+	responseBeta = strings.Replace(responseBeta, "INFO: ", "", 1)
+	t.Log(responseBeta)
+	betaParams := RunPayload{}
+	merr = json.Unmarshal([]byte(responseBeta), &betaParams)
+	if merr != nil {
+		t.Fatalf("Unmarshal error: %s", responseBeta)
+
+	}
+	areContainersNotReady := true
+	outputMessage := ""
+	var err error
+	waitTimeoutInSecs := 10
+	for areContainersNotReady {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for multiple docker containers")
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker ps -a")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		areContainersNotReady = !(strings.Contains(outputMessage, "redis-alfa") &&
+			strings.Contains(outputMessage, "redis-beta"))
+	}
+	t.Log(outputMessage)
+	//container ps with filter test
+	psAlfaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", fmt.Sprintf(`{"id": "%s" }`, alfaParams.ContainerID))
+	t.Log(psAlfaResponse)
+	psBetaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", fmt.Sprintf(`{"id": "%s" }`, betaParams.ContainerID))
+	t.Log(psAlfaResponse)
+
+	equals(t, true, strings.Contains(psAlfaResponse, alfaParams.ContainerID))
+	equals(t, false, strings.Contains(psAlfaResponse, betaParams.ContainerID))
+	equals(t, true, strings.Contains(psBetaResponse, betaParams.ContainerID))
+	equals(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
+
+	// cleanup
+	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, alfaParams.ContainerID)
+	mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
+	RemoveMqttRequest = fmt.Sprintf(`{"action": "remove","id":"%s"}`, betaParams.ContainerID)
+	mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
+
+	isContainerNotRemoved := true
+	outputMessage = ""
+	waitTimeoutInSecs = 20
+	for isContainerNotRemoved {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RemoveMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker images")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
+	}
+	t.Log(outputMessage)
+	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+
 }
