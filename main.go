@@ -29,13 +29,13 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
-	logger "github.com/nats-io/gnatsd/logger"
-	server "github.com/nats-io/gnatsd/server"
-	nats "github.com/nats-io/go-nats"
+	"github.com/nats-io/gnatsd/logger"
+	"github.com/nats-io/gnatsd/server"
+	"github.com/nats-io/go-nats"
 
 	"github.com/pkg/errors"
 )
@@ -201,7 +201,8 @@ func (p program) run() {
 	}
 
 	// Setup docker daemon connection
-	cli, err := docker.NewEnvClient()
+	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
+
 	if err != nil {
 		log.Println("Connection to Docker Daemon failed, containers features unavailable")
 	}
