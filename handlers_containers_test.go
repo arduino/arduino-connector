@@ -344,7 +344,92 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 
 }
 
-func TestContainersRunWithAuthRemove(t *testing.T) {
+func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	topic := "containers/action"
+	// container run both test mqtt response andon VM
+	RunMqttRequest := fmt.Sprintf(`{
+		"action": "run",
+		"background": true,
+		"save_registry_credentials":true,
+		"image": "%s",
+		"user": "%s",
+		"password":"%s",
+		"name": "my-private-img"
+	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"), os.Getenv("CONNECTOR_PRIV_USER"), os.Getenv("CONNECTOR_PRIV_PASS"))
+
+	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
+	t.Log(response)
+	equals(t, false, strings.Contains(response, "ERROR: "))
+	equals(t, true, strings.Contains(response, "my-private-img"))
+	equals(t, true, strings.Contains(response, "run"))
+	isContainerNotReady := true
+	outputMessage := ""
+	var err error
+	waitTimeoutInSecs := 10
+	for isContainerNotReady {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RunMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker ps -a | grep 'my-private-img'")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotReady = !strings.Contains(outputMessage, "my-private-img")
+	}
+	t.Log(outputMessage)
+	equals(t, true, strings.Contains(outputMessage, "my-private-img"))
+	containerID := strings.Split(outputMessage, " ")[0]
+	//container remove test
+	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
+	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
+	t.Log(response)
+	equals(t, false, strings.Contains(response, "ERROR: "))
+	equals(t, true, strings.Contains(response, containerID))
+	equals(t, true, strings.Contains(response, "remove"))
+	isContainerNotStoppedBeforeRemoved := true
+	outputMessage = ""
+	waitTimeoutInSecs = 10
+	for isContainerNotStoppedBeforeRemoved {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RemoveMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker ps -a")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotStoppedBeforeRemoved = len(strings.Split(outputMessage, "\n")) > 2
+	}
+	t.Log(outputMessage)
+	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+
+	isContainerNotRemoved := true
+	outputMessage = ""
+	waitTimeoutInSecs = 10
+	for isContainerNotRemoved {
+		if waitTimeoutInSecs--; waitTimeoutInSecs == 0 {
+			t.Fatalf("timeout waiting for: %s", RemoveMqttRequest)
+		}
+		time.Sleep(time.Second)
+		outputMessage, err = ExecAsVagrantSshCmd("sudo docker images")
+		t.Log(outputMessage)
+		if err != nil {
+			t.Error(err)
+		}
+		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
+	}
+	t.Log(outputMessage)
+	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+
+}
+
+func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 	mqtt := NewMqttTestClient()
 	defer mqtt.Close()
 
@@ -354,10 +439,8 @@ func TestContainersRunWithAuthRemove(t *testing.T) {
 		"action": "run",
 		"background": true,
 		"image": "%s",
-		"user": "%s",
-		"password":"%s",
 		"name": "my-private-img"
-	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"), os.Getenv("CONNECTOR_PRIV_USER"), os.Getenv("CONNECTOR_PRIV_PASS"))
+	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"))
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
