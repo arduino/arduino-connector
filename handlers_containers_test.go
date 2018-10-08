@@ -25,46 +25,17 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"reflect"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/eclipse/paho.mqtt.golang"
 )
 
-// testing helpers
-// assert fails the test if the condition is false.
-func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
-	if !condition {
-		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
-		tb.FailNow()
-	}
-}
-
-// ok fails the test if an err is not nil.
-func ok(tb testing.TB, err error) {
-	if err != nil {
-		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d: unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
-		tb.FailNow()
-	}
-}
-
-// equals fails the test if exp is not equal to act.
-func equals(tb testing.TB, exp, act interface{}) {
-	if !reflect.DeepEqual(exp, act) {
-		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033[39m\n\n", filepath.Base(file), line, exp, act)
-		tb.FailNow()
-	}
-}
-
-//
+// ExecAsVagrantSshCmd "wraps vagrant ssh -c
 func ExecAsVagrantSshCmd(command string) (string, error) {
 	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`, command)
 	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
@@ -162,7 +133,7 @@ func TestConnectorProcessIsRunning(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	equals(t, true, strings.Contains(outputMessage, "active (running)"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "active (running)"))
 }
 
 func TestConnectorDockerIsRunning(t *testing.T) {
@@ -170,7 +141,7 @@ func TestConnectorDockerIsRunning(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	equals(t, true, strings.Contains(outputMessage, "Version:"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "Version:"))
 }
 
 func TestContainersPs(t *testing.T) {
@@ -181,14 +152,14 @@ func TestContainersPs(t *testing.T) {
 	defer mqtt.Close()
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, MqttRequest)
-	equals(t, goldMqttResponse, response)
+	assert.Equal(t, goldMqttResponse, response)
 
 	outputMessage, err := ExecAsVagrantSshCmd("sudo docker ps -a")
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
 
@@ -200,14 +171,14 @@ func TestContainersImages(t *testing.T) {
 	defer mqtt.Close()
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, MqttRequest)
-	equals(t, goldMqttResponse, response)
+	assert.Equal(t, goldMqttResponse, response)
 
 	outputMessage, err := ExecAsVagrantSshCmd("sudo docker images")
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 }
 
 func TestContainersRunStopStartRemove(t *testing.T) {
@@ -224,9 +195,9 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, "my-redis-container"))
-	equals(t, true, strings.Contains(response, "run"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, "my-redis-container"))
+	assert.Equal(t, true, strings.Contains(response, "run"))
 	isContainerNotReady := true
 	outputMessage := ""
 	var err error
@@ -244,16 +215,16 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 		isContainerNotReady = !strings.Contains(outputMessage, "my-redis-container")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "my-redis-container"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "my-redis-container"))
 
 	//container stop test
 	containerID := strings.Split(outputMessage, " ")[0]
 	StopMqttRequest := fmt.Sprintf(`{"action": "stop","id":"%s"}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, StopMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "stop"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "stop"))
 	isContainerNotStopped := true
 	outputMessage = ""
 	waitTimeoutInSecs = 10
@@ -270,16 +241,16 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 		isContainerNotStopped = !strings.Contains(outputMessage, "Exited ")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "my-redis-container"))
-	equals(t, true, strings.Contains(outputMessage, "Exited "))
+	assert.Equal(t, true, strings.Contains(outputMessage, "my-redis-container"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "Exited "))
 
 	//container start test
 	StartMqttRequest := fmt.Sprintf(`{"action": "start","id":"%s","background": true}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, StartMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "start"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "start"))
 	isContainerNotStarted := true
 	outputMessage = ""
 	waitTimeoutInSecs = 10
@@ -296,16 +267,16 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 		isContainerNotStarted = !strings.Contains(outputMessage, "Up ")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "my-redis-container"))
-	equals(t, true, strings.Contains(outputMessage, "Up "))
+	assert.Equal(t, true, strings.Contains(outputMessage, "my-redis-container"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "Up "))
 
 	//container remove test
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "remove"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "remove"))
 	isContainerNotStoppedBeforeRemoved := true
 	outputMessage = ""
 	waitTimeoutInSecs = 10
@@ -322,7 +293,7 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 		isContainerNotStoppedBeforeRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 	isContainerNotRemoved := true
 	outputMessage = ""
@@ -340,7 +311,7 @@ func TestContainersRunStopStartRemove(t *testing.T) {
 		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
 
@@ -361,9 +332,9 @@ func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, "my-private-img"))
-	equals(t, true, strings.Contains(response, "run"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, "my-private-img"))
+	assert.Equal(t, true, strings.Contains(response, "run"))
 	isContainerNotReady := true
 	outputMessage := ""
 	var err error
@@ -381,15 +352,15 @@ func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
 		isContainerNotReady = !strings.Contains(outputMessage, "my-private-img")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "my-private-img"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "my-private-img"))
 	containerID := strings.Split(outputMessage, " ")[0]
 	//container remove test
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "remove"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "remove"))
 	isContainerNotStoppedBeforeRemoved := true
 	outputMessage = ""
 	waitTimeoutInSecs = 10
@@ -406,7 +377,7 @@ func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
 		isContainerNotStoppedBeforeRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 	isContainerNotRemoved := true
 	outputMessage = ""
@@ -424,7 +395,7 @@ func TestContainersRunWithAuthSaveAndRemove(t *testing.T) {
 		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
 
@@ -442,9 +413,9 @@ func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, "my-private-img"))
-	equals(t, true, strings.Contains(response, "run"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, "my-private-img"))
+	assert.Equal(t, true, strings.Contains(response, "run"))
 	isContainerNotReady := true
 	outputMessage := ""
 	var err error
@@ -462,15 +433,15 @@ func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 		isContainerNotReady = !strings.Contains(outputMessage, "my-private-img")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "my-private-img"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "my-private-img"))
 	containerID := strings.Split(outputMessage, " ")[0]
 	//container remove test
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "remove"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "remove"))
 	isContainerNotStoppedBeforeRemoved := true
 	outputMessage = ""
 	waitTimeoutInSecs = 10
@@ -487,7 +458,7 @@ func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 		isContainerNotStoppedBeforeRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 	isContainerNotRemoved := true
 	outputMessage = ""
@@ -505,7 +476,7 @@ func TestContainersRunWithAuthSavedAndRemove(t *testing.T) {
 		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
 
@@ -525,8 +496,8 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
-	equals(t, true, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, "auth test failed"))
+	assert.Equal(t, true, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, "auth test failed"))
 }
 
 func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
@@ -578,10 +549,10 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	psBetaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", fmt.Sprintf(`{"id": "%s" }`, betaParams.ContainerID))
 	t.Log(psAlfaResponse)
 
-	equals(t, true, strings.Contains(psAlfaResponse, alfaParams.ContainerID))
-	equals(t, false, strings.Contains(psAlfaResponse, betaParams.ContainerID))
-	equals(t, true, strings.Contains(psBetaResponse, betaParams.ContainerID))
-	equals(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
+	assert.Equal(t, true, strings.Contains(psAlfaResponse, alfaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psAlfaResponse, betaParams.ContainerID))
+	assert.Equal(t, true, strings.Contains(psBetaResponse, betaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
 
 	// cleanup
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, alfaParams.ContainerID)
@@ -605,7 +576,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
 
@@ -623,9 +594,9 @@ func TestContainersRunWithRenameAndRemove(t *testing.T) {
 
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, "banana"))
-	equals(t, true, strings.Contains(response, "run"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, "banana"))
+	assert.Equal(t, true, strings.Contains(response, "run"))
 	isContainerNotReady := true
 	outputMessage := ""
 	var err error
@@ -643,7 +614,7 @@ func TestContainersRunWithRenameAndRemove(t *testing.T) {
 		isContainerNotReady = !strings.Contains(outputMessage, "banana")
 	}
 	t.Log(outputMessage)
-	equals(t, true, strings.Contains(outputMessage, "banana"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "banana"))
 	containerID := strings.Split(outputMessage, " ")[0]
 
 	// rename the container and test
@@ -655,15 +626,15 @@ func TestContainersRunWithRenameAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	equals(t, true, strings.Contains(outputMessage, "mango"))
+	assert.Equal(t, true, strings.Contains(outputMessage, "mango"))
 
 	//container remove test
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, containerID)
 	response = mqtt.MqttSendAndReceiveSync(t, topic, RemoveMqttRequest)
 	t.Log(response)
-	equals(t, false, strings.Contains(response, "ERROR: "))
-	equals(t, true, strings.Contains(response, containerID))
-	equals(t, true, strings.Contains(response, "remove"))
+	assert.Equal(t, false, strings.Contains(response, "ERROR: "))
+	assert.Equal(t, true, strings.Contains(response, containerID))
+	assert.Equal(t, true, strings.Contains(response, "remove"))
 
 	isContainerNotRemoved := true
 	outputMessage = ""
@@ -681,6 +652,6 @@ func TestContainersRunWithRenameAndRemove(t *testing.T) {
 		isContainerNotRemoved = len(strings.Split(outputMessage, "\n")) > 2
 	}
 	t.Log(outputMessage)
-	equals(t, 2, len(strings.Split(outputMessage, "\n")))
+	assert.Equal(t, 2, len(strings.Split(outputMessage, "\n")))
 
 }
