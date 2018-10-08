@@ -1,0 +1,51 @@
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 13 # Should be 10 but was brought to 13 to speed up the development
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+  misspell:
+    locale: US
+
+  lll:
+    # max line length, lines longer will be reported. Default is 120.
+    # '\t' is counted as 1 character by default, and can be changed with the tab-width option
+    line-length: 130
+
+# options for analysis running
+run:
+  # skipping all non-tested file, re-enable linting check along to test coverage on files
+  skip-dirs:
+    - auth
+    - extra
+    - updater
+
+  skip-files:
+    - handlers_apt_packages.go
+    - handlers_apt_repositories.go
+    # - handlers_containers.go
+    - handlers_containers_test.go
+    - handlers.go
+    - handlers_stats.go
+    - handlers_update.go
+    - heartbeat.go
+    # - install.go
+    # - main.go
+    - status.go
+    - utils.go
+    - validate.go
+
+linters:
+  enable-all: true
+  disable:
+  - prealloc
+  - dupl
