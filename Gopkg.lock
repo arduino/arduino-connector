@@ -90,6 +90,14 @@
   revision = "be9bd761db19d4fc551d40be908f02e00487511d"
 
 [[projects]]
+  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  pruneopts = "NUT"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:1ae6152840bd4fe1009e4ce51d8cd989b452ad2e8aaf3bfa3b3ae55974fed729"
   name = "github.com/docker/cli"
   packages = [
@@ -410,6 +418,14 @@
   version = "v0.8.0"
 
 [[projects]]
+  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = "NUT"
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:167888737cd5a7d9cac6422e1216be91a687d5c6c752dfb88ba6879d179159e7"
   name = "github.com/prometheus/client_golang"
   packages = [
@@ -491,6 +507,27 @@
   pruneopts = "NUT"
   revision = "a67f783a3814b8729bd2dac5780b5f78f8dbd64d"
   version = "v1.1.0"
+
+[[projects]]
+  digest = "1:60a46e2410edbf02b419f833372dd1d24d7aa1b916a990a7370e792fada1eadd"
+  name = "github.com/stretchr/objx"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
+  version = "v0.1.1"
+
+[[projects]]
+  digest = "1:9bd7e2d6e3f037665aac9386d53c4fdaa32788ea8727705303731c5710e418e1"
+  name = "github.com/stretchr/testify"
+  packages = [
+    ".",
+    "assert",
+    "http",
+    "mock",
+  ]
+  pruneopts = "NUT"
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"
@@ -597,6 +634,7 @@
     "github.com/nats-io/go-nats",
     "github.com/pkg/errors",
     "github.com/shirou/gopsutil/host",
+    "github.com/stretchr/testify",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/context",
