@@ -482,6 +482,72 @@ INFO: [
 <-- $aws/things/{{id}}/containers/ps/post
 ```
 
+is possible also to send a payload with the id of the container to obtain info for one container:
+
+
+```
+{"id":"019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f"}
+--> $aws/things/{{id}}/containers/ps/post
+
+INFO: [
+  {
+    "Command": "docker-entrypoint.sh redis-server",
+    "Created": 1527232692,
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "Id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f",
+    "Image": "docker.io/library/redis",
+    "ImageID": "sha256:bfcb1f6df2db8a62694aaa732a3133799db59c6fec58bfeda84e34299e7270a8",
+    "Labels": {},
+    "Mounts": [
+      {
+        "Destination": "/data",
+        "Driver": "local",
+        "Mode": "",
+        "Name": "6cb1395830bd65cfac62dd55d4ed19499911191a92a759b2410250608f5df6f0",
+        "Propagation": "",
+        "RW": true,
+        "Source": "",
+        "Type": "volume"
+      }
+    ],
+    "Names": [
+      "/fabrizio-redis"
+    ],
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": null,
+          "DriverOpts": null,
+          "EndpointID": "4cc1922ef56f401668ee745d3e819cc21b804dfc119b2c4928e3819175522f66",
+          "Gateway": "172.17.0.1",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "IPAMConfig": null,
+          "IPAddress": "172.17.0.2",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "Links": null,
+          "MacAddress": "02:42:ac:11:00:02",
+          "NetworkID": "8459eb5e58305845527f1e6c737c059f6b409ef581ec8f0b168c1efe67304887"
+        }
+      }
+    },
+    "Ports": [
+      {
+        "PrivatePort": 6379,
+        "Type": "tcp"
+      }
+    ],
+    "State": "running",
+    "Status": "Up 6 hours"
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/ps/post
+```
+
 #### Containers Images
 
 implements ```docker images``` and gives back the docker api response transparently
@@ -602,9 +668,18 @@ INFO: [
 <-- $aws/things/{{id}}/containers/action/post
 ```
 
+#### Containers rename
 
+implements ```docker rename CONTAINER NEW_NAME``` 
 
+```
+{"id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f","name":"mango"}
+--> $aws/things/{{id}}/containers/rename/post
 
+INFO: [{"id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f","name":"mango"}]
+  
+<-- $aws/things/{{id}}/containers/rename/post
+```
 
 ## Compile
 ```
@@ -619,7 +694,7 @@ go get github.com/sanbornm/go-selfupdate
 # scp -r public/* user@server:/var/www/files/arduino-connector
 ```
 
-## Integration tests discaimer
+## Integration tests disclaimer
 
 You will see in the following paragraphs that the testing environment and procedures are strictly coupled with the
 Arduino web services. We're sorry of this behaviour because is not so "community friendly" but we are aiming to improve 
