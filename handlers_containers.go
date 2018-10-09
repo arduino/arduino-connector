@@ -62,6 +62,10 @@ type PsPayload struct {
 	ContainerID string `json:"id,omitempty"`
 }
 
+type ImagesPayload struct {
+	ImageName string `json:"name,omitempty"`
+}
+
 type ChangeNamePayload struct {
 	ContainerID   string `json:"id"`
 	ContainerName string `json:"name"`
@@ -72,7 +76,7 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 	psPayload := PsPayload{}
 	err := json.Unmarshal(msg.Payload(), &psPayload)
 	if err != nil {
-		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		s.Error("/containers/ps", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
 
@@ -98,7 +102,19 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 
 // ContainersListImagesEvent implements docker images
 func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message) {
-	images, err := s.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
+	imagesPayload := ImagesPayload{}
+	err := json.Unmarshal(msg.Payload(), &imagesPayload)
+	if err != nil {
+		s.Error("/containers/images", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
+	}
+
+	imageListOptions := types.ImageListOptions{All: true}
+	if imagesPayload.ImageName != "" {
+		imageListOptions.Filters = filters.NewArgs(filters.Arg("reference", imagesPayload.ImageName))
+	}
+
+	images, err := s.dockerClient.ImageList(context.Background(), imageListOptions)
 	if err != nil {
 		s.Error("/containers/images", fmt.Errorf("images result: %s", err))
 		return

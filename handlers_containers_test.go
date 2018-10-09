@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/eclipse/paho.mqtt.golang"
@@ -506,7 +508,7 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(response, "auth test failed"))
 }
 
-func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
+func TestMultipleContainersRunWithPsAndImageFilterCheck(t *testing.T) {
 	mqtt := NewMqttTestClient()
 	defer mqtt.Close()
 
@@ -521,7 +523,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 		t.Fatalf("Unmarshal error: %s", responseAlfa)
 
 	}
-	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-beta"}`)
+	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "mongo","name": "mongo-beta"}`)
 	responseBeta = strings.Replace(responseBeta, "INFO: ", "", 1)
 	t.Log(responseBeta)
 	betaParams := RunPayload{}
@@ -545,7 +547,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 			t.Error(err)
 		}
 		areContainersNotReady = !(strings.Contains(outputMessage, "redis-alfa") &&
-			strings.Contains(outputMessage, "redis-beta"))
+			strings.Contains(outputMessage, "mongo-beta"))
 	}
 	t.Log(outputMessage)
 	//container ps with filter test
@@ -561,6 +563,18 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	assert.Equal(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psWrongIdResponse, alfaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psWrongIdResponse, betaParams.ContainerID))
+
+	// test also for image filtering
+	containers := make([]types.Container, 10)
+	psAlfaResponse = strings.Replace(psAlfaResponse, "INFO: ", "", 1)
+	merr = json.Unmarshal([]byte(psAlfaResponse), &containers)
+	if merr != nil {
+		t.Fatalf("Unmarshal error: %s", responseBeta)
+	}
+	imageAlfaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/images", fmt.Sprintf(`{"name": "%s" }`, containers[0].Image))
+	t.Log(imageAlfaResponse)
+	assert.Equal(t, true, strings.Contains(imageAlfaResponse, "redis"))
+	assert.Equal(t, false, strings.Contains(imageAlfaResponse, "mongo"))
 
 	// cleanup
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, alfaParams.ContainerID)
