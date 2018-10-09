@@ -28,13 +28,14 @@ import (
 	"strings"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	docker "github.com/docker/docker/client"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
-	logger "github.com/nats-io/gnatsd/logger"
-	server "github.com/nats-io/gnatsd/server"
-	nats "github.com/nats-io/go-nats"
+	"github.com/nats-io/gnatsd/logger"
+	"github.com/nats-io/gnatsd/server"
+	"github.com/nats-io/go-nats"
 
 	"github.com/pkg/errors"
 )
@@ -81,6 +82,8 @@ func main() {
 	var doLogin = flag.Bool("login", false, "Do the login and prints out a temporary token")
 	var doInstall = flag.Bool("install", false, "Install as a service")
 	var doRegister = flag.Bool("register", false, "Registers on the cloud")
+	var doProvision = flag.Bool("provision", false, "Provision key and CSR for the device")
+	var doConfigure = flag.Bool("configure", false, "Connect and register on the cloud")
 	var listenFile = flag.String("listen", "", "Tail given file and report percentage")
 	var token = flag.String("token", "", "an authentication token")
 	flag.StringVar(&config.updateURL, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
@@ -117,13 +120,29 @@ func main() {
 		register(config, *token)
 	}
 
+	if *doProvision {
+		csr := generateKeyAndCsr(config)
+		formattedCSR := formatCSR(csr)
+		formattedCSR = strings.Replace(formattedCSR, "\n", "\\n", -1)
+		fmt.Println(formattedCSR)
+		// provision should return cleanly if succeeded
+		os.Exit(0)
+	}
+
+	// if configure flag is used the connector assumes that the config file is correctly written and the certificate.pem file is present
+	if *doConfigure {
+		registerDeviceViaMQTT(config)
+		// configure should return cleanly if succeeded
+		os.Exit(0)
+	}
+
 	if *doInstall {
 		install(s)
 		// install should return cleanly if succeeded
 		os.Exit(0)
 	}
 
-	checkAndInstallNetworkManager()
+	go checkAndInstallDependencies()
 
 	err = s.Run()
 	check(err, "RunService")
@@ -162,7 +181,7 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config.ID, nil)
+	status := NewStatus(p.Config.ID, nil, nil)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
@@ -180,6 +199,14 @@ func (p program) run() {
 	if p.listenFile != "" {
 		go tailAndReport(p.listenFile, status)
 	}
+
+	// Setup docker daemon connection
+	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
+
+	if err != nil {
+		log.Println("Connection to Docker Daemon failed, containers features unavailable")
+	}
+	status.dockerClient = cli
 
 	// Start nats-client for local server
 	nc, err := nats.Connect(nats.DefaultURL)
@@ -259,6 +286,11 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status.AptRepositoryAddEvent)
 	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status.AptRepositoryRemoveEvent)
 	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status.AptRepositoryEditEvent)
+
+	subscribeTopic(mqttClient, id, "/containers/ps/post", status.ContainersPsEvent)
+	subscribeTopic(mqttClient, id, "/containers/images/post", status.ContainersListImagesEvent)
+	subscribeTopic(mqttClient, id, "/containers/action/post", status.ContainersActionEvent)
+	subscribeTopic(mqttClient, id, "/containers/rename/post", status.ContainersRenameEvent)
 }
 
 func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.MessageHandler) {
@@ -445,4 +477,10 @@ func configureNatsdLogger(s *server.Server, opts *server.Options) {
 	log = logger.NewStdLogger(opts.Logtime, opts.Debug, opts.Trace, colors, true)
 
 	s.SetLogger(log, opts.Debug, opts.Trace)
+}
+
+// checkAndInstallDependencies wraps all the dependencies installation steps that uses apt and needs to be executed sequentially
+func checkAndInstallDependencies() {
+	checkAndInstallDocker()
+	checkAndInstallNetworkManager()
 }

@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
@@ -33,6 +34,7 @@ import (
 type Status struct {
 	id             string
 	mqttClient     mqtt.Client
+	dockerClient   docker.APIClient
 	Sketches       map[string]*SketchStatus `json:"sketches"`
 	messagesSent   int
 	firstMessageAt time.Time
@@ -61,11 +63,12 @@ type Endpoint struct {
 }
 
 // NewStatus creates a new status that publishes on a topic
-func NewStatus(id string, mqttClient mqtt.Client) *Status {
+func NewStatus(id string, mqttClient mqtt.Client, dockerClient docker.APIClient) *Status {
 	return &Status{
-		id:         id,
-		mqttClient: mqttClient,
-		Sketches:   map[string]*SketchStatus{},
+		id:           id,
+		mqttClient:   mqttClient,
+		dockerClient: dockerClient,
+		Sketches:     map[string]*SketchStatus{},
 	}
 }
 

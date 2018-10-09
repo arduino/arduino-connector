@@ -1,0 +1,7 @@
+.vagrant
+*.retry
+*.log
+ui_gen_install.sh
+install.sh
+*.pem
+cert_arn.sh

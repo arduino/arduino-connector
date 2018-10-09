@@ -413,6 +413,274 @@ INFO: 162653.88
 
 The number is the uptime in seconds
 
+### Containers Management
+
+#### Containers ps
+
+implements ```docker ps -a``` and gives back the docker api response transparently
+
+```
+{}
+--> $aws/things/{{id}}/containers/ps/post
+
+INFO: [
+  {
+    "Command": "docker-entrypoint.sh redis-server",
+    "Created": 1527232692,
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "Id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f",
+    "Image": "docker.io/library/redis",
+    "ImageID": "sha256:bfcb1f6df2db8a62694aaa732a3133799db59c6fec58bfeda84e34299e7270a8",
+    "Labels": {},
+    "Mounts": [
+      {
+        "Destination": "/data",
+        "Driver": "local",
+        "Mode": "",
+        "Name": "6cb1395830bd65cfac62dd55d4ed19499911191a92a759b2410250608f5df6f0",
+        "Propagation": "",
+        "RW": true,
+        "Source": "",
+        "Type": "volume"
+      }
+    ],
+    "Names": [
+      "/fabrizio-redis"
+    ],
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": null,
+          "DriverOpts": null,
+          "EndpointID": "4cc1922ef56f401668ee745d3e819cc21b804dfc119b2c4928e3819175522f66",
+          "Gateway": "172.17.0.1",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "IPAMConfig": null,
+          "IPAddress": "172.17.0.2",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "Links": null,
+          "MacAddress": "02:42:ac:11:00:02",
+          "NetworkID": "8459eb5e58305845527f1e6c737c059f6b409ef581ec8f0b168c1efe67304887"
+        }
+      }
+    },
+    "Ports": [
+      {
+        "PrivatePort": 6379,
+        "Type": "tcp"
+      }
+    ],
+    "State": "running",
+    "Status": "Up 6 hours"
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/ps/post
+```
+
+is possible also to send a payload with the id of the container to obtain info for one container:
+
+
+```
+{"id":"019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f"}
+--> $aws/things/{{id}}/containers/ps/post
+
+INFO: [
+  {
+    "Command": "docker-entrypoint.sh redis-server",
+    "Created": 1527232692,
+    "HostConfig": {
+      "NetworkMode": "default"
+    },
+    "Id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f",
+    "Image": "docker.io/library/redis",
+    "ImageID": "sha256:bfcb1f6df2db8a62694aaa732a3133799db59c6fec58bfeda84e34299e7270a8",
+    "Labels": {},
+    "Mounts": [
+      {
+        "Destination": "/data",
+        "Driver": "local",
+        "Mode": "",
+        "Name": "6cb1395830bd65cfac62dd55d4ed19499911191a92a759b2410250608f5df6f0",
+        "Propagation": "",
+        "RW": true,
+        "Source": "",
+        "Type": "volume"
+      }
+    ],
+    "Names": [
+      "/fabrizio-redis"
+    ],
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": null,
+          "DriverOpts": null,
+          "EndpointID": "4cc1922ef56f401668ee745d3e819cc21b804dfc119b2c4928e3819175522f66",
+          "Gateway": "172.17.0.1",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "IPAMConfig": null,
+          "IPAddress": "172.17.0.2",
+          "IPPrefixLen": 16,
+          "IPv6Gateway": "",
+          "Links": null,
+          "MacAddress": "02:42:ac:11:00:02",
+          "NetworkID": "8459eb5e58305845527f1e6c737c059f6b409ef581ec8f0b168c1efe67304887"
+        }
+      }
+    },
+    "Ports": [
+      {
+        "PrivatePort": 6379,
+        "Type": "tcp"
+      }
+    ],
+    "State": "running",
+    "Status": "Up 6 hours"
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/ps/post
+```
+
+#### Containers Images
+
+implements ```docker images``` and gives back the docker api response transparently
+
+```
+{}
+--> $aws/things/{{id}}/containers/images/post
+
+INFO: [
+    {
+    "Containers": -1,
+    "Created": 1527112010,
+    "Id": "sha256:316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+    "Labels": null,
+    "ParentId": "",
+    "RepoDigests": [
+      "postgres@sha256:db7a4b960bfbe98ad94799f4a00a4203284c9804177ba317e1f9829fa1237632"
+    ],
+    "RepoTags": [
+      "postgres:latest"
+    ],
+    "SharedSize": -1,
+    "Size": 235337390,
+    "VirtualSize": 235337390
+  },
+  ...
+]
+<-- $aws/things/{{id}}/containers/images/post
+```
+
+
+#### Containers Action
+
+```docker run <image>```
+
+```
+{
+  "action": "run",
+  "background": true,
+  "image": "redis",
+  "name": "my-redis-container"
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "run",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+
+```docker start <container-id>```
+
+```
+{
+  "action": "start",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "start",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+```docker stop <container-id>```
+
+```
+{
+  "action": "stop",
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "stop",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+```docker remove <container-id>``` and ```docker image prune -a```
+```
+{
+  "action": "remove",
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+}
+--> $aws/things/{{id}}/containers/action/post
+
+INFO: [
+  {
+  "action": "remove",
+  "background": true,
+  "id": "316536b3f5c4aa1102f4ca80282c4d65b6f8da3a267489887b9d837660c7b19b",
+  "image": "redis",
+  "name": "my-redis-container"
+ }
+]
+<-- $aws/things/{{id}}/containers/action/post
+```
+
+#### Containers rename
+
+implements ```docker rename CONTAINER NEW_NAME``` 
+
+```
+{"id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f","name":"mango"}
+--> $aws/things/{{id}}/containers/rename/post
+
+INFO: [{"id": "019e3a2f50d24c81a67847f92e23e79f0c0056a210fa4b0d1bf964f9db71680f","name":"mango"}]
+  
+<-- $aws/things/{{id}}/containers/rename/post
+```
+
 ## Compile
 ```
 go get github.com/arduino/arduino-connector
@@ -426,3 +694,87 @@ go get github.com/sanbornm/go-selfupdate
 # scp -r public/* user@server:/var/www/files/arduino-connector
 ```
 
+## Integration tests disclaimer
+
+You will see in the following paragraphs that the testing environment and procedures are strictly coupled with the
+Arduino web services. We're sorry of this behaviour because is not so "community friendly" but we are aiming to improve 
+both the quality of the connector code and its testing process. Obviously no code quality improvement is possible without
+the safety net that tests provide :). So please be patient while we improve the whole process.
+
+## Generate temporary installer script
+```
+aws-google-auth -p arduino
+go build -ldflags "-X main.version=2.0.22" github.com/arduino/arduino-connector
+aws --profile arduino s3 cp arduino-connector-dev.sh s3://arduino-tmp/arduino-connector.sh
+aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector.sh --expires-in $(expr 3600 \* 24)
+#use this link i the wget of the getting started script
+aws --profile arduino s3 cp arduino-connector s3://arduino-tmp/
+aws s3 presign --profile arduino s3://arduino-tmp/arduino-connector  --expires-in $(expr 3600 \* 24)
+# use the output as the argument of arduino-connector-dev.sh qhen launching getting started script:
+
+export id=containtel:a4ae70c4-b7ff-40c8-83c1-1e10ee166241
+wget -O install.sh <aws signed link dev-sh>
+chmod +x install.sh
+./install.sh <aws signed link dev connector>
+
+```
+
+i.e
+```
+export id=containtel:a4ae70c4-b7ff-40c8-83c1-1e10ee166241
+wget -O install.sh  "https://arduino-tmp.s3.amazonaws.com/arduino-connector.sh?AWSAccessKeyId=ASIAJJFZDTIGHJCWMGQA&Expires=1529771794&x-amz-security-token=FQoDYXdzEBoaDD8duZwY18MeYFd3CyLPAjxH7ijRrTBwduS9r8Dqm06%2BT%2B6p57cOU4I1Bn3d09lMVjPi4dhNQboAxLnYSI%2BNqxUo%2BbgNDxRbIVxzgvGWQHw7Seepjniy%2FvCKpR7DuxyNe%2B5DxA15O1fGZDQkqadxlky5jkXk1Vn9TBtGa4NCRMgIoatRBtkHI7XKpouWNYhh2jYo7ezeDRQO3m1WR7WieqVlh%2BdscL0NevGGMOh3MYf5Wsm069GuA31FmTslp3SaChf7Mq7uOI5X9XIu%2B9kcWnxXoo7dMCk5Ixq5WLkB%2BUlTt6iL4bxK7FKdlT%2FUsf5DSfBcCGwcyI2nBuFB6yjPeS5AAm0ZUU6DaEd9KUc8Fxq9M1tEQ3DnjGnKZcbaOU%2FGWw7bnOPhLcl6eiNIOtZxsvZ4MCTY3YUnO4rna4fVNScjIqMwNdb8psFarGH1Gn0e4DRNt22LFshjGZdNi01RKI%2BFqtkF&Signature=jI00Smxp33Y72ijdRJsXMIYx9h0%3D"
+chmod +x install.sh
+./install.sh "https://arduino-tmp.s3.amazonaws.com/arduino-connector?AWSAccessKeyId=ASIAJJFZDTIGHJCWMGQA&Expires=1529771799&x-amz-security-token=FQoDYXdzEBoaDD8duZwY18MeYFd3CyLPAjxH7ijRrTBwduS9r8Dqm06%2BT%2B6p57cOU4I1Bn3d09lMVjPi4dhNQboAxLnYSI%2BNqxUo%2BbgNDxRbIVxzgvGWQHw7Seepjniy%2FvCKpR7DuxyNe%2B5DxA15O1fGZDQkqadxlky5jkXk1Vn9TBtGa4NCRMgIoatRBtkHI7XKpouWNYhh2jYo7ezeDRQO3m1WR7WieqVlh%2BdscL0NevGGMOh3MYf5Wsm069GuA31FmTslp3SaChf7Mq7uOI5X9XIu%2B9kcWnxXoo7dMCk5Ixq5WLkB%2BUlTt6iL4bxK7FKdlT%2FUsf5DSfBcCGwcyI2nBuFB6yjPeS5AAm0ZUU6DaEd9KUc8Fxq9M1tEQ3DnjGnKZcbaOU%2FGWw7bnOPhLcl6eiNIOtZxsvZ4MCTY3YUnO4rna4fVNScjIqMwNdb8psFarGH1Gn0e4DRNt22LFshjGZdNi01RKI%2BFqtkF&Signature=BTsZzRhHnf%2Fl%2BWsXfJ9MB1ir318%3D"
+
+```
+
+## run integration tests with vagrant
+please note that:
+* the thing `devops-test:75b87fe3-169d-4603-a018-7fde9c667850`
+* the iot IAM policy `DevicePolicy`
+* the arduino user `devops-test`
+* the s3 bucket `arduino-tmp`
+are resources that must be manually created in the Arduino Cloud environment, in order to replicate the testing, you will need to create those resources on your environment and edit the test setup/teardown scripts:
+* `upload_dev_artifacts_on_s3.sh`
+* `create_iot_device.sh`
+* `teardown_dev_artifacts.sh`
+* `teardown_iot_device.sh`
+
+In order to launch the integration test in a CI fashion do the following:
+1. install vagrant from upstream link https://www.vagrantup.com/downloads.html
+2. export the arduino user credentials
+
+```
+export CONNECTOR_USER=aaaaaaaa
+export CONNECTOR_PASS="bbbbbb"
+export CONNECTOR_PRIV_USER="cccccc"
+export CONNECTOR_PRIV_PASS="ddddd"
+export CONNECTOR_PRIV_IMAGE="<priv-registry-url>/<image>"
+```
+
+3. launch `make test`
+4. profit
+
+the `test` recipe:
+1. spins up a ubuntu machine
+2. installing your local s3 artifact after uploading it to s3 (to emulate the user install)
+3. creates certs and keys on aws iot in order to talk with the connector instance in the vagrant vm
+4. launch gotests (that basically do mqtt command -> vagrant ssh to check the result in the vm)
+5. teardowns the aws iot things and perform all generated code and vm cleaning up
+this recipe has the purpose to be used in a CI/CD context
+
+The `test` recipe is split in 3 parts (`setup-test integ-test teardown-test`) that can be used separately to do TDD in this way:
+1. launch `make setup-test`
+2. write test and code
+3. export the arduino user credentials
+
+```
+export CONNECTOR_USER=aaaaaaaa
+export CONNECTOR_PASS="bbbbbb"
+export CONNECTOR_PRIV_USER="cccccc"
+export CONNECTOR_PRIV_PASS="ddddd"
+export CONNECTOR_PRIV_IMAGE="<priv-registry-url>/<image>"
+```
+
+4. launch `make integ-test` all the times you need
+5. launch `make teardown-test` when finished

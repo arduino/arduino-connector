@@ -1,3 +1,5 @@
 certificate*
 arduino-connector
 arduino-connector.cfg
+arduino-connector-arm
+.idea

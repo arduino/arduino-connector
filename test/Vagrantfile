@@ -1,0 +1,41 @@
+# This guide is optimized for Vagrant 1.7 and above.
+# Although versions 1.6.x should behave very similarly, it is recommended
+# to upgrade instead of disabling the requirement below.
+Vagrant.require_version ">= 2.0.0"
+
+# Check for missing plugins
+# required_plugins = %w[vagrant-triggers]
+
+# return if !Vagrant.plugins_enabled?
+
+# plugins_to_install = required_plugins.select { |plugin| !Vagrant.has_plugin? plugin }
+
+# if plugins_to_install.any?
+#   system "vagrant plugin install #{plugins_to_install.join(' ')}"
+#   exit system 'vagrant up'
+# end
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "ubuntu/xenial64"
+
+  config.vm.provider "virtualbox" do |v|
+    v.name = "connector_integ_vm"
+    # try to improve vm net speed
+    v.customize ["modifyvm", :id, "--nictype1", "virtio"]
+  end
+
+  # Workaround for installing python 
+  config.vm.provision "shell", inline: "which python || sudo apt -y install python"
+
+  # Disable the new default behavior introduced in Vagrant 1.7, to
+  # ensure that all Vagrant machines will use the same SSH key pair.
+  # See https://github.com/mitchellh/vagrant/issues/5005
+  config.ssh.insert_key = false
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.compatibility_mode = "2.0"
+    # ansible.verbose = "vv"
+    ansible.playbook = "playbook.yml"
+  end
+end

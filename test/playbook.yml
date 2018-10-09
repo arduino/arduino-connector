@@ -1,0 +1,34 @@
+---
+- hosts: all
+  sudo: true
+  tasks:
+    # setup
+    - name: Install python-pip
+      apt:
+        name: python-pip
+    - name: Installing pexpect python library using Ansible pip module
+      pip:
+        name: pexpect
+    # install testing
+    - name: emulate user install commands
+      copy:
+        src:  ui_gen_install.sh
+        dest:  ui_gen_install.sh
+        owner: vagrant
+        group: vagrant
+        mode: 0755
+    - name: install connector and emulate user registering device
+      expect:
+        command: ./ui_gen_install.sh
+        timeout: 2400
+        responses:
+          .*username: "{{ lookup('env','CONNECTOR_USER') }}"
+          .*password: "{{ lookup('env','CONNECTOR_PASS') }}"
+    - name: wait for docker daemon to be up and running
+      wait_for:
+        path: "/var/run/docker.sock"
+        timeout: 600
+    - name: wait for network manager to be up and running
+      wait_for:
+        path: "/etc/NetworkManager/NetworkManager.conf"
+        timeout: 600

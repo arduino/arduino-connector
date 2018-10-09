@@ -65,19 +65,24 @@ func checkAndInstallNetworkManager() {
 		return
 	}
 	if strings.Contains(err.Error(), "NetworkManager") {
-		go func() {
-			toInstall := &apt.Package{Name: "network-manager"}
-			if out, err := apt.Install(toInstall); err != nil {
-				fmt.Println("Failed to install network-manager:")
-				fmt.Println(string(out))
-				return
-			}
-			cmd := exec.Command("/etc/init.d/network-manager", "start")
-			if out, err := cmd.CombinedOutput(); err != nil {
-				fmt.Println("Failed to start network-manager:")
-				fmt.Println(string(out))
-			}
-		}()
+		// dpkg --configure -a for prevent block of installation
+		dpkgCmd := exec.Command("dpkg", "--configure", "-a")
+		if out, err := dpkgCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to dpkg configure all:")
+			fmt.Println(string(out))
+		}
+		toInstall := &apt.Package{Name: "network-manager"}
+		if out, err := apt.Install(toInstall); err != nil {
+			fmt.Println("Failed to install network-manager:")
+			fmt.Println(string(out))
+			return
+		}
+		cmd := exec.Command("/etc/init.d/network-manager", "start")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to start network-manager:")
+			fmt.Println(string(out))
+		}
+
 	}
 }
 

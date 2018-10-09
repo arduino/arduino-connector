@@ -68,6 +68,19 @@ func register(config Config, token string) {
 		check(err, "AskCredentials")
 	}
 
+	// Generate a Private Key and CSR
+	csr := generateKeyAndCsr(config)
+
+	// Request Certificate and service URL to iot service
+	config = requestCertAndBrokerURL(csr, config, token)
+
+	// Connect to MQTT and communicate back
+	registerDeviceViaMQTT(config)
+
+	fmt.Println("Setup completed")
+}
+
+func generateKeyAndCsr(config Config) []byte {
 	// Create a private key
 	fmt.Println("Generate private key")
 	key, err := generateKey("P256")
@@ -84,7 +97,10 @@ func register(config Config, token string) {
 	fmt.Println("Generate csr")
 	csr, err := generateCsr(config.ID, key)
 	check(err, "generateCsr")
+	return csr
+}
 
+func requestCertAndBrokerURL(csr []byte, config Config, token string) Config {
 	// Request a certificate
 	fmt.Println("Request certificate")
 	pem, err := requestCert(config.APIURL, config.ID, token, csr)
@@ -104,8 +120,12 @@ func register(config Config, token string) {
 	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
 	check(err, "WriteConf")
 
+	return config
+}
+
+func registerDeviceViaMQTT(config Config) {
 	// Connect to MQTT and communicate back
-	fmt.Println("Check successful mqtt connection")
+	fmt.Println("Check successful MQTT connection")
 	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
 	check(err, "ConnectMQTT")
 
@@ -113,8 +133,8 @@ func register(config Config, token string) {
 	check(err, "RegisterDevice")
 
 	client.Disconnect(0)
+	fmt.Println("MQTT connection successful")
 
-	fmt.Println("Setup completed")
 }
 
 func askCredentials(authURL string) (token string, err error) {
@@ -218,14 +238,18 @@ func generateCsr(id string, priv interface{}) ([]byte, error) {
 	return csr, nil
 }
 
+func formatCSR(csr []byte) string {
+	pemData := bytes.NewBuffer([]byte{})
+	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+	return pemData.String()
+}
+
 func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	client := http.Client{
 		Timeout: 30 * time.Second,
 	}
-
-	pemData := bytes.NewBuffer([]byte{})
-	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
-	payload := `{"csr":"` + pemData.String() + `"}`
+	formattedCSR := formatCSR(csr)
+	payload := `{"csr":"` + formattedCSR + `"}`
 	payload = strings.Replace(payload, "\n", "\\n", -1)
 
 	req, err := http.NewRequest("POST", apiURL+"/iot/v1/devices/"+id, strings.NewReader(payload))
