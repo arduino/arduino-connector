@@ -166,6 +166,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		if authConfig != nil {
 			_, err = s.dockerClient.RegistryLogin(ctx, *authConfig)
 			if err != nil {
+				ClearRegistryAuth(runParams)
 				s.Error("/containers/action", fmt.Errorf("auth test failed: %s", err))
 				return
 			}
@@ -302,6 +303,18 @@ func ConfigureRegistryAuth(runParams RunPayload) (types.ImagePullOptions, *types
 
 	}
 	return pullOpts, authConfig, err
+}
+
+// ClearRegistryAuth removes credential for a certain registry from docker config
+func ClearRegistryAuth(runParams RunPayload) {
+	loadedConfigFile, err := dockerConfig.Load(dockerConfig.Dir())
+	if err != nil {
+		panic(err)
+	}
+	imageRegistryEndpoint := strings.Split(runParams.ImageName, "/")[0]
+	delete(loadedConfigFile.AuthConfigs, imageRegistryEndpoint)
+	loadedConfigFile.Save()
+
 }
 
 // checkAndInstallDocker implements steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/

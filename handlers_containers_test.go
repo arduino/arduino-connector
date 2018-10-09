@@ -493,9 +493,15 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 		"password":"%s",
 		"name": "my-private-img"
 	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"), os.Getenv("CONNECTOR_PRIV_USER"), "MYWRONGPASSWORD")
-
+	registryEndpoint := strings.Split(os.Getenv("CONNECTOR_PRIV_IMAGE"), "/")[0]
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
+	outputMessage, err := ExecAsVagrantSshCmd("sudo cat /root/.docker/config.json")
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(outputMessage)
+	assert.Equal(t, false, strings.Contains(outputMessage, registryEndpoint))
 	assert.Equal(t, true, strings.Contains(response, "ERROR: "))
 	assert.Equal(t, true, strings.Contains(response, "auth test failed"))
 }
@@ -506,7 +512,6 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 
 	topic := "containers/action"
 	// container run both test mqtt response andon VM
-
 	responseAlfa := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-alfa"}`)
 	responseAlfa = strings.Replace(responseAlfa, "INFO: ", "", 1)
 	t.Log(responseAlfa)
@@ -548,11 +553,14 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	t.Log(psAlfaResponse)
 	psBetaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", fmt.Sprintf(`{"id": "%s" }`, betaParams.ContainerID))
 	t.Log(psAlfaResponse)
+	psWrongIdResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", `{"id": "NON EXISTENT CONTAINER ID" }`)
 
 	assert.Equal(t, true, strings.Contains(psAlfaResponse, alfaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psAlfaResponse, betaParams.ContainerID))
 	assert.Equal(t, true, strings.Contains(psBetaResponse, betaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psWrongIdResponse, alfaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psWrongIdResponse, betaParams.ContainerID))
 
 	// cleanup
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, alfaParams.ContainerID)
