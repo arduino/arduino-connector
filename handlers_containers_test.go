@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/eclipse/paho.mqtt.golang"
@@ -493,20 +495,25 @@ func TestContainersRunWithAuthTestFail(t *testing.T) {
 		"password":"%s",
 		"name": "my-private-img"
 	  }`, os.Getenv("CONNECTOR_PRIV_IMAGE"), os.Getenv("CONNECTOR_PRIV_USER"), "MYWRONGPASSWORD")
-
+	registryEndpoint := strings.Split(os.Getenv("CONNECTOR_PRIV_IMAGE"), "/")[0]
 	response := mqtt.MqttSendAndReceiveSync(t, topic, RunMqttRequest)
 	t.Log(response)
+	outputMessage, err := ExecAsVagrantSshCmd("sudo cat /root/.docker/config.json")
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(outputMessage)
+	assert.Equal(t, false, strings.Contains(outputMessage, registryEndpoint))
 	assert.Equal(t, true, strings.Contains(response, "ERROR: "))
 	assert.Equal(t, true, strings.Contains(response, "auth test failed"))
 }
 
-func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
+func TestMultipleContainersRunWithPsAndImageFilterCheck(t *testing.T) {
 	mqtt := NewMqttTestClient()
 	defer mqtt.Close()
 
 	topic := "containers/action"
 	// container run both test mqtt response andon VM
-
 	responseAlfa := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-alfa"}`)
 	responseAlfa = strings.Replace(responseAlfa, "INFO: ", "", 1)
 	t.Log(responseAlfa)
@@ -516,7 +523,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 		t.Fatalf("Unmarshal error: %s", responseAlfa)
 
 	}
-	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "redis","name": "redis-beta"}`)
+	responseBeta := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "mongo","name": "mongo-beta"}`)
 	responseBeta = strings.Replace(responseBeta, "INFO: ", "", 1)
 	t.Log(responseBeta)
 	betaParams := RunPayload{}
@@ -540,7 +547,7 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 			t.Error(err)
 		}
 		areContainersNotReady = !(strings.Contains(outputMessage, "redis-alfa") &&
-			strings.Contains(outputMessage, "redis-beta"))
+			strings.Contains(outputMessage, "mongo-beta"))
 	}
 	t.Log(outputMessage)
 	//container ps with filter test
@@ -548,11 +555,26 @@ func TestMultipleContainersRunWithPsFilterCheck(t *testing.T) {
 	t.Log(psAlfaResponse)
 	psBetaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", fmt.Sprintf(`{"id": "%s" }`, betaParams.ContainerID))
 	t.Log(psAlfaResponse)
+	psWrongIdResponse := mqtt.MqttSendAndReceiveSync(t, "containers/ps", `{"id": "NON EXISTENT CONTAINER ID" }`)
 
 	assert.Equal(t, true, strings.Contains(psAlfaResponse, alfaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psAlfaResponse, betaParams.ContainerID))
 	assert.Equal(t, true, strings.Contains(psBetaResponse, betaParams.ContainerID))
 	assert.Equal(t, false, strings.Contains(psBetaResponse, alfaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psWrongIdResponse, alfaParams.ContainerID))
+	assert.Equal(t, false, strings.Contains(psWrongIdResponse, betaParams.ContainerID))
+
+	// test also for image filtering
+	containers := make([]types.Container, 10)
+	psAlfaResponse = strings.Replace(psAlfaResponse, "INFO: ", "", 1)
+	merr = json.Unmarshal([]byte(psAlfaResponse), &containers)
+	if merr != nil {
+		t.Fatalf("Unmarshal error: %s", responseBeta)
+	}
+	imageAlfaResponse := mqtt.MqttSendAndReceiveSync(t, "containers/images", fmt.Sprintf(`{"name": "%s" }`, containers[0].Image))
+	t.Log(imageAlfaResponse)
+	assert.Equal(t, true, strings.Contains(imageAlfaResponse, "redis"))
+	assert.Equal(t, false, strings.Contains(imageAlfaResponse, "mongo"))
 
 	// cleanup
 	RemoveMqttRequest := fmt.Sprintf(`{"action": "remove","id":"%s"}`, alfaParams.ContainerID)

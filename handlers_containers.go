@@ -62,6 +62,10 @@ type PsPayload struct {
 	ContainerID string `json:"id,omitempty"`
 }
 
+type ImagesPayload struct {
+	ImageName string `json:"name,omitempty"`
+}
+
 type ChangeNamePayload struct {
 	ContainerID   string `json:"id"`
 	ContainerName string `json:"name"`
@@ -72,7 +76,7 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 	psPayload := PsPayload{}
 	err := json.Unmarshal(msg.Payload(), &psPayload)
 	if err != nil {
-		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		s.Error("/containers/ps", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
 
@@ -98,7 +102,19 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 
 // ContainersListImagesEvent implements docker images
 func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message) {
-	images, err := s.dockerClient.ImageList(context.Background(), types.ImageListOptions{})
+	imagesPayload := ImagesPayload{}
+	err := json.Unmarshal(msg.Payload(), &imagesPayload)
+	if err != nil {
+		s.Error("/containers/images", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		return
+	}
+
+	imageListOptions := types.ImageListOptions{All: true}
+	if imagesPayload.ImageName != "" {
+		imageListOptions.Filters = filters.NewArgs(filters.Arg("reference", imagesPayload.ImageName))
+	}
+
+	images, err := s.dockerClient.ImageList(context.Background(), imageListOptions)
 	if err != nil {
 		s.Error("/containers/images", fmt.Errorf("images result: %s", err))
 		return
@@ -166,6 +182,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		if authConfig != nil {
 			_, err = s.dockerClient.RegistryLogin(ctx, *authConfig)
 			if err != nil {
+				ClearRegistryAuth(runParams)
 				s.Error("/containers/action", fmt.Errorf("auth test failed: %s", err))
 				return
 			}
@@ -302,6 +319,18 @@ func ConfigureRegistryAuth(runParams RunPayload) (types.ImagePullOptions, *types
 
 	}
 	return pullOpts, authConfig, err
+}
+
+// ClearRegistryAuth removes credential for a certain registry from docker config
+func ClearRegistryAuth(runParams RunPayload) {
+	loadedConfigFile, err := dockerConfig.Load(dockerConfig.Dir())
+	if err != nil {
+		panic(err)
+	}
+	imageRegistryEndpoint := strings.Split(runParams.ImageName, "/")[0]
+	delete(loadedConfigFile.AuthConfigs, imageRegistryEndpoint)
+	loadedConfigFile.Save()
+
 }
 
 // checkAndInstallDocker implements steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
