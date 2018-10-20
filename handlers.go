@@ -126,10 +126,14 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 		}
 
 		sketchFolder, err := getSketchFolder()
-		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
-		if err != nil {
-			status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
-			return
+		sketchPath := filepath.Join(sketchFolder, sketch.Name)
+
+		if _, err = os.Stat(sketchPath); !os.IsNotExist(err) {
+			err = os.Remove(sketchPath)
+			if err != nil {
+				status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
+				return
+			}
 		}
 	}
 
