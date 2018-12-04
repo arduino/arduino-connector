@@ -74,21 +74,12 @@ INFO: Sketch started with PID 570
 ```
 {
   "url": "https://downloads.arduino.cc/tools/arduino-connector",
+  "token": "",
+  "signature: ""
 }
 --> $aws/things/{{id}}/update/post
 
-<-- $aws/things/{{id}}/sketch
-```
-
-### Update the arduino-connector
-
-```
-{
-  "url": "https://downloads.arduino.cc/tools/arduino-connector",
-}
---> $aws/things/{{id}}/update/post
-
-<-- $aws/things/{{id}}/sketch
+<-- $aws/things/{{id}}/update
 ```
 
 ### Retrieve the stats of the machine (memory, disk, networks)
