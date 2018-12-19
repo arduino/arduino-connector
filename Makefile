@@ -3,7 +3,9 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
+GOTEST_TIMEOUT=20m
 GOGET=$(GOCMD) get
+
 
 .PHONY: all test clean
 
@@ -22,7 +24,7 @@ integ-test:
 		$(GOBUILD) -ldflags "-X main.version=1.0.0-dev" github.com/arduino/arduino-connector
 		cd ./test && ./upload_dev_artifacts_on_s3.sh
 		cd ./test && vagrant provision
-		$(GOTEST) ./...
+		$(GOTEST) ./... -timeout $(GOTEST_TIMEOUT)
 
 teardown-test:
 		cd ./test && ./teardown_iot_device.sh

@@ -113,6 +113,7 @@ func main() {
 		}
 
 		fmt.Println("Access Token:", token)
+		log.Println("Access Token:", token)
 		os.Exit(0)
 	}
 
@@ -191,7 +192,8 @@ func (p program) run() {
 		log.Println("Connected to MQTT")
 		status.mqttClient = mqttClient
 	} else {
-		log.Println("Connection to MQTT failed, cloud features unavailable")
+		log.Printf("Connection to MQTT failed, cloud features unavailable: %v", err)
+
 		// TODO: temporary, fail if no connection is available
 		os.Exit(0)
 	}
@@ -204,7 +206,7 @@ func (p program) run() {
 	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
 
 	if err != nil {
-		log.Println("Connection to Docker Daemon failed, containers features unavailable")
+		log.Printf("Connection to Docker Daemon failed, containers features unavailable: %v", err)
 	}
 	status.dockerClient = cli
 

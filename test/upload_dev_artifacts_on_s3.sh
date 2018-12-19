@@ -14,7 +14,7 @@ cat >ui_gen_install.sh <<EOL
 # this device was created for the test user in devices-dev environment
 export AUTHURL='https://hydra-dev.arduino.cc/'
 export APIURL='https://api-dev.arduino.cc'
-export id=devops-test:75b87fe3-169d-4603-a018-7fde9c667850
+export id=devops-test:c4d6adc7-a2ca-43ec-9ea6-20568bf407fc
 
 wget -O install.sh "${SHELL_INSTALLER}"
 chmod +x install.sh

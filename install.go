@@ -41,7 +41,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/arduino/arduino-connector/auth"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
@@ -170,6 +170,7 @@ func askCredentials(authURL string) (token string, err error) {
 		return "", err
 	}
 
+	fmt.Println("Access Token: ", tok.Access)
 	return tok.Access, nil
 }
 

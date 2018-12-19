@@ -114,8 +114,8 @@ func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request s
 	wg.Add(1)
 	response := "none"
 	if token := tmc.client.Subscribe(iotTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
+		defer wg.Done()
 		response = string(msg.Payload())
-		wg.Done()
 	}); token.Wait() && token.Error() != nil {
 		t.Fatal(token.Error())
 	}
@@ -138,8 +138,12 @@ func TestConnectorProcessIsRunning(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(outputMessage, "active (running)"))
 }
 
-func TestConnectorDockerIsRunning(t *testing.T) {
+func TestConnectorDockerIsRunningPlusPruneAll(t *testing.T) {
 	outputMessage, err := ExecAsVagrantSshCmd("sudo docker version")
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = ExecAsVagrantSshCmd("sudo docker system prune -a -f")
 	if err != nil {
 		t.Error(err)
 	}

@@ -721,7 +721,7 @@ chmod +x install.sh
 
 ## run integration tests with vagrant
 please note that:
-* the thing `devops-test:75b87fe3-169d-4603-a018-7fde9c667850`
+* the thing `devops-test:c4d6adc7-a2ca-43ec-9ea6-20568bf407fc`
 * the iot IAM policy `DevicePolicy`
 * the arduino user `devops-test`
 * the s3 bucket `arduino-tmp`
