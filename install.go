@@ -34,17 +34,17 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/arduino/arduino-connector/auth"
 	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -60,7 +60,7 @@ func install(s service.Service) {
 }
 
 // Register creates the necessary certificates and configuration files
-func register(config Config, token string) {
+func register(config Config, configFile, token string) {
 	// Request token
 	var err error
 	if token == "" {
@@ -72,7 +72,7 @@ func register(config Config, token string) {
 	csr := generateKeyAndCsr(config)
 
 	// Request Certificate and service URL to iot service
-	config = requestCertAndBrokerURL(csr, config, token)
+	config = requestCertAndBrokerURL(csr, config, configFile, token)
 
 	// Connect to MQTT and communicate back
 	registerDeviceViaMQTT(config)
@@ -82,11 +82,12 @@ func register(config Config, token string) {
 
 func generateKeyAndCsr(config Config) []byte {
 	// Create a private key
-	fmt.Println("Generate private key")
+	certKeyPath := filepath.Join(config.CertPath, "certificate.key")
+	fmt.Println("Generate private key to dump in: ", certKeyPath)
 	key, err := generateKey("P256")
 	check(err, "generateKey")
 
-	keyOut, err := os.OpenFile("certificate.key", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(certKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	check(err, "openKeyFile")
 
 	pem.Encode(keyOut, pemBlockForKey(key))
@@ -100,13 +101,14 @@ func generateKeyAndCsr(config Config) []byte {
 	return csr
 }
 
-func requestCertAndBrokerURL(csr []byte, config Config, token string) Config {
+func requestCertAndBrokerURL(csr []byte, config Config, configFile, token string) Config {
 	// Request a certificate
-	fmt.Println("Request certificate")
+	certPemPath := filepath.Join(config.CertPath, "certificate.pem")
+	fmt.Println("Request certificate to dump in: ", certPemPath)
 	pem, err := requestCert(config.APIURL, config.ID, token, csr)
 	check(err, "requestCert")
 
-	err = ioutil.WriteFile("certificate.pem", []byte(pem), 0600)
+	err = ioutil.WriteFile(certPemPath, []byte(pem), 0600)
 	check(err, "writeCertFile")
 
 	// Request URL
@@ -115,9 +117,9 @@ func requestCertAndBrokerURL(csr []byte, config Config, token string) Config {
 	check(err, "requestURL")
 
 	// Write the configuration
-	fmt.Println("Write conf to arduino-connector.cfg")
+	fmt.Println("Write conf to ", configFile)
 	data := config.String()
-	err = ioutil.WriteFile("arduino-connector.cfg", []byte(data), 0660)
+	err = ioutil.WriteFile(configFile, []byte(data), 0660)
 	check(err, "WriteConf")
 
 	return config
@@ -125,8 +127,11 @@ func requestCertAndBrokerURL(csr []byte, config Config, token string) Config {
 
 func registerDeviceViaMQTT(config Config) {
 	// Connect to MQTT and communicate back
+	certPemPath := filepath.Join(config.CertPath, "certificate.pem")
+	certKeyPath := filepath.Join(config.CertPath, "certificate.key")
+
 	fmt.Println("Check successful MQTT connection")
-	client, err := setupMQTTConnection("certificate.pem", "certificate.key", config.ID, config.URL, nil)
+	client, err := setupMQTTConnection(certPemPath, certKeyPath, config.ID, config.URL, nil)
 	check(err, "ConnectMQTT")
 
 	err = registerDevice(client, config.ID)
@@ -334,13 +339,13 @@ func (p *program) Stop(s service.Service) error {
 }
 
 // createService returns the servcie to be installed
-func createService(config Config, listenFile string) (service.Service, error) {
+func createService(config Config, configFile, listenFile string) (service.Service, error) {
 	workingDirectory, _ := osext.ExecutableFolder()
 
 	svcConfig := &service.Config{
 		Name:             "ArduinoConnector",
 		DisplayName:      "Arduino Connector Service",
-		Description:      "Cloud connector and launcher for Intel IoT devices.",
+		Description:      "Cloud connector and launcher for IoT devices.",
 		Arguments:        []string{"-config", configFile},
 		WorkingDirectory: workingDirectory,
 		Dependencies:     []string{"network-online.target"},

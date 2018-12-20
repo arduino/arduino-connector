@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	configFile = "./arduino-connector.cfg"
+	defaultConfigFile = "./arduino-connector.cfg"
 )
 
 var (
@@ -51,15 +51,17 @@ var (
 
 // Config holds the configuration needed by the application
 type Config struct {
-	ID         string
-	URL        string
-	HTTPProxy  string
-	HTTPSProxy string
-	ALLProxy   string
-	AuthURL    string
-	APIURL     string
-	updateURL  string
-	appName    string
+	ID           string
+	URL          string
+	HTTPProxy    string
+	HTTPSProxy   string
+	ALLProxy     string
+	AuthURL      string
+	APIURL       string
+	updateURL    string
+	appName      string
+	CertPath     string
+	SketchesPath string
 }
 
 func (c Config) String() string {
@@ -89,7 +91,9 @@ func main() {
 	flag.StringVar(&config.updateURL, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
 	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
 
-	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	var configFile = flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	flag.StringVar(&config.CertPath, "cert_path", "./", "path to store certificates")
+	flag.StringVar(&config.SketchesPath, "sketches_path", "", "path to store sketches")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
 	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
@@ -101,8 +105,14 @@ func main() {
 
 	flag.Parse()
 
+	if *configFile == "" {
+		*configFile = defaultConfigFile
+	}
+
+	fmt.Printf("current configuration: %+v\n", config)
+
 	// Create service and install
-	s, err := createService(config, *listenFile)
+	s, err := createService(config, *configFile, *listenFile)
 	check(err, "CreateService")
 
 	if *doLogin {
@@ -118,7 +128,7 @@ func main() {
 	}
 
 	if *doRegister {
-		register(config, *token)
+		register(config, *configFile, *token)
 	}
 
 	if *doProvision {
@@ -186,7 +196,9 @@ func (p program) run() {
 	status.Update(p.Config)
 
 	// Setup MQTT connection
-	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL, status)
+	certPemPath := filepath.Join(p.Config.CertPath, "certificate.pem")
+	certKeyPath := filepath.Join(p.Config.CertPath, "certificate.key")
+	mqttClient, err := setupMQTTConnection(certPemPath, certKeyPath, p.Config.ID, p.Config.URL, status)
 
 	if err == nil {
 		log.Println("Connected to MQTT")
