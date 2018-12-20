@@ -72,6 +72,8 @@ func (c Config) String() string {
 	out += "all_proxy=" + c.ALLProxy + "\r\n"
 	out += "authurl=" + c.AuthURL + "\r\n"
 	out += "apiurl=" + c.APIURL + "\r\n"
+	out += "cert_path=" + c.CertPath + "\r\n"
+	out += "sketches_path=" + c.SketchesPath + "\r\n"
 	return out
 }
 
