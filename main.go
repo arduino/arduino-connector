@@ -194,7 +194,7 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config.ID, nil, nil)
+	status := NewStatus(p.Config, nil, nil)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
@@ -244,7 +244,7 @@ func (p program) run() {
 		})
 	}
 
-	sketchFolder, err := getSketchFolder()
+	sketchFolder, err := getSketchFolder(status)
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway
 	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":"+os.Getenv("LD_LIBRARY_PATH"))
@@ -322,7 +322,7 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.Messa
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
-	id, err := getSketchIDFromDB(file.Name())
+	id, err := getSketchIDFromDB(file.Name(), status)
 	if err != nil {
 		id = file.Name()
 	}

@@ -34,10 +34,10 @@ import (
 	"syscall"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/kr/pty"
-	nats "github.com/nats-io/go-nats"
+	"github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -125,7 +125,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		sketchFolder, err := getSketchFolder()
+		sketchFolder, err := getSketchFolder(status)
 		sketchPath := filepath.Join(sketchFolder, sketch.Name)
 
 		if _, err = os.Stat(sketchPath); !os.IsNotExist(err) {
@@ -137,7 +137,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 		}
 	}
 
-	folder, err := getSketchFolder()
+	folder, err := getSketchFolder(status)
 	if err != nil {
 		status.Error("/upload", errors.Wrapf(err, "create sketch folder %s", info.ID))
 		return
@@ -161,7 +161,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	sketch.ID = info.ID
 	sketch.Name = info.Name
 	// save ID-Name to a sort of DB
-	insertSketchInDB(sketch.Name, sketch.ID)
+	insertSketchInDB(sketch.Name, sketch.ID, status)
 
 	// spawn process
 	pid, _, _, err := spawnProcess(name, &sketch, status)
@@ -188,9 +188,12 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 	// }(stdout)
 }
 
-func getSketchFolder() (string, error) {
+func getSketchFolder(status *Status) (string, error) {
 	// create folder if it doesn't exist
 	folder, err := osext.ExecutableFolder()
+	if status.config.SketchesPath != "" {
+		folder = status.config.SketchesPath
+	}
 	folder = filepath.Join(folder, "sketches")
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		err = os.Mkdir(folder, 0700)
@@ -198,9 +201,9 @@ func getSketchFolder() (string, error) {
 	return folder, err
 }
 
-func getSketchDBFolder() (string, error) {
+func getSketchDBFolder(status *Status) (string, error) {
 	// create folder if it doesn't exist
-	folder, err := getSketchFolder()
+	folder, err := getSketchFolder(status)
 	folder = filepath.Join(folder, "db")
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		err = os.Mkdir(folder, 0700)
@@ -208,9 +211,9 @@ func getSketchDBFolder() (string, error) {
 	return folder, err
 }
 
-func getSketchDB() (string, error) {
+func getSketchDB(status *Status) (string, error) {
 	// create folder if it doesn't exist
-	folder, err := getSketchDBFolder()
+	folder, err := getSketchDBFolder(status)
 	if err != nil {
 		return "", err
 	}
@@ -218,9 +221,9 @@ func getSketchDB() (string, error) {
 	return db, err
 }
 
-func insertSketchInDB(name string, id string) {
+func insertSketchInDB(name string, id string, status *Status) {
 	// create folder if it doesn't exist
-	db, err := getSketchDB()
+	db, err := getSketchDB(status)
 	if err != nil {
 		return
 	}
@@ -239,9 +242,9 @@ func insertSketchInDB(name string, id string) {
 	ioutil.WriteFile(db, data, 0600)
 }
 
-func getSketchIDFromDB(name string) (string, error) {
+func getSketchIDFromDB(name string, status *Status) (string, error) {
 	// create folder if it doesn't exist
-	db, err := getSketchDB()
+	db, err := getSketchDB(status)
 	if err != nil {
 		return "", errors.New("Can't open DB")
 	}
@@ -412,7 +415,7 @@ func (d *dylibMap) Contains(match string) bool {
 	return false
 }
 
-func downloadDylibDependencies(library string) error {
+func downloadDylibDependencies(library string, status *Status) error {
 	resp, err := http.Get("https://downloads.arduino.cc/libArduino/dylib_dependencies.txt")
 	if err != nil {
 		return errors.New("Can't download dylibs registry")
@@ -431,7 +434,7 @@ func downloadDylibDependencies(library string) error {
 		}
 		for _, element := range v {
 			if element.Contains(library) {
-				folder, _ := getSketchFolder()
+				folder, _ := getSketchFolder(status)
 				fmt.Println(element.Help)
 				if element.Help != "" {
 					// TODO: remove and replace with a status.Info()
@@ -467,7 +470,7 @@ func checkForLibrariesMissingError(filepath string, sketch *SketchStatus, status
 		fmt.Println("Missing library!")
 		library := extractLibrary(err)
 		status.Info("/upload", "Downloading needed libraries")
-		if err := downloadDylibDependencies(library); err != nil {
+		if err := downloadDylibDependencies(library, status); err != nil {
 			status.Error("/upload", err)
 		}
 		status.Error("/upload", errors.New("Missing libraries, install them and relaunch the sketch"))
@@ -591,7 +594,7 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		if sketch.PID != 0 {
 			err = process.Signal(syscall.SIGCONT)
 		} else {
-			folder, err := getSketchFolder()
+			folder, err := getSketchFolder(status)
 			if err != nil {
 				return err
 			}
@@ -618,7 +621,7 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 	case "DELETE":
 		applyAction(sketch, "STOP", status)
 		fmt.Println("delete called")
-		sketchFolder, err := getSketchFolder()
+		sketchFolder, err := getSketchFolder(status)
 		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
 		if err != nil {
 			fmt.Println("error deleting sketch")

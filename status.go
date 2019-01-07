@@ -26,12 +26,13 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
 
 // Status contains info about the sketches running on the device
 type Status struct {
+	config         Config
 	id             string
 	mqttClient     mqtt.Client
 	dockerClient   docker.APIClient
@@ -63,9 +64,10 @@ type Endpoint struct {
 }
 
 // NewStatus creates a new status that publishes on a topic
-func NewStatus(id string, mqttClient mqtt.Client, dockerClient docker.APIClient) *Status {
+func NewStatus(config Config, mqttClient mqtt.Client, dockerClient docker.APIClient) *Status {
 	return &Status{
-		id:           id,
+		config:       config,
+		id:           config.ID,
 		mqttClient:   mqttClient,
 		dockerClient: dockerClient,
 		Sketches:     map[string]*SketchStatus{},
