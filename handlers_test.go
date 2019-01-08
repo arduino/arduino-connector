@@ -22,10 +22,13 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/eclipse/paho.mqtt.golang"
 )
@@ -123,14 +126,18 @@ func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request s
 }
 
 // tests
-//func TestSketchProcessIsRunning(t *testing.T) {
-//	mqtt := NewMqttTestClient()
-//	defer mqtt.Close()
-//	sketchTopic := "upload"
-//	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, topic, `{"action": "run","image": "mongo","name": "mongo-beta"}`)
-//	outputMessage, err := ExecAsVagrantSshCmd("systemctl status ArduinoConnector | grep running")
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	assert.Equal(t, true, strings.Contains(outputMessage, "active (running)"))
-//}
+func TestSketchProcessIsRunning(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+	sketchTopic := "upload"
+
+	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, os.Getenv("SKETCH_DEVOPS_INTEG_TEST_BIN"))
+	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
+	t.Log(responseSketchRun)
+	// outputMessage, err := ExecAsVagrantSshCmd("systemctl status ArduinoConnector | grep running")
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID"))
+	assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID"))
+}
