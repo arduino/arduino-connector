@@ -134,10 +134,14 @@ func TestSketchProcessIsRunning(t *testing.T) {
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, os.Getenv("SKETCH_DEVOPS_INTEG_TEST_BIN"))
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
 	t.Log(responseSketchRun)
-	// outputMessage, err := ExecAsVagrantSshCmd("systemctl status ArduinoConnector | grep running")
-	//if err != nil {
-	//	t.Error(err)
-	//}
-	//assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID"))
-	assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID"))
+
+	assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID "))
+	pid := strings.TrimSuffix(strings.Split(responseSketchRun, "INFO: Sketch started with PID ")[1], "\n")
+	outputMessage, err := ExecAsVagrantSshCmd(fmt.Sprintf("ps -p %s --no-headers", pid))
+	t.Log(outputMessage)
+
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, 1, len(strings.Split(strings.TrimSuffix(outputMessage, "\n"), "\n")))
 }
