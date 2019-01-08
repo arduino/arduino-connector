@@ -24,7 +24,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,6 +51,30 @@ var (
 	debugMqtt = false
 )
 
+var isWriteFsRequiredForTopic = map[string]bool{
+	"/status/post":            false,
+	"/upload/post":            true,
+	"/sketch/post":            true,
+	"/update/post":            true,
+	"/stats/post":             false,
+	"/wifi/post":              false,
+	"/ethernet/post":          false,
+	"/apt/get/post":           true,
+	"/apt/list/post":          true,
+	"/apt/install/post":       true,
+	"/apt/update/post":        true,
+	"/apt/upgrade/post":       true,
+	"/apt/remove/post":        true,
+	"/apt/repos/list/post":    false,
+	"/apt/repos/add/post":     true,
+	"/apt/repos/remove/post":  true,
+	"/apt/repos/edit/post":    true,
+	"/containers/ps/post":     false,
+	"/containers/images/post": false,
+	"/containers/action/post": true,
+	"/containers/rename/post": true,
+}
+
 // Config holds the configuration needed by the application
 type Config struct {
 	ID           string
@@ -62,6 +88,7 @@ type Config struct {
 	appName      string
 	CertPath     string
 	SketchesPath string
+	CheckRoFs    bool
 }
 
 func (c Config) String() string {
@@ -74,6 +101,7 @@ func (c Config) String() string {
 	out += "apiurl=" + c.APIURL + "\r\n"
 	out += "cert_path=" + c.CertPath + "\r\n"
 	out += "sketches_path=" + c.SketchesPath + "\r\n"
+	out += "check_ro_fs=" + strconv.FormatBool(c.CheckRoFs) + "\r\n"
 	return out
 }
 
@@ -103,6 +131,7 @@ func main() {
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
 	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
+	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
 
 	flag.Parse()
@@ -283,33 +312,43 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	subscribeTopic(mqttClient, id, "/status/post", status.StatusEvent)
-	subscribeTopic(mqttClient, id, "/upload/post", status.UploadEvent)
-	subscribeTopic(mqttClient, id, "/sketch/post", status.SketchEvent)
-	subscribeTopic(mqttClient, id, "/update/post", status.UpdateEvent)
-	subscribeTopic(mqttClient, id, "/stats/post", status.StatsEvent)
-	subscribeTopic(mqttClient, id, "/wifi/post", status.WiFiEvent)
-	subscribeTopic(mqttClient, id, "/ethernet/post", status.EthEvent)
+	subscribeTopic(mqttClient, id, "/status/post", status, status.StatusEvent)
+	subscribeTopic(mqttClient, id, "/upload/post", status, status.UploadEvent)
+	subscribeTopic(mqttClient, id, "/sketch/post", status, status.SketchEvent)
+	subscribeTopic(mqttClient, id, "/update/post", status, status.UpdateEvent)
+	subscribeTopic(mqttClient, id, "/stats/post", status, status.StatsEvent)
+	subscribeTopic(mqttClient, id, "/wifi/post", status, status.WiFiEvent)
+	subscribeTopic(mqttClient, id, "/ethernet/post", status, status.EthEvent)
 
-	subscribeTopic(mqttClient, id, "/apt/get/post", status.AptGetEvent)
-	subscribeTopic(mqttClient, id, "/apt/list/post", status.AptListEvent)
-	subscribeTopic(mqttClient, id, "/apt/install/post", status.AptInstallEvent)
-	subscribeTopic(mqttClient, id, "/apt/update/post", status.AptUpdateEvent)
-	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status.AptUpgradeEvent)
-	subscribeTopic(mqttClient, id, "/apt/remove/post", status.AptRemoveEvent)
+	subscribeTopic(mqttClient, id, "/apt/get/post", status, status.AptGetEvent)
+	subscribeTopic(mqttClient, id, "/apt/list/post", status, status.AptListEvent)
+	subscribeTopic(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent)
+	subscribeTopic(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent)
+	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent)
+	subscribeTopic(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent)
 
-	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status.AptRepositoryListEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status.AptRepositoryAddEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status.AptRepositoryRemoveEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status.AptRepositoryEditEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent)
 
-	subscribeTopic(mqttClient, id, "/containers/ps/post", status.ContainersPsEvent)
-	subscribeTopic(mqttClient, id, "/containers/images/post", status.ContainersListImagesEvent)
-	subscribeTopic(mqttClient, id, "/containers/action/post", status.ContainersActionEvent)
-	subscribeTopic(mqttClient, id, "/containers/rename/post", status.ContainersRenameEvent)
+	subscribeTopic(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent)
+	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent)
+	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent)
+	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent)
 }
 
-func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.MessageHandler) {
+func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler) {
+	handler := statusHandler
+
+	if status.config.CheckRoFs && isWriteFsRequiredForTopic[topic] {
+		handler = func(client mqtt.Client, msg mqtt.Message) {
+			mountRootFilesystem("rw")
+			statusHandler(client, msg)
+			mountRootFilesystem("ro")
+		}
+	}
+
 	if debugMqtt {
 		debugHandler := func(client mqtt.Client, msg mqtt.Message) {
 			fmt.Println("MQTT IN:", string(msg.Topic()), string(msg.Payload()))
@@ -318,6 +357,24 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.Messa
 		mqttClient.Subscribe("$aws/things/"+id+topic, 1, debugHandler)
 	} else {
 		mqttClient.Subscribe("$aws/things/"+id+topic, 1, handler)
+	}
+}
+
+func isWriteFs() bool {
+	_, err := os.Create(".arduino-connector.w")
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func mountRootFilesystem(mode string) {
+	if !isWriteFs() {
+		rwCmd := exec.Command("mount", "-o", fmt.Sprintf("remount,%s", mode), "/")
+		if out, err := rwCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to remount")
+			fmt.Println(string(out))
+		}
 	}
 }
 
