@@ -51,30 +51,6 @@ var (
 	debugMqtt = false
 )
 
-var isWriteFsRequiredForTopic = map[string]bool{
-	"/status/post":            false,
-	"/upload/post":            true,
-	"/sketch/post":            true,
-	"/update/post":            true,
-	"/stats/post":             false,
-	"/wifi/post":              false,
-	"/ethernet/post":          false,
-	"/apt/get/post":           true,
-	"/apt/list/post":          true,
-	"/apt/install/post":       true,
-	"/apt/update/post":        true,
-	"/apt/upgrade/post":       true,
-	"/apt/remove/post":        true,
-	"/apt/repos/list/post":    false,
-	"/apt/repos/add/post":     true,
-	"/apt/repos/remove/post":  true,
-	"/apt/repos/edit/post":    true,
-	"/containers/ps/post":     false,
-	"/containers/images/post": false,
-	"/containers/action/post": true,
-	"/containers/rename/post": true,
-}
-
 // Config holds the configuration needed by the application
 type Config struct {
 	ID           string
@@ -312,36 +288,36 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	subscribeTopic(mqttClient, id, "/status/post", status, status.StatusEvent)
-	subscribeTopic(mqttClient, id, "/upload/post", status, status.UploadEvent)
-	subscribeTopic(mqttClient, id, "/sketch/post", status, status.SketchEvent)
-	subscribeTopic(mqttClient, id, "/update/post", status, status.UpdateEvent)
-	subscribeTopic(mqttClient, id, "/stats/post", status, status.StatsEvent)
-	subscribeTopic(mqttClient, id, "/wifi/post", status, status.WiFiEvent)
-	subscribeTopic(mqttClient, id, "/ethernet/post", status, status.EthEvent)
+	subscribeTopic(mqttClient, id, "/status/post", status, status.StatusEvent, false)
+	subscribeTopic(mqttClient, id, "/upload/post", status, status.UploadEvent, true)
+	subscribeTopic(mqttClient, id, "/sketch/post", status, status.SketchEvent, true)
+	subscribeTopic(mqttClient, id, "/update/post", status, status.UpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/stats/post", status, status.StatsEvent, false)
+	subscribeTopic(mqttClient, id, "/wifi/post", status, status.WiFiEvent, true)
+	subscribeTopic(mqttClient, id, "/ethernet/post", status, status.EthEvent, true)
 
-	subscribeTopic(mqttClient, id, "/apt/get/post", status, status.AptGetEvent)
-	subscribeTopic(mqttClient, id, "/apt/list/post", status, status.AptListEvent)
-	subscribeTopic(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent)
-	subscribeTopic(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent)
-	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent)
-	subscribeTopic(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent)
+	subscribeTopic(mqttClient, id, "/apt/get/post", status, status.AptGetEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/list/post", status, status.AptListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent, true)
 
-	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent, true)
 
-	subscribeTopic(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent)
-	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent)
-	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent)
-	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent)
+	subscribeTopic(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
+	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
 }
 
-func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler) {
+func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
 	handler := statusHandler
 
-	if status.config.CheckRoFs && isWriteFsRequiredForTopic[topic] {
+	if status.config.CheckRoFs && isWriteFsRequiredForTopic {
 		handler = func(client mqtt.Client, msg mqtt.Message) {
 			mountRootFilesystem("rw")
 			statusHandler(client, msg)
