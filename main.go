@@ -319,9 +319,9 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, st
 
 	if status.config.CheckRoFs && isWriteFsRequiredForTopic {
 		handler = func(client mqtt.Client, msg mqtt.Message) {
-			mountRootFilesystem("rw")
+			mountRootFilesystemRw()
 			statusHandler(client, msg)
-			mountRootFilesystem("ro")
+			mountRootFilesystemRo()
 		}
 	}
 
@@ -337,21 +337,31 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, st
 }
 
 func isWriteFs() bool {
-	_, err := os.Create(".arduino-connector.w")
+	f, err := os.OpenFile(".arduino-connector.w", os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return false
 	}
+	f.Close()
 	return true
 }
 
-func mountRootFilesystem(mode string) {
+func mountRootFilesystemRw() {
 	if !isWriteFs() {
-		rwCmd := exec.Command("mount", "-o", fmt.Sprintf("remount,%s", mode), "/")
+		rwCmd := exec.Command("mount", "-o", "rw,remount", "/")
 		if out, err := rwCmd.CombinedOutput(); err != nil {
-			fmt.Println("Failed to remount")
+			fmt.Println("Failed to remount RW")
 			fmt.Println(string(out))
 		}
 	}
+}
+
+func mountRootFilesystemRo() {
+	rwCmd := exec.Command("mount", "-o", "ro,remount", "/")
+	if out, err := rwCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to remount RO")
+		fmt.Println(string(out))
+	}
+
 }
 
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
