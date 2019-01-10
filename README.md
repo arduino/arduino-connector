@@ -2,6 +2,15 @@
 
 The Arduino Connector allows your device to connect to the Arduino Cloud, and push and receive messages through the [MQTT protocol](http://mqtt.org/). You can see and control all your cloud-enabled devices via a web app called [My Devices](https://create.arduino.cc/devices).
 
+## Build Notes
+
+Build for ARM devices
+
+```bash
+GOOS=linux GOARCH=arm go build -ldflags "-X main.version=arm-dev" -o=arduino-connector-arm github.com/arduino/arduino-connector
+```
+
+
 ## Install
 
 Follow the "Getting Started" guides to install the connector and allow your devices to communicate with the cloud via Arduino Create. You can install the connector onto a [Up2 board](https://create.arduino.cc/getting-started/up2) or a generic [Intel-based platform running Linux](https://create.arduino.cc/getting-started/intel-platforms).
@@ -721,10 +730,12 @@ chmod +x install.sh
 
 ## run integration tests with vagrant
 please note that:
-* the thing `devops-test:75b87fe3-169d-4603-a018-7fde9c667850`
+* the thing `devops-test:c4d6adc7-a2ca-43ec-9ea6-20568bf407fc`
 * the iot IAM policy `DevicePolicy`
 * the arduino user `devops-test`
 * the s3 bucket `arduino-tmp`
+* the test sketch `sketch_devops_integ_test`
+* the private image `private_image`
 are resources that must be manually created in the Arduino Cloud environment, in order to replicate the testing, you will need to create those resources on your environment and edit the test setup/teardown scripts:
 * `upload_dev_artifacts_on_s3.sh`
 * `create_iot_device.sh`

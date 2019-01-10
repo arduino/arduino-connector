@@ -5,7 +5,7 @@ set -e
 RAW_CERT_ARN=$(aws iot --profile arduino create-keys-and-certificate --set-as-active --certificate-pem-outfile cert.pem --public-key-outfile publicKey.pem --private-key-outfile privateKey.pem --query 'certificateArn')
 temp="${RAW_CERT_ARN%\"}"
 CERT_ARN="${temp#\"}"
-RAW_IOT_ENDPOINT=$(aws iot --profile arduino describe-endpoint --query 'endpointAddress')
+RAW_IOT_ENDPOINT=$(aws iot --profile arduino describe-endpoint --endpoint-type iot:Data --query 'endpointAddress')
 temp="${RAW_IOT_ENDPOINT%\"}"
 IOT_ENDPOINT="${temp#\"}"
 

@@ -478,27 +478,16 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:7395b855a6078ad2e6c40311402a057a91125fb9f32cf228e1b32cdc57c33538"
+  digest = "1:23d963778896113e7cece2666264009d0f558418a0b4971708e2001b6d1dd794"
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
-    "mem",
-    "net",
     "process",
   ]
   pruneopts = "NUT"
   revision = "8048a2e9c5773235122027dd585cf821b2af1249"
   version = "v2.18.07"
-
-[[projects]]
-  branch = "master"
-  digest = "1:869e13958e05ca96407cecebea71a60310256aba8f70244d05a06ce09e3f60ba"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   digest = "1:01252cd79aac70f16cac02a72a1067dd136e0ad6d5b597d0129cf74c739fd8d1"
@@ -509,22 +498,9 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:60a46e2410edbf02b419f833372dd1d24d7aa1b916a990a7370e792fada1eadd"
-  name = "github.com/stretchr/objx"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
-  version = "v0.1.1"
-
-[[projects]]
-  digest = "1:9bd7e2d6e3f037665aac9386d53c4fdaa32788ea8727705303731c5710e418e1"
+  digest = "1:bacb8b590716ab7c33f2277240972c9582d389593ee8d66fc10074e0508b8126"
   name = "github.com/stretchr/testify"
-  packages = [
-    ".",
-    "assert",
-    "http",
-    "mock",
-  ]
+  packages = ["assert"]
   pruneopts = "NUT"
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
@@ -634,7 +610,7 @@
     "github.com/nats-io/go-nats",
     "github.com/pkg/errors",
     "github.com/shirou/gopsutil/host",
-    "github.com/stretchr/testify",
+    "github.com/stretchr/testify/assert",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/ssh/terminal",
     "golang.org/x/net/context",

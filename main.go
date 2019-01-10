@@ -24,7 +24,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,7 +43,7 @@ import (
 )
 
 const (
-	configFile = "./arduino-connector.cfg"
+	defaultConfigFile = "./arduino-connector.cfg"
 )
 
 var (
@@ -51,15 +53,18 @@ var (
 
 // Config holds the configuration needed by the application
 type Config struct {
-	ID         string
-	URL        string
-	HTTPProxy  string
-	HTTPSProxy string
-	ALLProxy   string
-	AuthURL    string
-	APIURL     string
-	updateURL  string
-	appName    string
+	ID           string
+	URL          string
+	HTTPProxy    string
+	HTTPSProxy   string
+	ALLProxy     string
+	AuthURL      string
+	APIURL       string
+	updateURL    string
+	appName      string
+	CertPath     string
+	SketchesPath string
+	CheckRoFs    bool
 }
 
 func (c Config) String() string {
@@ -70,6 +75,9 @@ func (c Config) String() string {
 	out += "all_proxy=" + c.ALLProxy + "\r\n"
 	out += "authurl=" + c.AuthURL + "\r\n"
 	out += "apiurl=" + c.APIURL + "\r\n"
+	out += "cert_path=" + c.CertPath + "\r\n"
+	out += "sketches_path=" + c.SketchesPath + "\r\n"
+	out += "check_ro_fs=" + strconv.FormatBool(c.CheckRoFs) + "\r\n"
 	return out
 }
 
@@ -89,7 +97,9 @@ func main() {
 	flag.StringVar(&config.updateURL, "updateUrl", "http://downloads.arduino.cc/tools/feed/", "")
 	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
 
-	flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	var configFile = flag.String(flag.DefaultConfigFlagname, "", "path to config file")
+	flag.StringVar(&config.CertPath, "cert_path", "./", "path to store certificates")
+	flag.StringVar(&config.SketchesPath, "sketches_path", "", "path to store sketches")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
 	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
@@ -97,12 +107,19 @@ func main() {
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
 	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
+	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
 
 	flag.Parse()
 
+	if *configFile == "" {
+		*configFile = defaultConfigFile
+	}
+
+	fmt.Printf("current configuration: %+v\n", config)
+
 	// Create service and install
-	s, err := createService(config, *listenFile)
+	s, err := createService(config, *configFile, *listenFile)
 	check(err, "CreateService")
 
 	if *doLogin {
@@ -113,11 +130,12 @@ func main() {
 		}
 
 		fmt.Println("Access Token:", token)
+		log.Println("Access Token:", token)
 		os.Exit(0)
 	}
 
 	if *doRegister {
-		register(config, *token)
+		register(config, *configFile, *token)
 	}
 
 	if *doProvision {
@@ -181,17 +199,20 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config.ID, nil, nil)
+	status := NewStatus(p.Config, nil, nil)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
-	mqttClient, err := setupMQTTConnection("certificate.pem", "certificate.key", p.Config.ID, p.Config.URL, status)
+	certPemPath := filepath.Join(p.Config.CertPath, "certificate.pem")
+	certKeyPath := filepath.Join(p.Config.CertPath, "certificate.key")
+	mqttClient, err := setupMQTTConnection(certPemPath, certKeyPath, p.Config.ID, p.Config.URL, status)
 
 	if err == nil {
 		log.Println("Connected to MQTT")
 		status.mqttClient = mqttClient
 	} else {
-		log.Println("Connection to MQTT failed, cloud features unavailable")
+		log.Printf("Connection to MQTT failed, cloud features unavailable: %v", err)
+
 		// TODO: temporary, fail if no connection is available
 		os.Exit(0)
 	}
@@ -204,7 +225,7 @@ func (p program) run() {
 	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
 
 	if err != nil {
-		log.Println("Connection to Docker Daemon failed, containers features unavailable")
+		log.Printf("Connection to Docker Daemon failed, containers features unavailable: %v", err)
 	}
 	status.dockerClient = cli
 
@@ -228,7 +249,7 @@ func (p program) run() {
 		})
 	}
 
-	sketchFolder, err := getSketchFolder()
+	sketchFolder, err := getSketchFolder(status)
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway
 	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":"+os.Getenv("LD_LIBRARY_PATH"))
@@ -267,33 +288,43 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	subscribeTopic(mqttClient, id, "/status/post", status.StatusEvent)
-	subscribeTopic(mqttClient, id, "/upload/post", status.UploadEvent)
-	subscribeTopic(mqttClient, id, "/sketch/post", status.SketchEvent)
-	subscribeTopic(mqttClient, id, "/update/post", status.UpdateEvent)
-	subscribeTopic(mqttClient, id, "/stats/post", status.StatsEvent)
-	subscribeTopic(mqttClient, id, "/wifi/post", status.WiFiEvent)
-	subscribeTopic(mqttClient, id, "/ethernet/post", status.EthEvent)
+	subscribeTopic(mqttClient, id, "/status/post", status, status.StatusEvent, false)
+	subscribeTopic(mqttClient, id, "/upload/post", status, status.UploadEvent, true)
+	subscribeTopic(mqttClient, id, "/sketch/post", status, status.SketchEvent, true)
+	subscribeTopic(mqttClient, id, "/update/post", status, status.UpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/stats/post", status, status.StatsEvent, false)
+	subscribeTopic(mqttClient, id, "/wifi/post", status, status.WiFiEvent, true)
+	subscribeTopic(mqttClient, id, "/ethernet/post", status, status.EthEvent, true)
 
-	subscribeTopic(mqttClient, id, "/apt/get/post", status.AptGetEvent)
-	subscribeTopic(mqttClient, id, "/apt/list/post", status.AptListEvent)
-	subscribeTopic(mqttClient, id, "/apt/install/post", status.AptInstallEvent)
-	subscribeTopic(mqttClient, id, "/apt/update/post", status.AptUpdateEvent)
-	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status.AptUpgradeEvent)
-	subscribeTopic(mqttClient, id, "/apt/remove/post", status.AptRemoveEvent)
+	subscribeTopic(mqttClient, id, "/apt/get/post", status, status.AptGetEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/list/post", status, status.AptListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent, true)
 
-	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status.AptRepositoryListEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status.AptRepositoryAddEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status.AptRepositoryRemoveEvent)
-	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status.AptRepositoryEditEvent)
+	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent, true)
 
-	subscribeTopic(mqttClient, id, "/containers/ps/post", status.ContainersPsEvent)
-	subscribeTopic(mqttClient, id, "/containers/images/post", status.ContainersListImagesEvent)
-	subscribeTopic(mqttClient, id, "/containers/action/post", status.ContainersActionEvent)
-	subscribeTopic(mqttClient, id, "/containers/rename/post", status.ContainersRenameEvent)
+	subscribeTopic(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
+	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
 }
 
-func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.MessageHandler) {
+func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
+	handler := statusHandler
+
+	if status.config.CheckRoFs && isWriteFsRequiredForTopic {
+		handler = func(client mqtt.Client, msg mqtt.Message) {
+			mountRootFilesystemRw()
+			statusHandler(client, msg)
+			mountRootFilesystemRo()
+		}
+	}
+
 	if debugMqtt {
 		debugHandler := func(client mqtt.Client, msg mqtt.Message) {
 			fmt.Println("MQTT IN:", string(msg.Topic()), string(msg.Payload()))
@@ -305,8 +336,36 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, handler mqtt.Messa
 	}
 }
 
+func isWriteFs() bool {
+	f, err := os.OpenFile(".arduino-connector.w", os.O_WRONLY|os.O_CREATE, 0777)
+	if err != nil {
+		return false
+	}
+	f.Close()
+	return true
+}
+
+func mountRootFilesystemRw() {
+	if !isWriteFs() {
+		rwCmd := exec.Command("mount", "-o", "rw,remount", "/")
+		if out, err := rwCmd.CombinedOutput(); err != nil {
+			fmt.Println("Failed to remount RW")
+			fmt.Println(string(out))
+		}
+	}
+}
+
+func mountRootFilesystemRo() {
+	rwCmd := exec.Command("mount", "-o", "ro,remount", "/")
+	if out, err := rwCmd.CombinedOutput(); err != nil {
+		fmt.Println("Failed to remount RO")
+		fmt.Println(string(out))
+	}
+
+}
+
 func addFileToSketchDB(file os.FileInfo, status *Status) *SketchStatus {
-	id, err := getSketchIDFromDB(file.Name())
+	id, err := getSketchIDFromDB(file.Name(), status)
 	if err != nil {
 		id = file.Name()
 	}

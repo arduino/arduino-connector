@@ -19,115 +19,17 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/eclipse/paho.mqtt.golang"
 )
-
-// ExecAsVagrantSshCmd "wraps vagrant ssh -c
-func ExecAsVagrantSshCmd(command string) (string, error) {
-	vagrantSSHCmd := fmt.Sprintf(`cd test && vagrant ssh -c "%s"`, command)
-	cmd := exec.Command("bash", "-c", vagrantSSHCmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
-
-// MqttTestClient is an ad-hoc mqtt client struct for test
-type MqttTestClient struct {
-	client        mqtt.Client
-	thingToTestId string
-}
-
-func NewMqttTestClient() *MqttTestClient {
-	cert := "test/cert.pem"
-	key := "test/privateKey.pem"
-	id := "testThingVagrant"
-	port := 8883
-	path := "/mqtt"
-	file, err := ioutil.ReadFile("test/cert_arn.sh")
-	if err != nil {
-		panic(err)
-	}
-	url := "endpoint.iot.com"
-	for _, line := range strings.Split(string(file), "\n") {
-		if strings.Contains(line, "export IOT_ENDPOINT") {
-			url = strings.Split(line, "=")[1]
-		}
-	}
-	file, err = ioutil.ReadFile("test/ui_gen_install.sh")
-	if err != nil {
-		panic(err)
-	}
-	thingToTestId := "thing:id-id-id-id"
-	for _, line := range strings.Split(string(file), "\n") {
-		if strings.Contains(line, "export id") {
-			thingToTestId = strings.Split(line, "=")[1]
-		}
-	}
-	brokerURL := fmt.Sprintf("tcps://%s:%d%s", url, port, path)
-	cer, err := tls.LoadX509KeyPair(cert, key)
-	if err != nil {
-		panic(err)
-	}
-	opts := mqtt.NewClientOptions().AddBroker(brokerURL)
-	opts.SetClientID(id)
-	opts.SetTLSConfig(&tls.Config{
-		Certificates: []tls.Certificate{cer},
-		ServerName:   url,
-	})
-
-	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	return &MqttTestClient{
-		client,
-		thingToTestId,
-	}
-}
-
-func (tmc *MqttTestClient) Close() {
-	tmc.client.Disconnect(100)
-}
-
-func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request string) string {
-
-	iotTopic := strings.Join([]string{"$aws/things", tmc.thingToTestId, topic}, "/")
-	var wg sync.WaitGroup
-	wg.Add(1)
-	response := "none"
-	if token := tmc.client.Subscribe(iotTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		response = string(msg.Payload())
-		wg.Done()
-	}); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
-	postTopic := strings.Join([]string{iotTopic, "post"}, "/")
-	if token := tmc.client.Publish(postTopic, 0, false, request); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-	wg.Wait()
-	return response
-
-}
 
 // tests
 func TestConnectorProcessIsRunning(t *testing.T) {
@@ -138,8 +40,12 @@ func TestConnectorProcessIsRunning(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(outputMessage, "active (running)"))
 }
 
-func TestConnectorDockerIsRunning(t *testing.T) {
+func TestConnectorDockerIsRunningPlusPruneAll(t *testing.T) {
 	outputMessage, err := ExecAsVagrantSshCmd("sudo docker version")
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = ExecAsVagrantSshCmd("sudo docker system prune -a -f")
 	if err != nil {
 		t.Error(err)
 	}

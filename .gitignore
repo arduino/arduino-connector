@@ -3,3 +3,4 @@ arduino-connector
 arduino-connector.cfg
 arduino-connector-arm
 .idea
+setup_host_test_env.sh
