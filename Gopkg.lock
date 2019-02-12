@@ -111,7 +111,7 @@
   version = "v18.09.0-ce-tp6"
 
 [[projects]]
-  digest = "1:ef5c663754b648a4121def310ad1ed50c1ab452442e195b8fe80aaa8cf1cd859"
+  digest = "1:26a1d70717dac8c37ae869d86103b9d72b71a6faf383a5e9b5b7e602c9b9743b"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -128,7 +128,8 @@
     "registry/storage/cache/memory",
   ]
   pruneopts = "NUT"
-  revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
+  revision = "2461543d988979529609e8cb6fca9ca190dc48da"
+  version = "v2.7.1"
 
 [[projects]]
   digest = "1:bd2309d15c7e91c10bd0c8adfaf89194e9077c16e8be8207418ccc78be45d7e8"

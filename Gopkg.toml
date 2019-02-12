@@ -104,7 +104,7 @@
 # Taken from here https://github.com/moby/moby/blob/a0385f7ad7f8ebab4ca88e9b629a6b31423a10ee/vendor.conf#L67
 [[override]]
   name = "github.com/docker/distribution"
-  revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
+  version = "^2.7.1"
 
 [[override]]
   name = "github.com/prometheus/client_golang"
