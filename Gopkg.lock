@@ -349,18 +349,17 @@
   version = "v1.7.4-pre"
 
 [[projects]]
-  digest = "1:d17c66640de13e5abdec06f6e0d026bb8b31ddc86178405544329c4a7c2e74fd"
+  digest = "1:3a007c2952878394de42747f04bf7fead5c9df9ecb4d16735c734b269f275612"
   name = "github.com/nats-io/gnatsd"
   packages = [
     "conf",
     "logger",
     "server",
     "server/pse",
-    "util",
   ]
   pruneopts = "NUT"
-  revision = "6608e9ac3be979dcb0614b772cc86a87b71acaa3"
-  version = "v1.2.0"
+  revision = "3e64f0bfd1fe4c2cf6599f064ff72fa7af439663"
+  version = "v1.4.1"
 
 [[projects]]
   digest = "1:7384857e3cd6009fa5ee212e3518773cdf222fe44aab9c3095a92b7a73f7612c"
