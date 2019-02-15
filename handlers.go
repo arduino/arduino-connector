@@ -151,6 +151,31 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
+	// download the binary sig
+	sigName := filepath.Join(folder, info.Name+".sig")
+	err = downloadFile(sigName, info.URL+".sig", info.Token)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "download file signature %s", info.URL+".sig"))
+		return
+	}
+	sigFile, err := ioutil.ReadFile(sigName)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "open file signature %s", info.URL))
+		return
+	}
+
+	binFile, err := ioutil.ReadFile(name)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "open file for file signature %s", info.URL))
+		return
+	}
+
+	err = verifyBinary(binFile, sigFile, status.config.SignatureKey)
+	if err != nil {
+		status.Error("/upload", errors.Wrapf(err, "signature do not match %s", info.URL))
+		return
+	}
+
 	// chmod it
 	err = os.Chmod(name, 0700)
 	if err != nil {
