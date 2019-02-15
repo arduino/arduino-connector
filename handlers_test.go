@@ -22,7 +22,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"os"
+	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
@@ -131,7 +131,12 @@ func TestSketchProcessIsRunning(t *testing.T) {
 	defer mqtt.Close()
 	sketchTopic := "upload"
 
-	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, os.Getenv("SKETCH_DEVOPS_INTEG_TEST_BIN"))
+	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test"))
+	http.Handle("/", fs)
+
+	go func() { http.ListenAndServe(":3000", nil) }()
+
+	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
 	t.Log(responseSketchRun)
 
@@ -144,4 +149,22 @@ func TestSketchProcessIsRunning(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, 1, len(strings.Split(strings.TrimSuffix(outputMessage, "\n"), "\n")))
+}
+
+// tests
+func TestMaliciousSketchProcessIsNotRunning(t *testing.T) {
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+	sketchTopic := "upload"
+
+	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test/sketch_devops_integ_test_malicious"))
+	http.Handle("/", fs)
+
+	go func() { http.ListenAndServe(":3000", nil) }()
+
+	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
+	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
+	t.Log(responseSketchRun)
+
+	assert.Equal(t, true, strings.Contains(responseSketchRun, "ERROR: signature do not match"))
 }

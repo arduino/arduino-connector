@@ -25,15 +25,9 @@ EOL
 
 chmod +x ui_gen_install.sh
 
-# upload test sketch and generate temporay link
-aws --profile arduino s3 cp  sketch_devops_integ_test/sketch_devops_integ_test s3://arduino-tmp/sketch_devops_integ_test
-SKETCH_DEVOPS_INTEG_TEST_BIN=$(aws s3 presign --profile arduino s3://arduino-tmp/sketch_devops_integ_test --expires-in $(expr 3600 \* 72))
-
 cat >setup_host_test_env.sh <<EOL
 #!/bin/bash
 
-# temporary link to test sketch
-export SKETCH_DEVOPS_INTEG_TEST_BIN="${SKETCH_DEVOPS_INTEG_TEST_BIN}"
 EOL
 
 chmod +x setup_host_test_env.sh
