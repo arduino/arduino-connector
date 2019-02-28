@@ -1,1 +1,1 @@
-/**/void setup() {  FILE* fp;  fp=fopen("test_sketch_executed.file", "w");;  fclose(fp);}void loop() {    }
+/**/void setup() {}void loop() {    }

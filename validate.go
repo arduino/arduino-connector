@@ -20,9 +20,15 @@ package main
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"os"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -55,4 +61,18 @@ func checkGPGSig(fileName string, sigFileName string) error {
 	_, err = openpgp.CheckDetachedSignature(keyring, file, sigFile)
 
 	return err
+}
+
+func verifyBinary(input []byte, signature []byte, signatureKey string) error {
+	block, _ := pem.Decode([]byte(signatureKey))
+	if block == nil {
+		return errors.New("invalid key")
+	}
+	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+	rsaKey := key.(*rsa.PublicKey)
+	d := sha256.Sum256(input)
+	return rsa.VerifyPKCS1v15(rsaKey, crypto.SHA256, d[:], signature)
 }
