@@ -16,6 +16,7 @@ cat >ui_gen_install.sh <<EOL
 export AUTHURL='https://hydra-dev.arduino.cc/'
 export APIURL='https://api-dev.arduino.cc'
 export CHECK_RO_FS=true
+export ENV_VARS_TO_LOAD="HDDL_INSTALL_DIR=/opt/intel/computer_vision_sdk/inference_engine/external/hddl/,ENV_TEST_PATH=/tmp"
 export id=devops-test:c4d6adc7-a2ca-43ec-9ea6-20568bf407fc
 
 wget -O install.sh "${SHELL_INSTALLER}"

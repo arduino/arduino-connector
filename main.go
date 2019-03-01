@@ -53,19 +53,20 @@ var (
 
 // Config holds the configuration needed by the application
 type Config struct {
-	ID           string
-	URL          string
-	HTTPProxy    string
-	HTTPSProxy   string
-	ALLProxy     string
-	AuthURL      string
-	APIURL       string
-	updateURL    string
-	appName      string
-	CertPath     string
-	SketchesPath string
-	CheckRoFs    bool
-	SignatureKey string
+	ID            string
+	URL           string
+	HTTPProxy     string
+	HTTPSProxy    string
+	ALLProxy      string
+	AuthURL       string
+	APIURL        string
+	updateURL     string
+	appName       string
+	CertPath      string
+	SketchesPath  string
+	CheckRoFs     bool
+	SignatureKey  string
+	EnvVarsToLoad string
 }
 
 func (c Config) String() string {
@@ -79,6 +80,7 @@ func (c Config) String() string {
 	out += "cert_path=" + c.CertPath + "\r\n"
 	out += "sketches_path=" + c.SketchesPath + "\r\n"
 	out += "check_ro_fs=" + strconv.FormatBool(c.CheckRoFs) + "\r\n"
+	out += "env_vars_to_load=" + c.EnvVarsToLoad + "\r\n"
 	return out
 }
 
@@ -111,6 +113,7 @@ func main() {
 	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
 	flag.StringVar(&config.SignatureKey, "signature_key", "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvc0yZr1yUSen7qmE3cxF\nIE12rCksDnqR+Hp7o0nGi9123eCSFcJ7CkIRC8F+8JMhgI3zNqn4cUEn47I3RKD1\nZChPUCMiJCvbLbloxfdJrUi7gcSgUXrlKQStOKF5Iz7xv1M4XOP3JtjXLGo3EnJ1\npFgdWTOyoSrA8/w1rck4c/ISXZSinVAggPxmLwVEAAln6Itj6giIZHKvA2fL2o8z\nCeK057Lu8X6u2CG8tRWSQzVoKIQw/PKK6CNXCAy8vo4EkXudRutnEYHEJlPkVgPn\n2qP06GI+I+9zKE37iqj0k1/wFaCVXHXIvn06YrmjQw6I0dDj/60Wvi500FuRVpn9\ntwIDAQAB\n-----END PUBLIC KEY-----", "key for verifying sketch binary signature")
+	flag.StringVar(&config.EnvVarsToLoad, "env_vars_to_load", "", "List of comma-separated Environment variables to load from system before launching sketches binaries")
 
 	flag.Parse()
 
@@ -184,6 +187,7 @@ func (p program) run() {
 	// - any spawned sketch process'es also have access to them
 	// Note, all_proxy will not be used by any HTTP/HTTPS connections.
 	p.exportProxyEnvVars()
+	p.exportConfigWhitelistedEnvVars()
 
 	// Start nats-server on localhost:4222
 	opts := server.Options{}
@@ -475,6 +479,15 @@ func (p program) exportProxyEnvVars() {
 	if os.Getenv("no_proxy") == "" {
 		// export the no_proxy env var, if empty
 		os.Setenv("no_proxy", "localhost,127.0.0.1,localaddress,.localdomain.com")
+	}
+}
+
+func (p program) exportConfigWhitelistedEnvVars() {
+	for _, envVar := range strings.Split(p.Config.EnvVarsToLoad, ",") {
+		if strings.Contains(envVar, "=") {
+			envTuple := strings.Split(envVar, "=")
+			os.Setenv(envTuple[0], envTuple[1])
+		}
 	}
 }
 
