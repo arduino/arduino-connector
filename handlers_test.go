@@ -134,6 +134,7 @@ func TestSketchProcessIsRunning(t *testing.T) {
 	sketchTopic := "upload"
 
 	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test"))
+	http.DefaultServeMux = new(http.ServeMux)
 	http.Handle("/", fs)
 
 	srv := &http.Server{Addr: ":3000"}
@@ -166,6 +167,7 @@ func TestMaliciousSketchProcessIsNotRunning(t *testing.T) {
 	sketchTopic := "upload"
 
 	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test/sketch_devops_integ_test_malicious"))
+	http.DefaultServeMux = new(http.ServeMux)
 	http.Handle("/", fs)
 	srv := &http.Server{Addr: ":3000"}
 
@@ -200,6 +202,7 @@ func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
 	sketchTopic := "upload"
 
 	fs := http.FileServer(http.Dir("test/sketch_env_integ_test"))
+	http.DefaultServeMux = new(http.ServeMux)
 	http.Handle("/", fs)
 
 	srv := &http.Server{Addr: ":3000"}
