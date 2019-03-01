@@ -19,6 +19,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +28,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -132,9 +134,12 @@ func TestSketchProcessIsRunning(t *testing.T) {
 	sketchTopic := "upload"
 
 	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test"))
+	http.DefaultServeMux = new(http.ServeMux)
 	http.Handle("/", fs)
 
-	go func() { http.ListenAndServe(":3000", nil) }()
+	srv := &http.Server{Addr: ":3000"}
+
+	go func() { srv.ListenAndServe() }()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
@@ -149,6 +154,10 @@ func TestSketchProcessIsRunning(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, 1, len(strings.Split(strings.TrimSuffix(outputMessage, "\n"), "\n")))
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Error(err)
+	}
 }
 
 // tests
@@ -158,13 +167,67 @@ func TestMaliciousSketchProcessIsNotRunning(t *testing.T) {
 	sketchTopic := "upload"
 
 	fs := http.FileServer(http.Dir("test/sketch_devops_integ_test/sketch_devops_integ_test_malicious"))
+	http.DefaultServeMux = new(http.ServeMux)
 	http.Handle("/", fs)
+	srv := &http.Server{Addr: ":3000"}
 
-	go func() { http.ListenAndServe(":3000", nil) }()
+	go func() { srv.ListenAndServe() }()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
 	t.Log(responseSketchRun)
 
 	assert.Equal(t, true, strings.Contains(responseSketchRun, "ERROR: signature do not match"))
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
+	// see upload_dev_artifacts_on_s3.sh to see where env vars are passed to the config
+	mqtt := NewMqttTestClient()
+	defer mqtt.Close()
+
+	//test connector config
+	outputMessage, err := ExecAsVagrantSshCmd("sudo cat /root/arduino-connector.cfg")
+	if err != nil {
+		t.Error(err)
+	}
+	envString := outputMessage
+	t.Log(envString)
+	assert.Equal(t, true, strings.Contains(envString, "env_vars_to_load=HDDL_INSTALL_DIR=/opt/intel/computer_vision_sdk/inference_engine/external/hddl/,ENV_TEST_PATH=/tmp"))
+
+	//test environment
+	sketchTopic := "upload"
+
+	fs := http.FileServer(http.Dir("test/sketch_env_integ_test"))
+	http.DefaultServeMux = new(http.ServeMux)
+	http.Handle("/", fs)
+
+	srv := &http.Server{Addr: ":3000"}
+
+	go func() { srv.ListenAndServe() }()
+
+	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "connector_env_var_test.bin","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/connector_env_var_test.bin")
+	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
+	t.Log(responseSketchRun)
+
+	assert.Equal(t, true, strings.Contains(responseSketchRun, "INFO: Sketch started with PID "))
+
+	outputMessage, err = ExecAsVagrantSshCmd("cat /tmp/printenv.out")
+	if err != nil {
+		t.Error(err)
+	}
+
+	envString = outputMessage
+	t.Log(envString)
+
+	assert.Equal(t, true, strings.Contains(envString, "HDDL_INSTALL_DIR=/opt/intel/computer_vision_sdk/inference_engine/external/hddl/"))
+	assert.Equal(t, true, strings.Contains(envString, "ENV_TEST_PATH=/tmp"))
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Error(err)
+	}
+
 }
