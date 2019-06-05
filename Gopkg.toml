@@ -75,7 +75,7 @@
 
 [[constraint]]
   name = "github.com/nats-io/go-nats"
-  version = "1.5.0"
+  version = "1.8.1"
 
 [[constraint]]
   name = "github.com/pkg/errors"

@@ -363,16 +363,31 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:7384857e3cd6009fa5ee212e3518773cdf222fe44aab9c3095a92b7a73f7612c"
+  digest = "1:c0662de22bd1e15db71b0eb9b4f6ff0fd3fda9fb7848a7f05dca9afbb50e9ee2"
   name = "github.com/nats-io/go-nats"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "e2837a2879e82886f6e21715e3a0217fdc46d370"
+  version = "v1.8.1"
+
+[[projects]]
+  digest = "1:95837473f879ea39a76b82c43c7badf93a4b27b2d5654182ec3d1728f8ebec30"
+  name = "github.com/nats-io/nats.go"
   packages = [
-    ".",
     "encoders/builtin",
     "util",
   ]
   pruneopts = "NUT"
-  revision = "062418ea1c2181f52dc0f954f6204370519a868b"
-  version = "v1.5.0"
+  revision = "e2837a2879e82886f6e21715e3a0217fdc46d370"
+  version = "v1.8.1"
+
+[[projects]]
+  digest = "1:bf3b29bcf1276cfa19bc22910eac8d8582fe0d4d2a43e8f01f2242d8dfba7965"
+  name = "github.com/nats-io/nkeys"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "1546a3320a8f195a5b5c84aef8309377c2e411d5"
+  version = "v0.0.2"
 
 [[projects]]
   digest = "1:552100985450eaa4a8fa8d18fe8b6b1a04997c4d2ac24f154cc9471430cc4e1c"
@@ -478,16 +493,27 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:23d963778896113e7cece2666264009d0f558418a0b4971708e2001b6d1dd794"
+  digest = "1:7395b855a6078ad2e6c40311402a057a91125fb9f32cf228e1b32cdc57c33538"
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
+    "mem",
+    "net",
     "process",
   ]
   pruneopts = "NUT"
   revision = "8048a2e9c5773235122027dd585cf821b2af1249"
   version = "v2.18.07"
+
+[[projects]]
+  branch = "master"
+  digest = "1:869e13958e05ca96407cecebea71a60310256aba8f70244d05a06ce09e3f60ba"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   digest = "1:01252cd79aac70f16cac02a72a1067dd136e0ad6d5b597d0129cf74c739fd8d1"
@@ -507,12 +533,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e553fe4155c84c96265e97552685e834aa563c822c053f5deed1334ada1a815e"
+  digest = "1:517f98883c67fabd7561f1bfba6f788e29aae5916b205841ce724eaa58aa0679"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
     "blowfish",
     "cast5",
+    "ed25519",
+    "ed25519/internal/edwards25519",
     "openpgp",
     "openpgp/armor",
     "openpgp/elgamal",
