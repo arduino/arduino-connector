@@ -90,6 +90,14 @@
   revision = "be9bd761db19d4fc551d40be908f02e00487511d"
 
 [[projects]]
+  digest = "1:5b9ec589d739f9dc806a72739960d6e73ef18cf539841c85220f2fe32502a53a"
+  name = "github.com/creack/pty"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "2769f65a3a94eb8f876f44a0459d24ae7ad2e488"
+  version = "v1.1.7"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -325,12 +333,12 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:bc691028377c246d0c85e723d0ea726f899b2b53d5bc72542b74fe9054d447f2"
+  digest = "1:797f9322a4864f6a4781ab80433dcf248581ed2f31bd5e152f50bd3a3a8c5ad8"
   name = "github.com/kr/pty"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "fa756f09eeb418bf1cc6268c66ceaad9bb98f598"
-  version = "v1.1.2"
+  revision = "24b51915630e1d9d3c6adf15a3a96796bbc3cd43"
+  version = "v1.1.8"
 
 [[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
@@ -478,16 +486,27 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:23d963778896113e7cece2666264009d0f558418a0b4971708e2001b6d1dd794"
+  digest = "1:7395b855a6078ad2e6c40311402a057a91125fb9f32cf228e1b32cdc57c33538"
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
+    "mem",
+    "net",
     "process",
   ]
   pruneopts = "NUT"
   revision = "8048a2e9c5773235122027dd585cf821b2af1249"
   version = "v2.18.07"
+
+[[projects]]
+  branch = "master"
+  digest = "1:869e13958e05ca96407cecebea71a60310256aba8f70244d05a06ce09e3f60ba"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   digest = "1:01252cd79aac70f16cac02a72a1067dd136e0ad6d5b597d0129cf74c739fd8d1"
