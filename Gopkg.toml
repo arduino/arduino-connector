@@ -108,7 +108,7 @@
 
 [[override]]
   name = "github.com/prometheus/client_golang"
-  version = "v0.9.0-pre1"
+  version = "v1.1.0"
 
 [prune]
   go-tests = true
