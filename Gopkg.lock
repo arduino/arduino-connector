@@ -410,12 +410,12 @@
   version = "v0.1.1"
 
 [[projects]]
-  digest = "1:5cf3f025cbee5951a4ee961de067c8a89fc95a5adabead774f82822efabab121"
+  digest = "1:4047c378584616813d610c9f993bf90dd0d07aed8d94bd3bc299cd35ececdcba"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
@@ -478,16 +478,27 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:23d963778896113e7cece2666264009d0f558418a0b4971708e2001b6d1dd794"
+  digest = "1:7395b855a6078ad2e6c40311402a057a91125fb9f32cf228e1b32cdc57c33538"
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
+    "mem",
+    "net",
     "process",
   ]
   pruneopts = "NUT"
   revision = "8048a2e9c5773235122027dd585cf821b2af1249"
   version = "v2.18.07"
+
+[[projects]]
+  branch = "master"
+  digest = "1:869e13958e05ca96407cecebea71a60310256aba8f70244d05a06ce09e3f60ba"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   digest = "1:01252cd79aac70f16cac02a72a1067dd136e0ad6d5b597d0129cf74c739fd8d1"
