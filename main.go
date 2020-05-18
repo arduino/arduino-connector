@@ -31,7 +31,7 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
@@ -108,8 +108,8 @@ func main() {
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
-	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
-	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
+	flag.StringVar(&config.AuthURL, "authurl", "https://login.oniudra.cc", "Url of authentication server")
+	flag.StringVar(&config.APIURL, "apiurl", "https://api-dev.arduino.cc", "Url of api server")
 	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
 	flag.StringVar(&config.SignatureKey, "signature_key", "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvc0yZr1yUSen7qmE3cxF\nIE12rCksDnqR+Hp7o0nGi9123eCSFcJ7CkIRC8F+8JMhgI3zNqn4cUEn47I3RKD1\nZChPUCMiJCvbLbloxfdJrUi7gcSgUXrlKQStOKF5Iz7xv1M4XOP3JtjXLGo3EnJ1\npFgdWTOyoSrA8/w1rck4c/ISXZSinVAggPxmLwVEAAln6Itj6giIZHKvA2fL2o8z\nCeK057Lu8X6u2CG8tRWSQzVoKIQw/PKK6CNXCAy8vo4EkXudRutnEYHEJlPkVgPn\n2qP06GI+I+9zKE37iqj0k1/wFaCVXHXIvn06YrmjQw6I0dDj/60Wvi500FuRVpn9\ntwIDAQAB\n-----END PUBLIC KEY-----", "key for verifying sketch binary signature")
@@ -128,7 +128,7 @@ func main() {
 	check(err, "CreateService")
 
 	if *doLogin {
-		token, err := askCredentials(config.AuthURL)
+		token, err := deviceAuth(config.AuthURL)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

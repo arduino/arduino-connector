@@ -20,6 +20,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -40,7 +41,7 @@ import (
 	"time"
 
 	"github.com/arduino/arduino-connector/auth"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
@@ -64,9 +65,11 @@ func register(config Config, configFile, token string) {
 	// Request token
 	var err error
 	if token == "" {
-		token, err = askCredentials(config.AuthURL)
-		check(err, "AskCredentials")
+		token, err = deviceAuth(config.AuthURL)
+		check(err, "deviceAuth")
 	}
+
+	fmt.Println(token)
 
 	// Generate a Private Key and CSR
 	csr := generateKeyAndCsr(config)
@@ -140,6 +143,40 @@ func registerDeviceViaMQTT(config Config) {
 	client.Disconnect(0)
 	fmt.Println("MQTT connection successful")
 
+}
+
+// Implements Auth0 device authentication flow: https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth
+func deviceAuth(authURL string) (token string, err error) {
+	code, err := auth.StartDeviceAuth(authURL)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Printf("Go to %s and confirm authentication\n", code.VerificationURIComplete)
+
+	ticker := time.NewTicker(10 * time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+
+	// Loop until the user authenticated or the timeout hits
+Loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break Loop
+		case <-ticker.C:
+			var err error
+			token, err = auth.CheckDeviceAuth(authURL, code.DeviceCode)
+			if err == nil {
+				cancel()
+			}
+		}
+	}
+
+	ticker.Stop()
+	cancel()
+
+	return token, nil
 }
 
 func askCredentials(authURL string) (token string, err error) {

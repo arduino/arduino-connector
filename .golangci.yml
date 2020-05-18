@@ -45,7 +45,7 @@ run:
     - validate.go
 
 linters:
-  enable-all: true
+  enable-all: false
   disable:
   - prealloc
   - dupl
