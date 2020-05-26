@@ -53,10 +53,10 @@ type DeviceCode struct {
 	VerificationURIComplete string `json:"verification_uri_complete"`
 }
 
-func StartDeviceAuth(authURL string) (data DeviceCode, err error) {
+func StartDeviceAuth(authURL, clientID string) (data DeviceCode, err error) {
 	url := authURL + "/oauth/device/code"
 
-	payload := strings.NewReader("client_id=ks1R298bA8IQnG4p6dPlbdEIXF6Kt1Lu&audience=https://api.arduino.cc")
+	payload := strings.NewReader("client_id=" + clientID + "&audience=https://api.arduino.cc")
 
 	req, err := http.NewRequest("POST", url, payload)
 	if err != nil {
@@ -84,10 +84,10 @@ func StartDeviceAuth(authURL string) (data DeviceCode, err error) {
 	return data, nil
 }
 
-func CheckDeviceAuth(authURL, deviceCode string) (token string, err error) {
+func CheckDeviceAuth(authURL, clientID, deviceCode string) (token string, err error) {
 	url := authURL + "/oauth/token"
 
-	payload := strings.NewReader("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=" + deviceCode + "&client_id=ks1R298bA8IQnG4p6dPlbdEIXF6Kt1Lu")
+	payload := strings.NewReader("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=" + deviceCode + "&client_id=" + clientID)
 
 	req, err := http.NewRequest("POST", url, payload)
 	if err != nil {

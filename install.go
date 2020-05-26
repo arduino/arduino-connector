@@ -65,7 +65,7 @@ func register(config Config, configFile, token string) {
 	// Request token
 	var err error
 	if token == "" {
-		token, err = deviceAuth(config.AuthURL)
+		token, err = deviceAuth(config.AuthURL, config.AuthClientID)
 		check(err, "deviceAuth")
 	}
 
@@ -146,8 +146,8 @@ func registerDeviceViaMQTT(config Config) {
 }
 
 // Implements Auth0 device authentication flow: https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth
-func deviceAuth(authURL string) (token string, err error) {
-	code, err := auth.StartDeviceAuth(authURL)
+func deviceAuth(authURL, clientID string) (token string, err error) {
+	code, err := auth.StartDeviceAuth(authURL, clientID)
 	if err != nil {
 		return "", err
 	}
@@ -166,7 +166,7 @@ Loop:
 			break Loop
 		case <-ticker.C:
 			var err error
-			token, err = auth.CheckDeviceAuth(authURL, code.DeviceCode)
+			token, err = auth.CheckDeviceAuth(authURL, clientID, code.DeviceCode)
 			if err == nil {
 				cancel()
 			}
