@@ -69,8 +69,6 @@ func register(config Config, configFile, token string) {
 		check(err, "deviceAuth")
 	}
 
-	fmt.Println(token)
-
 	// Generate a Private Key and CSR
 	csr := generateKeyAndCsr(config)
 
