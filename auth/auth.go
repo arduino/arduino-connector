@@ -44,6 +44,87 @@ import (
 	"github.com/pkg/errors"
 )
 
+type DeviceCode struct {
+	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
+	VerificationURI         string `json:"verification_uri"`
+	ExpiresIn               int    `json:"expires_in"`
+	Interval                int    `json:"interval"`
+	VerificationURIComplete string `json:"verification_uri_complete"`
+}
+
+func StartDeviceAuth(authURL, clientID string) (data DeviceCode, err error) {
+	url := authURL + "/oauth/device/code"
+
+	payload := strings.NewReader("client_id=" + clientID + "&audience=https://api.arduino.cc")
+
+	req, err := http.NewRequest("POST", url, payload)
+	if err != nil {
+		return data, err
+	}
+
+	req.Header.Add("content-type", "application/x-www-form-urlencoded")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return data, err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return data, err
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return data, err
+	}
+
+	return data, nil
+}
+
+func CheckDeviceAuth(authURL, clientID, deviceCode string) (token string, err error) {
+	url := authURL + "/oauth/token"
+
+	payload := strings.NewReader("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=" + deviceCode + "&client_id=" + clientID)
+
+	req, err := http.NewRequest("POST", url, payload)
+	if err != nil {
+		return token, err
+	}
+
+	req.Header.Add("content-type", "application/x-www-form-urlencoded")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return token, err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return token, err
+	}
+
+	if res.StatusCode != 200 {
+		return token, errors.New(string(body))
+	}
+
+	data := struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
+		TokenType   string `json:"token_type"`
+	}{}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return token, err
+	}
+
+	return data.AccessToken, nil
+}
+
 // Config contains the variables you may want to change
 type Config struct {
 	// CodeURL is the endpoint to redirect to obtain a code

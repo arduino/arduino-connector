@@ -31,7 +31,7 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
 	"github.com/namsral/flag"
@@ -59,6 +59,7 @@ type Config struct {
 	HTTPSProxy    string
 	ALLProxy      string
 	AuthURL       string
+	AuthClientID  string
 	APIURL        string
 	updateURL     string
 	appName       string
@@ -76,6 +77,7 @@ func (c Config) String() string {
 	out += "https_proxy=" + c.HTTPSProxy + "\r\n"
 	out += "all_proxy=" + c.ALLProxy + "\r\n"
 	out += "authurl=" + c.AuthURL + "\r\n"
+	out += "auth_client_id=" + c.AuthClientID + "\r\n"
 	out += "apiurl=" + c.APIURL + "\r\n"
 	out += "cert_path=" + c.CertPath + "\r\n"
 	out += "sketches_path=" + c.SketchesPath + "\r\n"
@@ -108,7 +110,7 @@ func main() {
 	flag.StringVar(&config.HTTPProxy, "http_proxy", "", "URL of HTTP proxy to use")
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
-	flag.StringVar(&config.AuthURL, "authurl", "https://hydra.arduino.cc", "Url of authentication server")
+	flag.StringVar(&config.AuthURL, "authurl", "https://login.arduino.cc", "Url of authentication server")
 	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
 	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
@@ -116,6 +118,14 @@ func main() {
 	flag.StringVar(&config.EnvVarsToLoad, "env_vars_to_load", "", "List of comma-separated Environment variables to load from system before launching sketches binaries")
 
 	flag.Parse()
+
+	if config.AuthURL == "https://login.oniudra.cc" {
+		config.AuthClientID = "ks1R298bA8IQnG4p6dPlbdEIXF6Kt1Lu"
+	}
+
+	if config.AuthURL == "https://login.arduino.cc" {
+		config.AuthClientID = "QGdLCWFA4uQdbRE2NOFhUI8bnXWMZhCK"
+	}
 
 	if *configFile == "" {
 		*configFile = defaultConfigFile
@@ -128,7 +138,7 @@ func main() {
 	check(err, "CreateService")
 
 	if *doLogin {
-		token, err := askCredentials(config.AuthURL)
+		token, err := deviceAuth(config.AuthURL, config.AuthClientID)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
