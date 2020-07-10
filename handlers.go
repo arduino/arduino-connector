@@ -131,7 +131,7 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 		if _, err = os.Stat(sketchPath); !os.IsNotExist(err) {
 			err = os.Remove(sketchPath)
 			if err != nil {
-				status.Error("/upload", errors.Wrapf(err, "remove %d", sketch.Name))
+				status.Error("/upload", errors.Wrapf(err, "remove %s", sketch.Name))
 				return
 			}
 		}
