@@ -26,7 +26,7 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
 

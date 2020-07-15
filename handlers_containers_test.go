@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 
 	"github.com/stretchr/testify/assert"
 )
