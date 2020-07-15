@@ -122,6 +122,25 @@ func (s *Status) Info(topic, msg string) bool {
 	return res
 }
 
+// SendInfo send information to a specific topic
+func (s *Status) SendInfo(topic, msg string) bool {
+	if s.mqttClient == nil {
+		return false
+	}
+
+	s.messagesSent++
+
+	if token := s.mqttClient.Publish(topic, 0, false, "INFO: "+msg+"\n"); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
+	}
+
+	if debugMqtt {
+		fmt.Println("MQTT OUT: "+topic, "INFO: "+msg+"\n")
+	}
+
+	return true
+}
+
 // Raw sends a message on the specified topic without further processing
 func (s *Status) Raw(topic, msg string) {
 	if s.mqttClient == nil {
