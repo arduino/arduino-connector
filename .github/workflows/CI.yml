@@ -1,0 +1,16 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  CI:
+    name: CI
+    runs-on: ubuntu-latest
+    container: guerra1994/go-mqtt-docker-env
+
+    steps:
+      - name: check out code
+        uses: actions/checkout@v2
+
+      - name: build
+        run: go build
