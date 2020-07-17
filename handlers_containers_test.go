@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +51,17 @@ func TestDockerPsApi(t *testing.T) {
 	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 1*time.Millisecond)
 	goldMqttResponse := "INFO: []\n\n"
 	assert.Equal(t, goldMqttResponse, resp)
+
+	cmd := exec.Command("bash", "-c", "docker ps", "-c")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// NOTE: check only second string because first is docker header
+	strOut := string(out)
+	splitted := strings.Split(strOut, "\n")
+	assert.Equal(t, "", splitted[1])
 
 	status.mqttClient.Disconnect(100)
 }
