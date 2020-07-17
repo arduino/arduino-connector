@@ -51,7 +51,7 @@ require (
 	github.com/shirou/gopsutil v2.17.13-0.20180801053943-8048a2e9c577+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
 	github.com/sirupsen/logrus v1.1.0 // indirect
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
