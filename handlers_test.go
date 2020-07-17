@@ -30,9 +30,8 @@ import (
 	"testing"
 	"time"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/eclipse/paho.mqtt.golang"
 )
 
 // ExecAsVagrantSshCmd "wraps vagrant ssh -c
@@ -103,6 +102,34 @@ func NewMqttTestClient() *MqttTestClient {
 
 func (tmc *MqttTestClient) Close() {
 	tmc.client.Disconnect(100)
+}
+
+func (tmc *MqttTestClient) MqttSendAndReceiveTimeout(t *testing.T, topic, request string, timeout time.Duration) string {
+	respChan := make(chan string)
+	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+		respChan <- string(msg.Payload())
+	}); token.Wait() && token.Error() != nil {
+		t.Fatal(token.Error())
+	}
+
+	postTopic := strings.Join([]string{topic, "post"}, "/")
+	if token := tmc.client.Publish(postTopic, 0, false, request); token.Wait() && token.Error() != nil {
+		t.Fatal(token.Error())
+	}
+
+	select {
+	case <-time.After(timeout):
+		if token := tmc.client.Unsubscribe(topic); token.Wait() && token.Error() != nil {
+			t.Fatal(token.Error())
+		}
+		close(respChan)
+
+		t.Fatalf("MqttSendAndReceiveTimeout() timeout for topic %s", topic)
+
+		return ""
+	case resp := <-respChan:
+		return resp
+	}
 }
 
 func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request string) string {
