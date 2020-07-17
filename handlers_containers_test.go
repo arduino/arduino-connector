@@ -33,69 +33,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func assertEqual(t *testing.T, a interface{}, b interface{}) {
-	if a != b {
-		t.Fatalf("%s != %s", a, b)
-	}
-}
-
 func TestDockerPsApi(t *testing.T) {
-	topic := "/containers/ps"
-	broker := "tcp://localhost:1883"
+	ui := NewMqttTestClientLocal()
 
-	uiOptions := mqtt.NewClientOptions().AddBroker(broker).SetClientID("UI")
-	ans := make(chan string)
-	msgRcvd := func(client mqtt.Client, msg mqtt.Message) {
-		s := string(msg.Payload())
-		if s != "{}" {
-			ans <- s
-		}
-	}
-	uiOptions.SetDefaultPublishHandler(msgRcvd)
-
-	uiOptions.OnConnect = func(c mqtt.Client) {
-		if token := c.Subscribe(topic, 0, nil); token.Wait() && token.Error() != nil {
-			t.Error(token.Error())
-		}
-	}
-
-	ui := mqtt.NewClient(uiOptions)
-
-	if token := ui.Connect(); token.Wait() && token.Error() != nil {
-		t.Error(token.Error())
-	}
-
-	var p program
-
-	status := NewStatus(p.Config, nil, nil)
+	status := NewStatus(program{}.Config, nil, nil)
 	status.dockerClient, _ = docker.NewClientWithOpts(docker.WithVersion("1.38"))
-
-	acOptions := mqtt.NewClientOptions().AddBroker(broker).SetClientID("arduino-connector")
+	acOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector")
 	status.mqttClient = mqtt.NewClient(acOptions)
 
 	if token := status.mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		t.Fatal(token.Error())
 	}
 
-	subscribeTopic(status.mqttClient, p.Config.ID, topic, status, status.ContainersPsEvent, false)
+	subscribeTopic(status.mqttClient, "0", "/containers/ps/post", status, status.ContainersPsEvent, false)
 
-	if token := ui.Publish(topic, 0, false, "{}"); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
+	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 1*time.Millisecond)
 	goldMqttResponse := "INFO: []\n\n"
-	assertEqual(t, <-ans, goldMqttResponse)
+	assert.Equal(t, goldMqttResponse, resp)
 
-	if token := ui.Unsubscribe(topic); token.Wait() && token.Error() != nil {
-		t.Error(token.Error())
-	}
-
-	if token := status.mqttClient.Unsubscribe(topic); token.Wait() && token.Error() != nil {
-		t.Error(token.Error())
-	}
-
-	ui.Disconnect(250)
-	status.mqttClient.Disconnect(250)
+	status.mqttClient.Disconnect(100)
 }
 
 func TestConnectorProcessIsRunning(t *testing.T) {

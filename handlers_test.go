@@ -51,6 +51,19 @@ type MqttTestClient struct {
 	thingToTestId string
 }
 
+func NewMqttTestClientLocal() *MqttTestClient {
+	uiOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("UI")
+	ui := mqtt.NewClient(uiOptions)
+	if token := ui.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
+
+	return &MqttTestClient{
+		ui,
+		"",
+	}
+}
+
 func NewMqttTestClient() *MqttTestClient {
 	cert := "test/cert.pem"
 	key := "test/privateKey.pem"
