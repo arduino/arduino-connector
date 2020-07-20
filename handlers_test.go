@@ -118,6 +118,8 @@ func (tmc *MqttTestClient) Close() {
 }
 
 func (tmc *MqttTestClient) MqttSendAndReceiveTimeout(t *testing.T, topic, request string, timeout time.Duration) string {
+	t.Helper()
+
 	respChan := make(chan string)
 	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		respChan <- string(msg.Payload())
