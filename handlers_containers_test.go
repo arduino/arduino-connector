@@ -53,13 +53,14 @@ func TestDockerPsApi(t *testing.T) {
 	goldMqttResponse := "INFO: []\n\n"
 	assert.Equal(t, goldMqttResponse, resp)
 
-	cmd := exec.Command("bash", "-c", "docker ps", "-c")
+	// ask Docker about containers effectively running
+	cmd := exec.Command("bash", "-c", "docker ps -a")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// NOTE: check only second string because first is docker header
+	// NOTE: we must discard docker output header line
 	strOut := string(out)
 	splitted := strings.Split(strOut, "\n")
 	assert.Equal(t, "", splitted[1])
