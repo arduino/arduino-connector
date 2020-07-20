@@ -49,7 +49,7 @@ func TestDockerPsApi(t *testing.T) {
 
 	subscribeTopic(status.mqttClient, "0", "/containers/ps/post", status, status.ContainersPsEvent, false)
 
-	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 1*time.Millisecond)
+	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
 	goldMqttResponse := "INFO: []\n\n"
 	assert.Equal(t, goldMqttResponse, resp)
 
