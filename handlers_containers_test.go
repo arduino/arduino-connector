@@ -36,6 +36,7 @@ import (
 
 func TestDockerPsApi(t *testing.T) {
 	ui := NewMqttTestClientLocal()
+	defer ui.Close()
 
 	status := NewStatus(program{}.Config, nil, nil)
 	status.dockerClient, _ = docker.NewClientWithOpts(docker.WithVersion("1.38"))
