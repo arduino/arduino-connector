@@ -64,6 +64,15 @@ go get github.com/sanbornm/go-selfupdate
 
 See [API](./API.md)
 
+## Functional tests
+
+This type of tests are executed all locally and you need to configure a dedicated docker container:
+- `docker pull guerra1994/go-mqtt-docker-env`
+- follow step to run correctly container (https://hub.docker.com/r/guerra1994/go-mqtt-docker-env)
+- run mosquitto broker in background mode using `mosquitto &`
+- then run your test, for example `go test -v --run="TestDockerPsApi"`
+
+
 ## Integration tests disclaimer
 
 You will see in the following paragraphs that the testing environment and procedures are strictly coupled with the
