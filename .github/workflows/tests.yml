@@ -1,10 +1,10 @@
-name: CI
+name: tests
 
 on: [push, pull_request]
 
 jobs:
   CI:
-    name: CI
+    name: tests
     runs-on: ubuntu-latest
     container: guerra1994/go-mqtt-docker-env
 
@@ -12,5 +12,8 @@ jobs:
       - name: check out code
         uses: actions/checkout@v2
 
-      - name: build
-        run: go build
+      - name: download mod
+        run: go mod download
+
+      - name: run functional tests
+        run: ./scripts/functional-tests.sh
