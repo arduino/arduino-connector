@@ -105,7 +105,9 @@ func (s *Status) ContainerPsEventImpl(client mqtt.Client, msg mqtt.Message) (dat
 func (s *Status) ContainersPsEventAWS(client mqtt.Client, msg mqtt.Message) {
 	data := s.ContainerPsEventImpl(client, msg)
 	fmt.Println("aws data: ", data)
-	s.SendInfo("$aws/things/"+s.id+"/containers/ps", string(data)+"\n")
+	if !s.SendInfo("$aws/things/"+s.id+"/containers/ps", string(data)+"\n") {
+		fmt.Println("error sending info")
+	}
 }
 
 // ContainersPsEvent send info about "docker ps -a" command
