@@ -304,60 +304,56 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	if status == nil {
 		return
 	}
-	subscribeTopicAWS(mqttClient, id, "/status/post", status, status.StatusEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/upload/post", status, status.UploadEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/sketch/post", status, status.SketchEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/update/post", status, status.UpdateEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/stats/post", status, status.StatsEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/wifi/post", status, status.WiFiEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/ethernet/post", status, status.EthEvent, true)
+	subscribeTopic(mqttClient, id, "/status/post", status, status.StatusEvent, false)
+	subscribeTopic(mqttClient, id, "/upload/post", status, status.UploadEvent, true)
+	subscribeTopic(mqttClient, id, "/sketch/post", status, status.SketchEvent, true)
+	subscribeTopic(mqttClient, id, "/update/post", status, status.UpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/stats/post", status, status.StatsEvent, false)
+	subscribeTopic(mqttClient, id, "/wifi/post", status, status.WiFiEvent, true)
+	subscribeTopic(mqttClient, id, "/ethernet/post", status, status.EthEvent, true)
 
-	subscribeTopicAWS(mqttClient, id, "/apt/get/post", status, status.AptGetEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/apt/list/post", status, status.AptListEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/get/post", status, status.AptGetEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/list/post", status, status.AptListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/install/post", status, status.AptInstallEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/update/post", status, status.AptUpdateEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/upgrade/post", status, status.AptUpgradeEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/remove/post", status, status.AptRemoveEvent, true)
 
-	subscribeTopicAWS(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/list/post", status, status.AptRepositoryListEvent, false)
+	subscribeTopic(mqttClient, id, "/apt/repos/add/post", status, status.AptRepositoryAddEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent, true)
+	subscribeTopic(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent, true)
 
-	subscribeTopicAWS(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
-	subscribeTopicAWS(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
-	subscribeTopicAWS(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
+	subscribeTopic(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
+	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
+	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
 }
 
-func subscribeTopicImpl(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) mqtt.MessageHandler {
-	if status.config.CheckRoFs && isWriteFsRequiredForTopic {
-		return func(client mqtt.Client, msg mqtt.Message) {
+func subscribeTopic(client mqtt.Client, id, topic string, s *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
+	handler := statusHandler
+	if s.config.CheckRoFs && isWriteFsRequiredForTopic {
+		handler = func(client mqtt.Client, msg mqtt.Message) {
 			mountRootFilesystemRw()
 			statusHandler(client, msg)
 			mountRootFilesystemRo()
 		}
 	}
 
+	completeTopic := s.topicPertinence + topic
 	if debugMqtt {
-		return func(client mqtt.Client, msg mqtt.Message) {
+		debugHandler := func(client mqtt.Client, msg mqtt.Message) {
 			fmt.Println("MQTT IN:", string(msg.Topic()), string(msg.Payload()))
-			statusHandler(client, msg)
+			handler(client, msg)
 		}
-	}
 
-	return statusHandler
-}
-
-func subscribeTopicAWS(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
-	handler := subscribeTopicImpl(mqttClient, id, topic, status, statusHandler, isWriteFsRequiredForTopic)
-	mqttClient.Subscribe("$aws/things/"+id+topic, 1, handler)
-}
-
-func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
-	handler := subscribeTopicImpl(mqttClient, id, topic, status, statusHandler, isWriteFsRequiredForTopic)
-	if token := mqttClient.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
+		if token := client.Subscribe(completeTopic, 1, debugHandler); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
+		}
+	} else {
+		if token := client.Subscribe(completeTopic, 1, handler); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
+		}
 	}
 }
 
