@@ -38,7 +38,7 @@ func TestDockerPsApi(t *testing.T) {
 	ui := NewMqttTestClientLocal()
 	defer ui.Close()
 
-	status := NewStatus(program{}.Config, nil, nil)
+	status := NewStatus(program{}.Config, nil, nil, "")
 	status.dockerClient, _ = docker.NewClientWithOpts(docker.WithVersion("1.38"))
 	acOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector")
 	status.mqttClient = mqtt.NewClient(acOptions)

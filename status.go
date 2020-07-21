@@ -32,13 +32,14 @@ import (
 
 // Status contains info about the sketches running on the device
 type Status struct {
-	config         Config
-	id             string
-	mqttClient     mqtt.Client
-	dockerClient   docker.APIClient
-	Sketches       map[string]*SketchStatus `json:"sketches"`
-	messagesSent   int
-	firstMessageAt time.Time
+	config          Config
+	id              string
+	mqttClient      mqtt.Client
+	dockerClient    docker.APIClient
+	Sketches        map[string]*SketchStatus `json:"sketches"`
+	messagesSent    int
+	firstMessageAt  time.Time
+	topicPertinence string
 }
 
 // SketchBinding represents a pair (SketchName,SketchId)
@@ -64,13 +65,14 @@ type Endpoint struct {
 }
 
 // NewStatus creates a new status that publishes on a topic
-func NewStatus(config Config, mqttClient mqtt.Client, dockerClient docker.APIClient) *Status {
+func NewStatus(config Config, mqttClient mqtt.Client, dockerClient docker.APIClient, topicPertinence string) *Status {
 	return &Status{
-		config:       config,
-		id:           config.ID,
-		mqttClient:   mqttClient,
-		dockerClient: dockerClient,
-		Sketches:     map[string]*SketchStatus{},
+		config:          config,
+		id:              config.ID,
+		mqttClient:      mqttClient,
+		dockerClient:    dockerClient,
+		Sketches:        map[string]*SketchStatus{},
+		topicPertinence: topicPertinence,
 	}
 }
 

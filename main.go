@@ -215,7 +215,7 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config, nil, nil)
+	status := NewStatus(p.Config, nil, nil, "$aws/things/"+p.Config.ID)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
@@ -324,7 +324,7 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	subscribeTopicAWS(mqttClient, id, "/apt/repos/remove/post", status, status.AptRepositoryRemoveEvent, true)
 	subscribeTopicAWS(mqttClient, id, "/apt/repos/edit/post", status, status.AptRepositoryEditEvent, true)
 
-	subscribeTopicAWS(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEventAWS, false)
+	subscribeTopicAWS(mqttClient, id, "/containers/ps/post", status, status.ContainersPsEvent, false)
 	subscribeTopicAWS(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
 	subscribeTopicAWS(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
 	subscribeTopicAWS(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)

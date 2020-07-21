@@ -71,8 +71,8 @@ type ChangeNamePayload struct {
 	ContainerName string `json:"name"`
 }
 
-// ContainerPsEventImpl exec basic operation to implements "docker ps -a"
-func (s *Status) ContainerPsEventImpl(client mqtt.Client, msg mqtt.Message) (data []byte) {
+// ContainersPsEvent send info about "docker ps -a" command
+func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 	psPayload := PsPayload{}
 	err := json.Unmarshal(msg.Payload(), &psPayload)
 	if err != nil {
@@ -87,33 +87,17 @@ func (s *Status) ContainerPsEventImpl(client mqtt.Client, msg mqtt.Message) (dat
 
 	containers, err := s.dockerClient.ContainerList(context.Background(), containerListOptions)
 	if err != nil {
-		fmt.Println(":(", err)
 		s.Error("/containers/ps", fmt.Errorf("Json marshal result: %s", err))
 		return
 	}
 
-	data, err = json.Marshal(containers)
+	data, err := json.Marshal(containers)
 	if err != nil {
 		s.Error("/containers/ps", fmt.Errorf("Json marsahl result: %s", err))
 		return
 	}
 
-	return
-}
-
-// ContainersPsEventAWS send info about "docker ps -a" command to aws
-func (s *Status) ContainersPsEventAWS(client mqtt.Client, msg mqtt.Message) {
-	data := s.ContainerPsEventImpl(client, msg)
-	fmt.Println("aws data: ", data)
-	if !s.SendInfo("$aws/things/"+s.id+"/containers/ps", string(data)+"\n") {
-		fmt.Println("error sending info")
-	}
-}
-
-// ContainersPsEvent send info about "docker ps -a" command
-func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
-	data := s.ContainerPsEventImpl(client, msg)
-	if !s.SendInfo("/containers/ps", string(data)+"\n") {
+	if !s.SendInfo(s.topicPertinence+"/containers/ps", string(data)+"\n") {
 		fmt.Println("error sending info")
 	}
 }
