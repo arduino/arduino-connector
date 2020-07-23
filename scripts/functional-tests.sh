@@ -4,5 +4,5 @@ set -euo pipefail
 
 trap 'kill "$(pidof mosquitto)"' EXIT
 
-mosquitto &
+mosquitto > /dev/null &
 go test -v --run="TestDockerPsApi"
