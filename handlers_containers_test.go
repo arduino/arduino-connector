@@ -66,9 +66,10 @@ func TestDockerPsApi(t *testing.T) {
 	splitted = splitted[:len(splitted)-1]
 
 	// Take json without INFO tag
-	respJSON := strings.Replace(resp, "INFO: ", "", -1)
-	var result []interface{}
-	if err := json.Unmarshal([]byte(respJSON), &result); err != nil {
+	resp = strings.TrimPrefix(resp, "INFO: ")
+	resp = strings.TrimSuffix(resp, "\n\n")
+	var result []types.Container
+	if err := json.Unmarshal([]byte(resp), &result); err != nil {
 		t.Fatal(err)
 	}
 
