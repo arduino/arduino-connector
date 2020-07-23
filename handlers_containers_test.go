@@ -58,12 +58,9 @@ func TestDockerPsApi(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	strOut := string(out)
-	splitted := strings.Split(strOut, "\n")
-	// Remove first because docker header
-	splitted = splitted[1:]
-	// Remove last becaus is empty line
-	splitted = splitted[:len(splitted)-1]
+	lines := strings.Split(string(out), "\n")
+	// Remove the first line (command output header) and the last line (empty line)
+	lines = lines[1 : len(lines)-1]
 
 	// Take json without INFO tag
 	resp = strings.TrimPrefix(resp, "INFO: ")
@@ -73,9 +70,10 @@ func TestDockerPsApi(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, len(result), len(splitted))
-	for i, v := range splitted {
-		assert.True(t, strings.HasPrefix(result[i].ID, v[:12]))
+	assert.Equal(t, len(result), len(lines))
+	for i, line := range lines {
+		containerId := strings.Fields(line)[0]
+		assert.True(t, strings.HasPrefix(result[i].ID, containerId))
 	}
 
 	status.mqttClient.Disconnect(100)
