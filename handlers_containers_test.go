@@ -50,8 +50,6 @@ func TestDockerPsApi(t *testing.T) {
 	subscribeTopic(status.mqttClient, "0", "/containers/ps/post", status, status.ContainersPsEvent, false)
 
 	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
-	goldMqttResponse := "INFO: []\n\n"
-	assert.Equal(t, goldMqttResponse, resp)
 
 	// ask Docker about containers effectively running
 	cmd := exec.Command("bash", "-c", "docker ps -a")
@@ -60,10 +58,21 @@ func TestDockerPsApi(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// NOTE: we must discard docker output header line
 	strOut := string(out)
 	splitted := strings.Split(strOut, "\n")
-	assert.Equal(t, "", splitted[1])
+	// Remove first because docker header
+	splitted = splitted[1:]
+	// Remove last becaus is empty line
+	splitted = splitted[:len(splitted)-1]
+
+	// Take json without INFO tag
+	respJSON := strings.Replace(resp, "INFO: ", "", -1)
+	var result []interface{}
+	if err := json.Unmarshal([]byte(respJSON), &result); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(result), len(splitted))
 
 	status.mqttClient.Disconnect(100)
 }
