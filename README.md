@@ -68,7 +68,7 @@ See [API](./API.md)
 
 This type of tests are executed all locally and you need to configure a dedicated docker container:
 - `docker pull guerra1994/go-mqtt-docker-env`
-- follow step to run correctly container (https://hub.docker.com/r/guerra1994/go-mqtt-docker-env)
+- follow the steps [here](https://hub.docker.com/r/guerra1994/go-mqtt-docker-env) to run it
 - run mosquitto broker in background mode using `mosquitto &`
 - then run your test, for example `go test -v --run="TestDockerPsApi"`
 
