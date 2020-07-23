@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -26,19 +26,20 @@ import (
 	"time"
 
 	docker "github.com/docker/docker/client"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
 
 // Status contains info about the sketches running on the device
 type Status struct {
-	config         Config
-	id             string
-	mqttClient     mqtt.Client
-	dockerClient   docker.APIClient
-	Sketches       map[string]*SketchStatus `json:"sketches"`
-	messagesSent   int
-	firstMessageAt time.Time
+	config          Config
+	id              string
+	mqttClient      mqtt.Client
+	dockerClient    docker.APIClient
+	Sketches        map[string]*SketchStatus `json:"sketches"`
+	messagesSent    int
+	firstMessageAt  time.Time
+	topicPertinence string
 }
 
 // SketchBinding represents a pair (SketchName,SketchId)
@@ -64,13 +65,14 @@ type Endpoint struct {
 }
 
 // NewStatus creates a new status that publishes on a topic
-func NewStatus(config Config, mqttClient mqtt.Client, dockerClient docker.APIClient) *Status {
+func NewStatus(config Config, mqttClient mqtt.Client, dockerClient docker.APIClient, topicPertinence string) *Status {
 	return &Status{
-		config:       config,
-		id:           config.ID,
-		mqttClient:   mqttClient,
-		dockerClient: dockerClient,
-		Sketches:     map[string]*SketchStatus{},
+		config:          config,
+		id:              config.ID,
+		mqttClient:      mqttClient,
+		dockerClient:    dockerClient,
+		Sketches:        map[string]*SketchStatus{},
+		topicPertinence: topicPertinence,
 	}
 }
 
@@ -120,6 +122,25 @@ func (s *Status) Info(topic, msg string) bool {
 		fmt.Println("MQTT OUT: $aws/things/"+s.id+topic, "INFO: "+msg+"\n")
 	}
 	return res
+}
+
+// SendInfo send information to a specific topic
+func (s *Status) SendInfo(topic, msg string) bool {
+	if s.mqttClient == nil {
+		return false
+	}
+
+	s.messagesSent++
+
+	if token := s.mqttClient.Publish(topic, 0, false, "INFO: "+msg+"\n"); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
+	}
+
+	if debugMqtt {
+		fmt.Println("MQTT OUT: "+topic, "INFO: "+msg+"\n")
+	}
+
+	return true
 }
 
 // Raw sends a message on the specified topic without further processing

@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -215,7 +215,7 @@ func (p program) run() {
 	}
 
 	// Create global status
-	status := NewStatus(p.Config, nil, nil)
+	status := NewStatus(p.Config, nil, nil, "$aws/things/"+p.Config.ID)
 	status.Update(p.Config)
 
 	// Setup MQTT connection
@@ -330,10 +330,9 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
 }
 
-func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
+func subscribeTopic(client mqtt.Client, id, topic string, s *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
 	handler := statusHandler
-
-	if status.config.CheckRoFs && isWriteFsRequiredForTopic {
+	if s.config.CheckRoFs && isWriteFsRequiredForTopic {
 		handler = func(client mqtt.Client, msg mqtt.Message) {
 			mountRootFilesystemRw()
 			statusHandler(client, msg)
@@ -341,14 +340,20 @@ func subscribeTopic(mqttClient mqtt.Client, id, topic string, status *Status, st
 		}
 	}
 
+	completeTopic := s.topicPertinence + topic
 	if debugMqtt {
 		debugHandler := func(client mqtt.Client, msg mqtt.Message) {
 			fmt.Println("MQTT IN:", string(msg.Topic()), string(msg.Payload()))
 			handler(client, msg)
 		}
-		mqttClient.Subscribe("$aws/things/"+id+topic, 1, debugHandler)
+
+		if token := client.Subscribe(completeTopic, 1, debugHandler); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
+		}
 	} else {
-		mqttClient.Subscribe("$aws/things/"+id+topic, 1, handler)
+		if token := client.Subscribe(completeTopic, 1, handler); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
+		}
 	}
 }
 

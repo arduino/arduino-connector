@@ -58,4 +58,7 @@ arduino-connector-arm
 .idea
 setup_host_test_env.sh
 
+### Remote vscode container
+.devcontainer/*
+
 # End

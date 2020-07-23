@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -22,16 +22,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
+	docker "github.com/docker/docker/client"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// tests
+func TestDockerPsApi(t *testing.T) {
+	ui := NewMqttTestClientLocal()
+	defer ui.Close()
+
+	status := NewStatus(program{}.Config, nil, nil, "")
+	status.dockerClient, _ = docker.NewClientWithOpts(docker.WithVersion("1.38"))
+	acOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector")
+	status.mqttClient = mqtt.NewClient(acOptions)
+
+	if token := status.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatal(token.Error())
+	}
+
+	subscribeTopic(status.mqttClient, "0", "/containers/ps/post", status, status.ContainersPsEvent, false)
+
+	resp := ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
+
+	// ask Docker about containers effectively running
+	cmd := exec.Command("bash", "-c", "docker ps -a")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(out), "\n")
+	// Remove the first line (command output header) and the last line (empty line)
+	lines = lines[1 : len(lines)-1]
+
+	// Take json without INFO tag
+	resp = strings.TrimPrefix(resp, "INFO: ")
+	resp = strings.TrimSuffix(resp, "\n\n")
+	var result []types.Container
+	if err := json.Unmarshal([]byte(resp), &result); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(result), len(lines))
+	for i, line := range lines {
+		containerId := strings.Fields(line)[0]
+		assert.True(t, strings.HasPrefix(result[i].ID, containerId))
+	}
+
+	status.mqttClient.Disconnect(100)
+}
+
 func TestConnectorProcessIsRunning(t *testing.T) {
 	outputMessage, err := ExecAsVagrantSshCmd("systemctl status ArduinoConnector | grep running")
 	if err != nil {

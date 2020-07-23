@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/host"
 	"golang.org/x/net/context"
@@ -71,7 +71,7 @@ type ChangeNamePayload struct {
 	ContainerName string `json:"name"`
 }
 
-// ContainersPsEvent implements docker ps -a
+// ContainersPsEvent send info about "docker ps -a" command
 func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 	psPayload := PsPayload{}
 	err := json.Unmarshal(msg.Payload(), &psPayload)
@@ -91,13 +91,15 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	// Send result
 	data, err := json.Marshal(containers)
 	if err != nil {
 		s.Error("/containers/ps", fmt.Errorf("Json marsahl result: %s", err))
 		return
 	}
-	s.Info("/containers/ps", string(data)+"\n")
+
+	if !s.SendInfo(s.topicPertinence+"/containers/ps", string(data)+"\n") {
+		fmt.Println("error sending info")
+	}
 }
 
 // ContainersListImagesEvent implements docker images
