@@ -74,6 +74,9 @@ func TestDockerPsApi(t *testing.T) {
 	}
 
 	assert.Equal(t, len(result), len(splitted))
+	for i, v := range splitted {
+		assert.True(t, strings.HasPrefix(result[i].ID, v[:12]))
+	}
 
 	status.mqttClient.Disconnect(100)
 }
