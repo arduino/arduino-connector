@@ -164,7 +164,7 @@ func TestDockerRenameApi(t *testing.T) {
 	}
 
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/rename/post", ts.appStatus, ts.appStatus.ContainersRenameEvent, true)
-	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/rename", string(data), 50*time.Millisecond)
+	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/rename", string(data), 250*time.Millisecond)
 
 	// ask Docker about containers
 	cmd := exec.Command("bash", "-c", "docker container ls -a")
