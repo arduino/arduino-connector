@@ -27,7 +27,7 @@ integ-test:
 		$(GOBUILD) -ldflags "-X main.version=1.0.0-dev" github.com/arduino/arduino-connector
 		cd ./test && ./upload_dev_artifacts_on_s3.sh
 		cd ./test && vagrant provision
-		source ./test/setup_host_test_env.sh && $(GOTEST) ./... -timeout $(GOTEST_TIMEOUT)
+		source ./test/setup_host_test_env.sh && $(GOTEST) --tags=integration ./... -timeout $(GOTEST_TIMEOUT)
 
 teardown-test:
 		cd ./test && ./teardown_iot_device.sh
