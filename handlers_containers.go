@@ -139,7 +139,7 @@ func (s *Status) ContainersRenameEvent(client mqtt.Client, msg mqtt.Message) {
 	cnPayload := ChangeNamePayload{}
 	err := json.Unmarshal(msg.Payload(), &cnPayload)
 	if err != nil {
-		s.Error("/containers/action", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
+		s.Error("/containers/rename", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
 	err = s.dockerClient.ContainerRename(context.Background(), cnPayload.ContainerID, cnPayload.ContainerName)
