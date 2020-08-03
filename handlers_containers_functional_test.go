@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -54,16 +55,15 @@ func setupAndRun(m *testing.M) int {
 	ts.appStatus.dockerClient, _ = docker.NewClientWithOpts(docker.WithVersion("1.38"))
 	ts.appStatus.mqttClient = mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector"))
 
+	if token := ts.appStatus.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(token.Error())
+	}
 	defer ts.appStatus.mqttClient.Disconnect(100)
 
 	return m.Run()
 }
 
 func TestDockerPsApi(t *testing.T) {
-	if token := ts.appStatus.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/ps/post", ts.appStatus, ts.appStatus.ContainersPsEvent, false)
 	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
 
@@ -94,10 +94,6 @@ func TestDockerPsApi(t *testing.T) {
 }
 
 func TestDockerListImagesApi(t *testing.T) {
-	if token := ts.appStatus.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/images/post", ts.appStatus, ts.appStatus.ContainersListImagesEvent, false)
 	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/images", "{}", 50*time.Millisecond)
 
@@ -157,10 +153,6 @@ func TestDockerRenameApi(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-
-	if token := ts.appStatus.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
 
 	cnPayload := ChangeNamePayload{
 		ContainerID:   createContResp.ID,
