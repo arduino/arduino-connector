@@ -124,5 +124,4 @@ func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request s
 	}
 	wg.Wait()
 	return response
-
 }
