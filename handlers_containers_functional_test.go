@@ -14,6 +14,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
@@ -123,13 +124,27 @@ func TestDockerListImagesApi(t *testing.T) {
 }
 
 func TestDockerRenameApi(t *testing.T) {
-	// create a test container through Docker API
+	// download an alpine image from library to use as test
 	reader, err := ts.appStatus.dockerClient.ImagePull(context.Background(), "docker.io/library/alpine", types.ImagePullOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	io.Copy(ioutil.Discard, reader)
+	defer func() {
+		reader.Close()
 
+		filters := filters.NewArgs(filters.Arg("reference", "alpine"))
+		images, err := ts.appStatus.dockerClient.ImageList(context.Background(), types.ImageListOptions{Filters: filters})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := ts.appStatus.dockerClient.ImageRemove(context.Background(), images[0].ID, types.ImageRemoveOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// create a test container from downloaded image
 	createContResp, err := ts.appStatus.dockerClient.ContainerCreate(context.Background(), &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"echo", "hello world"},
@@ -137,7 +152,6 @@ func TestDockerRenameApi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	defer func() {
 		if err := ts.appStatus.dockerClient.ContainerRemove(context.Background(), createContResp.ID, types.ContainerRemoveOptions{}); err != nil {
 			t.Fatal(err)
