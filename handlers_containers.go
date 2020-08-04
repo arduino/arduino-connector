@@ -97,9 +97,7 @@ func (s *Status) ContainersPsEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	if !s.SendInfo(s.topicPertinence+"/containers/ps", string(data)+"\n") {
-		fmt.Println("error sending info")
-	}
+	s.SendInfo(s.topicPertinence+"/containers/ps", string(data)+"\n")
 }
 
 // ContainersListImagesEvent implements docker images
@@ -129,9 +127,7 @@ func (s *Status) ContainersListImagesEvent(client mqtt.Client, msg mqtt.Message)
 		return
 	}
 
-	if !s.SendInfo(s.topicPertinence+"/containers/images", string(data)+"\n") {
-		fmt.Println("error sending info")
-	}
+	s.SendInfo(s.topicPertinence+"/containers/images", string(data)+"\n")
 }
 
 // ContainersRenameEvent implements docker rename
@@ -155,9 +151,7 @@ func (s *Status) ContainersRenameEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	if !s.SendInfo(s.topicPertinence+"/containers/rename", string(data)+"\n") {
-		fmt.Println("error sending info")
-	}
+	s.SendInfo(s.topicPertinence+"/containers/rename", string(data)+"\n")
 }
 
 // ContainersActionEvent implements docker container action like run, start and stop, remove
