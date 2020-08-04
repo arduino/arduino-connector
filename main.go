@@ -138,9 +138,9 @@ func main() {
 	check(err, "CreateService")
 
 	if *doLogin {
-		token, err := deviceAuth(config.AuthURL, config.AuthClientID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		token, errDev := deviceAuth(config.AuthURL, config.AuthClientID)
+		if errDev != nil {
+			fmt.Fprintln(os.Stderr, errDev)
 			os.Exit(1)
 		}
 
@@ -205,6 +205,10 @@ func (p program) run() {
 	opts.Host = "127.0.0.1"
 	// Remove any host/ip that points to itself in Route
 	newroutes, err := server.RemoveSelfReference(opts.Cluster.Port, opts.Routes)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	opts.Routes = newroutes
 	s := server.New(&opts)
 	configureNatsdLogger(s, &opts)
@@ -248,7 +252,11 @@ func (p program) run() {
 	// Start nats-client for local server
 	nc, err := nats.Connect(nats.DefaultURL)
 	check(err, "ConnectNATS")
-	nc.Subscribe("$arduino.cloud.*", natsCloudCB(status))
+	_, err = nc.Subscribe("$arduino.cloud.*", natsCloudCB(status))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	// wipe the thing shadows
 	if status.mqttClient != nil {
@@ -266,6 +274,10 @@ func (p program) run() {
 	}
 
 	sketchFolder, err := getSketchFolder(status)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	// Export LD_LIBRARY_PATH to local lib subfolder
 	// This way any external library can be safely copied there and the sketch should run anyway
 	os.Setenv("LD_LIBRARY_PATH", filepath.Join(sketchFolder, "lib")+":"+os.Getenv("LD_LIBRARY_PATH"))
@@ -284,7 +296,10 @@ func (p program) run() {
 		}
 	}
 
-	os.Mkdir("/tmp/sketches", 0700)
+	err = os.Mkdir("/tmp/sketches", 0700)
+	if err != nil {
+		return
+	}
 
 	go addWatcherForManuallyAddedSketches("/tmp/sketches", sketchFolder, status)
 
@@ -295,7 +310,11 @@ func (p program) run() {
 
 func autospawnSketchIfMatchesName(name string, status *Status) {
 	if status.Sketches[name] != nil {
-		applyAction(status.Sketches[name], "START", status)
+		err := applyAction(status.Sketches[name], "START", status)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 
@@ -422,7 +441,12 @@ func copyFileAndRemoveOriginal(src string, dst string) error {
 
 func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status *Status) {
 	watcher, err := fsnotify.NewWatcher()
-	defer watcher.Close()
+	defer func() {
+		err = watcher.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 	done := make(chan bool)
 	go func() {
 		for {
@@ -441,7 +465,7 @@ func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status 
 						err = applyAction(sketch, "STOP", status)
 					}
 
-					err := os.Rename(event.Name, filename)
+					err = os.Rename(event.Name, filename)
 					if err != nil {
 						// copy the file and remote the original
 						err = copyFileAndRemoveOriginal(event.Name, filename)
@@ -450,17 +474,25 @@ func addWatcherForManuallyAddedSketches(folderOrigin, folderDest string, status 
 							break
 						}
 					}
-					os.Chmod(filename, 0700)
-					log.Println("Moving new sketch to sketches folder")
-					fileInfo, err := os.Stat(filename)
+					err = os.Chmod(filename, 0700)
 					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					log.Println("Moving new sketch to sketches folder")
+					fileInfo, errOS := os.Stat(filename)
+					if errOS != nil {
 						log.Println("Got error:" + err.Error())
 						break
 					}
 					s := addFileToSketchDB(fileInfo, status)
-					applyAction(s, "START", status)
+					err = applyAction(s, "START", status)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
 				}
-			case err := <-watcher.Errors:
+			case err = <-watcher.Errors:
 				log.Println("error:", err)
 			}
 		}

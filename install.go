@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/arduino/arduino-connector/auth"
@@ -45,7 +44,6 @@ import (
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -91,7 +89,12 @@ func generateKeyAndCsr(config Config) []byte {
 	keyOut, err := os.OpenFile(certKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	check(err, "openKeyFile")
 
-	pem.Encode(keyOut, pemBlockForKey(key))
+	err = pem.Encode(keyOut, pemBlockForKey(key))
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+
 	err = keyOut.Close()
 	check(err, "closeKeyFile")
 
@@ -177,43 +180,6 @@ Loop:
 	return token, nil
 }
 
-func askCredentials(authURL string) (token string, err error) {
-	var user, pass string
-	fmt.Println("Insert your arduino username")
-	fmt.Scanln(&user)
-	fmt.Println("Insert your arduino password")
-
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", err
-	}
-	pass = string(bytePassword)
-
-	authClient := auth.New()
-	authClient.CodeURL = authURL + "/oauth2/auth"
-	authClient.TokenURL = authURL + "/oauth2/token"
-	authClient.ClientID = "connector"
-	authClient.Scopes = "iot:devices"
-
-	var tok *auth.Token
-	// Handle captcha
-	for {
-		tok, err = authClient.Token(user, pass)
-		if err == nil || !strings.HasPrefix(err.Error(), "authenticate: CAPTCHA") {
-			break
-		}
-		fmt.Println("The authentication requested a captcha! We can't let you solve it in a terminal, so please visit https://auth.arduino.cc/login. When you managed to log in from the browser come back here and press [Enter]")
-		var temp string
-		fmt.Scanln(&temp)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Println("Access Token: ", tok.Access)
-	return tok.Access, nil
-}
-
 func generateKey(ecdsaCurve string) (interface{}, error) {
 	switch ecdsaCurve {
 	case "":
@@ -281,7 +247,12 @@ func generateCsr(id string, priv interface{}) ([]byte, error) {
 
 func formatCSR(csr []byte) string {
 	pemData := bytes.NewBuffer([]byte{})
-	pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+	err := pem.Encode(pemData, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr})
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
 	return pemData.String()
 }
 
@@ -319,6 +290,10 @@ func requestCert(apiURL, id, token string, csr []byte) (string, error) {
 	}{}
 
 	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
 
 	return data.Certificate, nil
 }
@@ -405,6 +380,10 @@ func registerDevice(client mqtt.Client, id string) error {
 
 	// get Macs
 	macs, err := getMACs()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
 	data := struct {
 		Host string

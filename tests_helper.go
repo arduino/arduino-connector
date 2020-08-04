@@ -18,20 +18,6 @@ type MqttTestClient struct {
 	thingToTestID string
 }
 
-// NewMqttTestClientLocal creates mqtt client in localhost:1883
-func NewMqttTestClientLocal() *MqttTestClient {
-	uiOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("UI")
-	ui := mqtt.NewClient(uiOptions)
-	if token := ui.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	return &MqttTestClient{
-		ui,
-		"",
-	}
-}
-
 // NewMqttTestClient creates mqtt cliente with cert for aws
 func NewMqttTestClient() *MqttTestClient {
 	cert := "test/cert.pem"
@@ -41,7 +27,7 @@ func NewMqttTestClient() *MqttTestClient {
 	path := "/mqtt"
 	file, err := ioutil.ReadFile("test/cert_arn.sh")
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	url := "endpoint.iot.com"
 	for _, line := range strings.Split(string(file), "\n") {
@@ -51,7 +37,7 @@ func NewMqttTestClient() *MqttTestClient {
 	}
 	file, err = ioutil.ReadFile("test/ui_gen_install.sh")
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	thingToTestID := "thing:id-id-id-id"
 	for _, line := range strings.Split(string(file), "\n") {
@@ -62,7 +48,7 @@ func NewMqttTestClient() *MqttTestClient {
 	brokerURL := fmt.Sprintf("tcps://%s:%d%s", url, port, path)
 	cer, err := tls.LoadX509KeyPair(cert, key)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	opts := mqtt.NewClientOptions().AddBroker(brokerURL)
 	opts.SetClientID(id)
@@ -73,7 +59,7 @@ func NewMqttTestClient() *MqttTestClient {
 
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
+		return nil
 	}
 
 	return &MqttTestClient{

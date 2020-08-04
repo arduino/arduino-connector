@@ -53,7 +53,12 @@ func TestSketchProcessIsRunning(t *testing.T) {
 
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
@@ -68,7 +73,8 @@ func TestSketchProcessIsRunning(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, 1, len(strings.Split(strings.TrimSuffix(outputMessage, "\n"), "\n")))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}
@@ -85,14 +91,20 @@ func TestMaliciousSketchProcessIsNotRunning(t *testing.T) {
 	http.Handle("/", fs)
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
 	t.Log(responseSketchRun)
 
 	assert.Equal(t, true, strings.Contains(responseSketchRun, "ERROR: signature do not match"))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}
@@ -121,7 +133,12 @@ func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
 
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err = srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "connector_env_var_test.bin","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/connector_env_var_test.bin")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
@@ -139,7 +156,8 @@ func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
 
 	assert.Equal(t, true, strings.Contains(envString, "HDDL_INSTALL_DIR=/opt/intel/computer_vision_sdk/inference_engine/external/hddl/"))
 	assert.Equal(t, true, strings.Contains(envString, "ENV_TEST_PATH=/tmp"))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}

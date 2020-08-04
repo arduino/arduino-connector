@@ -53,7 +53,3 @@ func (h *heartbeat) run() {
 		time.Sleep(15 * time.Second)
 	}
 }
-
-func (h *heartbeat) stop() {
-	h.running = false
-}

@@ -19,7 +19,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -34,7 +33,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
 	"github.com/kr/pty"
 	"github.com/nats-io/go-nats"
@@ -63,6 +62,9 @@ func (status *Status) UpdateEvent(client mqtt.Client, msg mqtt.Message) {
 	executablePath, _ := os.Executable()
 	name := filepath.Join(os.TempDir(), filepath.Base(executablePath))
 	err = downloadFile(name, info.URL, info.Token)
+	if err != nil {
+		return
+	}
 	err = downloadFile(name+".sig", info.URL+".sig", info.Token)
 	if err != nil {
 		status.Error("/update", errors.Wrap(err, "no signature file "+info.URL+".sig"))
@@ -80,17 +82,29 @@ func (status *Status) UpdateEvent(client mqtt.Client, msg mqtt.Message) {
 		status.Error("/update", errors.Wrapf(err, "chmod 755 %s", name))
 		return
 	}
-	os.Rename(executablePath, executablePath+".old")
+	err = os.Rename(executablePath, executablePath+".old")
+	if err != nil {
+		return
+	}
 	// copy it over existing binary
 	err = copyFileAndRemoveOriginal(name, executablePath)
 	if err != nil {
 		// rollback
-		os.Rename(executablePath+".old", executablePath)
+		err = os.Rename(executablePath+".old", executablePath)
+		if err != nil {
+			return
+		}
 		status.Error("/update", errors.Wrap(err, "error copying itself from "+name+" to "+executablePath))
 		return
 	}
-	os.Chmod(executablePath, 0755)
-	os.Remove(executablePath + ".old")
+	err = os.Chmod(executablePath, 0755)
+	if err != nil {
+		return
+	}
+	err = os.Remove(executablePath + ".old")
+	if err != nil {
+		return
+	}
 	// leap of faith: kill itself, systemd should respawn the process
 	os.Exit(0)
 }
@@ -125,7 +139,10 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 			return
 		}
 
-		sketchFolder, err := getSketchFolder(status)
+		sketchFolder, errFolder := getSketchFolder(status)
+		if errFolder != nil {
+			return
+		}
 		sketchPath := filepath.Join(sketchFolder, sketch.Name)
 
 		if _, err = os.Stat(sketchPath); !os.IsNotExist(err) {
@@ -216,11 +233,15 @@ func (status *Status) UploadEvent(client mqtt.Client, msg mqtt.Message) {
 func getSketchFolder(status *Status) (string, error) {
 	// create folder if it doesn't exist
 	folder, err := osext.ExecutableFolder()
+	if err != nil {
+		return "", err
+	}
 	if status.config.SketchesPath != "" {
 		folder = status.config.SketchesPath
 	}
+
 	folder = filepath.Join(folder, "sketches")
-	if _, err := os.Stat(folder); os.IsNotExist(err) {
+	if _, err = os.Stat(folder); os.IsNotExist(err) {
 		err = os.Mkdir(folder, 0700)
 	}
 	return folder, err
@@ -229,8 +250,11 @@ func getSketchFolder(status *Status) (string, error) {
 func getSketchDBFolder(status *Status) (string, error) {
 	// create folder if it doesn't exist
 	folder, err := getSketchFolder(status)
+	if err != nil {
+		return "", err
+	}
 	folder = filepath.Join(folder, "db")
-	if _, err := os.Stat(folder); os.IsNotExist(err) {
+	if _, err = os.Stat(folder); os.IsNotExist(err) {
 		err = os.Mkdir(folder, 0700)
 	}
 	return folder, err
@@ -254,8 +278,14 @@ func insertSketchInDB(name string, id string, status *Status) {
 	}
 
 	var c []SketchBinding
-	raw, err := ioutil.ReadFile(db)
-	json.Unmarshal(raw, &c)
+	raw, errRead := ioutil.ReadFile(db)
+	if errRead != nil {
+		return
+	}
+	err = json.Unmarshal(raw, &c)
+	if err != nil {
+		return
+	}
 
 	for _, element := range c {
 		if element.ID == id && element.Name == name {
@@ -264,7 +294,10 @@ func insertSketchInDB(name string, id string, status *Status) {
 	}
 	c = append(c, SketchBinding{ID: id, Name: name})
 	data, _ := json.Marshal(c)
-	ioutil.WriteFile(db, data, 0600)
+	err = ioutil.WriteFile(db, data, 0600)
+	if err != nil {
+		return
+	}
 }
 
 func getSketchIDFromDB(name string, status *Status) (string, error) {
@@ -274,8 +307,14 @@ func getSketchIDFromDB(name string, status *Status) (string, error) {
 		return "", errors.New("Can't open DB")
 	}
 	var c []SketchBinding
-	raw, err := ioutil.ReadFile(db)
-	json.Unmarshal(raw, &c)
+	raw, errRead := ioutil.ReadFile(db)
+	if errRead != nil {
+		return "", errRead
+	}
+	err = json.Unmarshal(raw, &c)
+	if err != nil {
+		return "", err
+	}
 
 	for _, element := range c {
 		if element.Name == name {
@@ -381,32 +420,13 @@ func downloadFile(filepath, url, token string) error {
 	return nil
 }
 
-func logSketchStdoutStderr(cmd *exec.Cmd, stdout io.ReadCloser, stderr io.ReadCloser, sketch *SketchStatus) {
-	stdoutCopy := bufio.NewScanner(stdout)
-	stderrCopy := bufio.NewScanner(stderr)
-
-	stdoutCopy.Split(bufio.ScanLines)
-	stderrCopy.Split(bufio.ScanLines)
-
-	go func() {
-		fmt.Println("started scanning stdout")
-		for stdoutCopy.Scan() {
-			fmt.Printf(stdoutCopy.Text())
-		}
-	}()
-
-	go func() {
-		fmt.Println("started scanning stderr")
-		for stderrCopy.Scan() {
-			fmt.Printf(stderrCopy.Text())
-		}
-	}()
-}
-
 func stdInCB(pty *os.File, status *Status) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
 		if len(msg.Payload()) > 0 {
-			pty.Write(msg.Payload())
+			_, err := pty.Write(msg.Payload())
+			if err != nil {
+				return
+			}
 		}
 	}
 }
@@ -425,9 +445,15 @@ func (d *dylibMap) Download(path string) {
 			continue
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, errRead := ioutil.ReadAll(resp.Body)
+		if errRead != nil {
+			return
+		}
 		filePath := filepath.Join(path, element)
-		ioutil.WriteFile(filePath, body, 0600)
+		err = ioutil.WriteFile(filePath, body, 0600)
+		if err != nil {
+			return
+		}
 	}
 }
 
@@ -512,9 +538,15 @@ func checkSketchForMissingDisplayEnvVariable(errorString string, filepath string
 
 		err := setupDisplay(true)
 		if err != nil {
-			setupDisplay(false)
+			err = setupDisplay(false)
+			if err != nil {
+				return
+			}
 		}
-		spawnProcess(filepath, sketch, status)
+		_, _, _, err = spawnProcess(filepath, sketch, status)
+		if err != nil {
+			return
+		}
 		sketch.Status = "RUNNING"
 	}
 }
@@ -563,7 +595,10 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 
 	f, err := pty.Start(cmd)
 
-	terminal.MakeRaw(int(f.Fd()))
+	_, err = terminal.MakeRaw(int(f.Fd()))
+	if err != nil {
+		return 0, stdout, stderr, err
+	}
 
 	if err != nil {
 		fmt.Println(fmt.Sprint(err) + ": " + stderrBuf.String())
@@ -578,8 +613,8 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 	go func() {
 		for {
 			temp := make([]byte, 1000)
-			len, err := f.Read(temp)
-			if err != nil {
+			len, errRead := f.Read(temp)
+			if errRead != nil {
 				break
 			}
 			if len > 0 {
@@ -595,9 +630,16 @@ func spawnProcess(filepath string, sketch *SketchStatus, status *Status) (int, i
 
 	// keep track of sketch life (and isgnal if it ends abruptly)
 	go func() {
-		err := cmd.Wait()
+		err = cmd.Wait()
+		if err != nil {
+			return
+		}
 		//if we get here signal that the sketch has died
-		applyAction(sketch, "STOP", status)
+		if err = applyAction(sketch, "STOP", status); err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		if err != nil {
 			fmt.Println(fmt.Sprint(err) + ": " + stderrBuf.String())
 		}
@@ -619,9 +661,9 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		if sketch.PID != 0 {
 			err = process.Signal(syscall.SIGCONT)
 		} else {
-			folder, err := getSketchFolder(status)
-			if err != nil {
-				return err
+			folder, errFolder := getSketchFolder(status)
+			if errFolder != nil {
+				return errFolder
 			}
 			name := filepath.Join(folder, sketch.Name)
 			sketch.PID, _, _, err = spawnProcess(name, sketch, status)
@@ -630,7 +672,6 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 			return err
 		}
 		sketch.Status = "RUNNING"
-		break
 
 	case "STOP":
 		fmt.Println("stop called")
@@ -642,21 +683,27 @@ func applyAction(sketch *SketchStatus, action string, status *Status) error {
 		}
 		sketch.PID = 0
 		sketch.Status = "STOPPED"
-		break
+
 	case "DELETE":
-		applyAction(sketch, "STOP", status)
+		err = applyAction(sketch, "STOP", status)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
 		fmt.Println("delete called")
-		sketchFolder, err := getSketchFolder(status)
+		sketchFolder, errSketch := getSketchFolder(status)
+		if errSketch != nil {
+			return errSketch
+		}
 		err = os.Remove(filepath.Join(sketchFolder, sketch.Name))
 		if err != nil {
 			fmt.Println("error deleting sketch")
 		}
 		status.Sketches[sketch.ID] = nil
-		break
+
 	case "PAUSE":
 		err = process.Signal(syscall.SIGTSTP)
 		sketch.Status = "PAUSED"
-		break
 	}
 	return err
 }

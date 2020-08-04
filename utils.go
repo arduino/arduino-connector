@@ -30,7 +30,7 @@ func addIntelLibrariesToLdPath() {
 	if err == nil {
 		//scan /opt/intel searching for sdks
 		var extraPaths []string
-		filepath.Walk("/opt/intel", func(path string, f os.FileInfo, err error) error {
+		err = filepath.Walk("/opt/intel", func(path string, f os.FileInfo, err error) error {
 			path = strings.ToLower(path)
 
 			regex := regexp.MustCompile(".*system.*studio.*|.*qt.*|.*centos.*")
@@ -39,6 +39,9 @@ func addIntelLibrariesToLdPath() {
 			}
 			return nil
 		})
+		if err != nil {
+			return
+		}
 		os.Setenv("LD_LIBRARY_PATH", os.Getenv("LD_LIBRARY_PATH")+":"+strings.Join(extraPaths, ":"))
 	}
 }
