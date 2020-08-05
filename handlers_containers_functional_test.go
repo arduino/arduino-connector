@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -198,3 +199,80 @@ func TestDockerRenameApi(t *testing.T) {
 
 	t.Fatalf("no container with ID %s has been found\n", result.ContainerID)
 }
+
+type MqttClientMock struct{}
+
+func (m *MqttClientMock) IsConnected() bool {
+	return false
+}
+
+func (m *MqttClientMock) Connect() mqtt.Token {
+	return nil
+}
+
+func (m *MqttClientMock) Disconnect(quiesce uint) {
+}
+
+func (m *MqttClientMock) Pubblish(topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
+	return nil
+}
+
+func (m *MqttClientMock) Subscribe(topic string, qos byte, callback mqtt.MessageHandler) mqtt.Token {
+	return nil
+}
+
+func (m *MqttClientMock) SubscribeMultiple(filters map[string]byte, callback mqtt.MessageHandler) mqtt.Token {
+	return nil
+}
+
+func (m *MqttClientMock) Unsubscribe(topics ...string) mqtt.Token {
+	return nil
+}
+
+func (m *MqttClientMock) AddRoute(topic string, callback mqtt.MessageHandler) {
+	fmt.Println("AddRoute")
+}
+
+func (m *MqttClientMock) OptionsReader() mqtt.ClientOptionsReader {
+	return mqtt.ClientOptionsReader{}
+}
+
+func TestDockerApiError(t *testing.T) {
+	// 	respChan := make(chan string)
+	// 	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+	// 		respChan <- string(msg.Payload())
+	// 	}); token.Wait() && token.Error() != nil {
+	// 		t.Fatal(token.Error())
+	ts.appStatus.mqttClient = MqttClientMock{}
+
+	// ts.appStatus.SendInfo("/container/ps", "error")
+}
+
+// 	// resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
+// 	// ts.ui.MqttReceiveWithTimeout(t, "/containers/ps/", 100*time.Millisecond)
+// }
+
+// func (tmc *MqttTestClient) MqttReceiveWithTimeout(t *testing.T, topic string, timeout time.Duration) string {
+// 	t.Helper()
+
+// 	respChan := make(chan string)
+// 	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+// 		respChan <- string(msg.Payload())
+// 	}); token.Wait() && token.Error() != nil {
+// 		t.Fatal(token.Error())
+// 	}
+
+// 	select {
+// 	case <-time.After(timeout):
+// 		if token := tmc.client.Unsubscribe(topic); token.Wait() && token.Error() != nil {
+// 			t.Fatal(token.Error())
+// 		}
+// 		close(respChan)
+
+// 		t.Fatalf("MqttSendAndReceiveTimeout() timeout for topic %s", topic)
+
+// 		return ""
+// 	case resp := <-respChan:
+// 		return resp
+// 	}
+// }
