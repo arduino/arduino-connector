@@ -199,7 +199,6 @@ func TestDockerActionRunApi(t *testing.T) {
 
 	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 15*time.Second)
 
-	// Check real container runnig with bash command
 	lines := execCmd("docker ps")
 
 	foundTestContainerRunning := false
@@ -211,9 +210,25 @@ func TestDockerActionRunApi(t *testing.T) {
 
 	assert.True(t, foundTestContainerRunning)
 
-	// Clean up
-	timeout := 1 * time.Millisecond
-	err = ts.appStatus.dockerClient.ContainerStop(context.Background(), testContainer, &timeout)
+	defer func() {
+		timeout := 1 * time.Millisecond
+		err = ts.appStatus.dockerClient.ContainerStop(context.Background(), testContainer, &timeout)
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = ts.appStatus.dockerClient.ContainerRemove(context.Background(), testContainer, types.ContainerRemoveOptions{})
+		if err != nil {
+			t.Error(err)
+		}
+
+		_, err = ts.appStatus.dockerClient.ImageRemove(context.Background(), "alpine", types.ImageRemoveOptions{})
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+}
+
 	if err != nil {
 		t.Error(err)
 	}
