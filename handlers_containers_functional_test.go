@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -200,79 +200,78 @@ func TestDockerRenameApi(t *testing.T) {
 	t.Fatalf("no container with ID %s has been found\n", result.ContainerID)
 }
 
-type MqttClientMock struct{}
+type MqttTokenMock struct {
+	returnErr bool
+}
 
-func (m *MqttClientMock) IsConnected() bool {
+func (t *MqttTokenMock) Wait() bool {
+	return true
+}
+
+func (t *MqttTokenMock) WaitTimeout(time.Duration) bool {
+	return true
+}
+
+func (t *MqttTokenMock) Error() error {
+	if t.returnErr {
+		return errors.New("test err")
+	}
+
+	return nil
+}
+
+type MqttClientMock struct {
+	errPublished string
+}
+
+func (c *MqttClientMock) IsConnected() bool {
 	return false
 }
 
-func (m *MqttClientMock) Connect() mqtt.Token {
+func (c *MqttClientMock) IsConnectionOpen() bool {
+	return true
+}
+
+func (c *MqttClientMock) Connect() mqtt.Token {
 	return nil
 }
 
-func (m *MqttClientMock) Disconnect(quiesce uint) {
+func (c *MqttClientMock) Disconnect(quiesce uint) {
 }
 
-func (m *MqttClientMock) Pubblish(topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
+func (c *MqttClientMock) Publish(topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
+	payloadStr := payload.(string)
+	if strings.HasPrefix(payloadStr, "INFO") {
+		return &MqttTokenMock{returnErr: true}
+	}
+
+	c.errPublished = payloadStr
+	return &MqttTokenMock{returnErr: false}
+}
+
+func (c *MqttClientMock) Subscribe(topic string, qos byte, callback mqtt.MessageHandler) mqtt.Token {
 	return nil
 }
 
-func (m *MqttClientMock) Subscribe(topic string, qos byte, callback mqtt.MessageHandler) mqtt.Token {
+func (c *MqttClientMock) SubscribeMultiple(filters map[string]byte, callback mqtt.MessageHandler) mqtt.Token {
 	return nil
 }
 
-func (m *MqttClientMock) SubscribeMultiple(filters map[string]byte, callback mqtt.MessageHandler) mqtt.Token {
+func (c *MqttClientMock) Unsubscribe(topics ...string) mqtt.Token {
 	return nil
 }
 
-func (m *MqttClientMock) Unsubscribe(topics ...string) mqtt.Token {
-	return nil
+func (c *MqttClientMock) AddRoute(topic string, callback mqtt.MessageHandler) {
 }
 
-func (m *MqttClientMock) AddRoute(topic string, callback mqtt.MessageHandler) {
-	fmt.Println("AddRoute")
-}
-
-func (m *MqttClientMock) OptionsReader() mqtt.ClientOptionsReader {
+func (c *MqttClientMock) OptionsReader() mqtt.ClientOptionsReader {
 	return mqtt.ClientOptionsReader{}
 }
 
 func TestDockerApiError(t *testing.T) {
-	// 	respChan := make(chan string)
-	// 	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-	// 		respChan <- string(msg.Payload())
-	// 	}); token.Wait() && token.Error() != nil {
-	// 		t.Fatal(token.Error())
-	ts.appStatus.mqttClient = MqttClientMock{}
-
-	// ts.appStatus.SendInfo("/container/ps", "error")
+	ts.appStatus.mqttClient = &MqttClientMock{}
+	topic := "/container/ps"
+	ts.appStatus.SendInfo(topic, "error")
+	mockClient := ts.appStatus.mqttClient.(*MqttClientMock)
+	assert.Equal(t, mockClient.errPublished, "ERROR: test err\n")
 }
-
-// 	// resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
-// 	// ts.ui.MqttReceiveWithTimeout(t, "/containers/ps/", 100*time.Millisecond)
-// }
-
-// func (tmc *MqttTestClient) MqttReceiveWithTimeout(t *testing.T, topic string, timeout time.Duration) string {
-// 	t.Helper()
-
-// 	respChan := make(chan string)
-// 	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-// 		respChan <- string(msg.Payload())
-// 	}); token.Wait() && token.Error() != nil {
-// 		t.Fatal(token.Error())
-// 	}
-
-// 	select {
-// 	case <-time.After(timeout):
-// 		if token := tmc.client.Unsubscribe(topic); token.Wait() && token.Error() != nil {
-// 			t.Fatal(token.Error())
-// 		}
-// 		close(respChan)
-
-// 		t.Fatalf("MqttSendAndReceiveTimeout() timeout for topic %s", topic)
-
-// 		return ""
-// 	case resp := <-respChan:
-// 		return resp
-// 	}
-// }

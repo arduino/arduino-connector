@@ -103,10 +103,10 @@ func (s *Status) Error(topic string, err error) {
 		return
 	}
 	s.messagesSent++
-	token := s.mqttClient.Publish("$aws/things/"+s.id+topic, 1, false, "ERROR: "+err.Error()+"\n")
+	token := s.mqttClient.Publish(s.topicPertinence+topic, 1, false, "ERROR: "+err.Error()+"\n")
 	token.Wait()
 	if debugMqtt {
-		fmt.Println("MQTT OUT: $aws/things/"+s.id+topic, "ERROR: "+err.Error()+"\n")
+		fmt.Println("MQTT OUT: "+s.topicPertinence+s.id+topic, "ERROR: "+err.Error()+"\n")
 	}
 }
 
@@ -132,12 +132,12 @@ func (s *Status) SendInfo(topic, msg string) {
 
 	s.messagesSent++
 
-	if token := s.mqttClient.Publish(topic, 0, false, "INFO: "+msg+"\n"); token.Wait() && token.Error() != nil {
+	if token := s.mqttClient.Publish(s.topicPertinence+topic, 0, false, "INFO: "+msg+"\n"); token.Wait() && token.Error() != nil {
 		s.Error(topic, token.Error())
 	}
 
 	if debugMqtt {
-		fmt.Println("MQTT OUT: "+topic, "INFO: "+msg+"\n")
+		fmt.Println("MQTT OUT: "+s.topicPertinence+topic, "INFO: "+msg+"\n")
 	}
 }
 
