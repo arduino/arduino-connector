@@ -275,8 +275,7 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	s.Info("/containers/action", string(data)+"\n")
-
+	s.SendInfo("/containers/action", string(data)+"\n")
 }
 
 // ConfigureRegistryAuth manages registry authentication usage flow

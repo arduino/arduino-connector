@@ -31,6 +31,7 @@ github.com/docker/cli v0.0.0-20180905184309-44371c7c34d5/go.mod h1:JLrzqnKDaYBop
 github.com/docker/cli v17.12.1-ce-rc2+incompatible h1:ESUycEAqvFuLglAHkUW66rCc2djYtd3i1x231svLq9o=
 github.com/docker/distribution v2.6.0-rc.1.0.20180327202408-83389a148052+incompatible h1:W1rhCpxfWMU0CaZSFWpmWfmB68zYZVksig+VC1ZbgI4=
 github.com/docker/distribution v2.6.0-rc.1.0.20180327202408-83389a148052+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
+github.com/docker/docker v1.13.1 h1:IkZjBSIc8hBjLpqeAbeE5mca5mNgeatLHBy3GO78BWo=
 github.com/docker/docker v17.12.0-ce-rc1.0.20180822115147-a0385f7ad7f8+incompatible h1:70eRy5NQXxf1cDCjGWCafnNZPMlqI4YRU48QIbAI8tw=
 github.com/docker/docker v17.12.0-ce-rc1.0.20180822115147-a0385f7ad7f8+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker-credential-helpers v0.6.1 h1:Dq4iIfcM7cNtddhLVWe9h4QDjsi4OER3Z8voPu/I52g=

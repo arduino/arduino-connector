@@ -204,6 +204,49 @@ func TestDockerRenameApi(t *testing.T) {
 	t.Fatalf("no container with ID %s has been found\n", result.ContainerID)
 }
 
+func TestDockerActionRunApi(t *testing.T) {
+	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/action/post", ts.appStatus, ts.appStatus.ContainersActionEvent, false)
+	payload := map[string]interface{}{"action": "run", "image": "alpine", "name": "test-container"}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+
+	// Check real container runnig with bash command
+	cmd := exec.Command("bash", "-c", "docker ps")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(string(out), "\n")
+	// Remove the first line (command output header) and the last line (empty line)
+	lines = lines[1 : len(lines)-1]
+
+	assert.Equal(t, len(lines), 1)
+	assert.True(t, strings.Contains(lines[0], "alpine"))
+	assert.True(t, strings.Contains(lines[0], "test-container"))
+
+	// Clean up
+	timeout := 1 * time.Millisecond
+	err = ts.appStatus.dockerClient.ContainerStop(context.Background(), "test-container", &timeout)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = ts.appStatus.dockerClient.ContainerRemove(context.Background(), "test-container", types.ContainerRemoveOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = ts.appStatus.dockerClient.ImageRemove(context.Background(), "alpine", types.ImageRemoveOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 type MqttTokenMock struct {
 	returnErr bool
 }
