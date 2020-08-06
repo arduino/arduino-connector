@@ -126,18 +126,22 @@ func TestDockerRenameApi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	io.Copy(ioutil.Discard, reader)
+	_, err = io.Copy(ioutil.Discard, reader)
+	if err != nil {
+		t.Error(err)
+	}
+
 	defer func() {
 		reader.Close()
 
 		filters := filters.NewArgs(filters.Arg("reference", "alpine"))
-		images, err := ts.appStatus.dockerClient.ImageList(context.Background(), types.ImageListOptions{Filters: filters})
-		if err != nil {
-			t.Fatal(err)
+		images, errImagels := ts.appStatus.dockerClient.ImageList(context.Background(), types.ImageListOptions{Filters: filters})
+		if errImagels != nil {
+			t.Fatal(errImagels)
 		}
 
-		if _, err := ts.appStatus.dockerClient.ImageRemove(context.Background(), images[0].ID, types.ImageRemoveOptions{}); err != nil {
-			t.Fatal(err)
+		if _, errImageRemove := ts.appStatus.dockerClient.ImageRemove(context.Background(), images[0].ID, types.ImageRemoveOptions{}); errImageRemove != nil {
+			t.Fatal(errImageRemove)
 		}
 	}()
 
@@ -150,7 +154,7 @@ func TestDockerRenameApi(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ts.appStatus.dockerClient.ContainerRemove(context.Background(), createContResp.ID, types.ContainerRemoveOptions{}); err != nil {
+		if err = ts.appStatus.dockerClient.ContainerRemove(context.Background(), createContResp.ID, types.ContainerRemoveOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}()
