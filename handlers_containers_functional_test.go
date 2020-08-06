@@ -356,6 +356,46 @@ func TestDockerActionStartApi(t *testing.T) {
 	}()
 }
 
+func TestDockerActionRemoveApi(t *testing.T) {
+	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/action/post", ts.appStatus, ts.appStatus.ContainersActionEvent, false)
+
+	reader, err := ts.appStatus.dockerClient.ImagePull(context.Background(), "alpine", types.ImagePullOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = io.Copy(ioutil.Discard, reader)
+	if err != nil {
+		t.Error(err)
+	}
+
+	createContResp, errCreate := ts.appStatus.dockerClient.ContainerCreate(context.Background(), &container.Config{
+		Image: "alpine",
+		Cmd:   []string{"echo", "hello world"},
+	}, nil, nil, "")
+	if errCreate != nil {
+		t.Error(errCreate)
+	}
+
+	payload := map[string]interface{}{"action": "remove", "image": "alpine", "id": createContResp.ID}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+
+	lines := execCmd("docker ps -a")
+	foundTestContainer := false
+	for _, l := range lines {
+		if strings.Contains(l, createContResp.ID) {
+			foundTestContainer = true
+		}
+	}
+
+	assert.False(t, foundTestContainer)
+}
+
 type MqttTokenMock struct {
 	returnErr bool
 }
