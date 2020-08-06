@@ -27,7 +27,7 @@ import (
 	apt "github.com/arduino/go-apt-client"
 	"github.com/arduino/go-system-stats/disk"
 	"github.com/arduino/go-system-stats/mem"
-	"github.com/arduino/go-system-stats/network"
+	net "github.com/arduino/go-system-stats/network"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 )
@@ -44,7 +44,10 @@ func (s *Status) WiFiEvent(client mqtt.Client, msg mqtt.Message) {
 		s.Error("/wifi", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
-	net.AddWirelessConnection(info.SSID, info.Password)
+	err = net.AddWirelessConnection(info.SSID, info.Password)
+	if err != nil {
+		return
+	}
 }
 
 // EthEvent tries to change IP/Netmask/DNS configuration of the wired connection
@@ -56,7 +59,10 @@ func (s *Status) EthEvent(client mqtt.Client, msg mqtt.Message) {
 		s.Error("/ethernet", errors.Wrapf(err, "unmarshal %s", msg.Payload()))
 		return
 	}
-	net.AddWiredConnection(info)
+	err = net.AddWiredConnection(info)
+	if err != nil {
+		return
+	}
 }
 
 func checkAndInstallNetworkManager() {

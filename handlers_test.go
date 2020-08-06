@@ -20,17 +20,13 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os/exec"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,130 +41,6 @@ func ExecAsVagrantSshCmd(command string) (string, error) {
 	return string(out), nil
 }
 
-// MqttTestClient is an ad-hoc mqtt client struct for test
-type MqttTestClient struct {
-	client        mqtt.Client
-	thingToTestId string
-}
-
-func NewMqttTestClientLocal() *MqttTestClient {
-	uiOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("UI")
-	ui := mqtt.NewClient(uiOptions)
-	if token := ui.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	return &MqttTestClient{
-		ui,
-		"",
-	}
-}
-
-func NewMqttTestClient() *MqttTestClient {
-	cert := "test/cert.pem"
-	key := "test/privateKey.pem"
-	id := "testThingVagrant"
-	port := 8883
-	path := "/mqtt"
-	file, err := ioutil.ReadFile("test/cert_arn.sh")
-	if err != nil {
-		panic(err)
-	}
-	url := "endpoint.iot.com"
-	for _, line := range strings.Split(string(file), "\n") {
-		if strings.Contains(line, "export IOT_ENDPOINT") {
-			url = strings.Split(line, "=")[1]
-		}
-	}
-	file, err = ioutil.ReadFile("test/ui_gen_install.sh")
-	if err != nil {
-		panic(err)
-	}
-	thingToTestId := "thing:id-id-id-id"
-	for _, line := range strings.Split(string(file), "\n") {
-		if strings.Contains(line, "export id") {
-			thingToTestId = strings.Split(line, "=")[1]
-		}
-	}
-	brokerURL := fmt.Sprintf("tcps://%s:%d%s", url, port, path)
-	cer, err := tls.LoadX509KeyPair(cert, key)
-	if err != nil {
-		panic(err)
-	}
-	opts := mqtt.NewClientOptions().AddBroker(brokerURL)
-	opts.SetClientID(id)
-	opts.SetTLSConfig(&tls.Config{
-		Certificates: []tls.Certificate{cer},
-		ServerName:   url,
-	})
-
-	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	return &MqttTestClient{
-		client,
-		thingToTestId,
-	}
-}
-
-func (tmc *MqttTestClient) Close() {
-	tmc.client.Disconnect(100)
-}
-
-func (tmc *MqttTestClient) MqttSendAndReceiveTimeout(t *testing.T, topic, request string, timeout time.Duration) string {
-	t.Helper()
-
-	respChan := make(chan string)
-	if token := tmc.client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		respChan <- string(msg.Payload())
-	}); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
-	postTopic := strings.Join([]string{topic, "post"}, "/")
-	if token := tmc.client.Publish(postTopic, 0, false, request); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
-	select {
-	case <-time.After(timeout):
-		if token := tmc.client.Unsubscribe(topic); token.Wait() && token.Error() != nil {
-			t.Fatal(token.Error())
-		}
-		close(respChan)
-
-		t.Fatalf("MqttSendAndReceiveTimeout() timeout for topic %s", topic)
-
-		return ""
-	case resp := <-respChan:
-		return resp
-	}
-}
-
-func (tmc *MqttTestClient) MqttSendAndReceiveSync(t *testing.T, topic, request string) string {
-
-	iotTopic := strings.Join([]string{"$aws/things", tmc.thingToTestId, topic}, "/")
-	var wg sync.WaitGroup
-	wg.Add(1)
-	response := "none"
-	if token := tmc.client.Subscribe(iotTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		response = string(msg.Payload())
-		wg.Done()
-	}); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-
-	postTopic := strings.Join([]string{iotTopic, "post"}, "/")
-	if token := tmc.client.Publish(postTopic, 0, false, request); token.Wait() && token.Error() != nil {
-		t.Fatal(token.Error())
-	}
-	wg.Wait()
-	return response
-
-}
-
 // tests
 func TestSketchProcessIsRunning(t *testing.T) {
 	mqtt := NewMqttTestClient()
@@ -181,7 +53,12 @@ func TestSketchProcessIsRunning(t *testing.T) {
 
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
@@ -196,7 +73,8 @@ func TestSketchProcessIsRunning(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, 1, len(strings.Split(strings.TrimSuffix(outputMessage, "\n"), "\n")))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}
@@ -213,14 +91,20 @@ func TestMaliciousSketchProcessIsNotRunning(t *testing.T) {
 	http.Handle("/", fs)
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "sketch_devops_integ_test.elf","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/sketch_devops_integ_test.elf")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
 	t.Log(responseSketchRun)
 
 	assert.Equal(t, true, strings.Contains(responseSketchRun, "ERROR: signature do not match"))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}
@@ -249,7 +133,12 @@ func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
 
 	srv := &http.Server{Addr: ":3000"}
 
-	go func() { srv.ListenAndServe() }()
+	go func() {
+		err = srv.ListenAndServe()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sketchDownloadCommand := fmt.Sprintf(`{"token": "","url": "%s","name": "connector_env_var_test.bin","id": "0774e17e-f60e-4562-b87d-18017b6ef3d2"}`, "http://10.0.2.2:3000/connector_env_var_test.bin")
 	responseSketchRun := mqtt.MqttSendAndReceiveSync(t, sketchTopic, sketchDownloadCommand)
@@ -267,7 +156,8 @@ func TestSketchProcessHasConfigWhitelistedEnvVars(t *testing.T) {
 
 	assert.Equal(t, true, strings.Contains(envString, "HDDL_INSTALL_DIR=/opt/intel/computer_vision_sdk/inference_engine/external/hddl/"))
 	assert.Equal(t, true, strings.Contains(envString, "ENV_TEST_PATH=/tmp"))
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFunc()
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Error(err)
 	}

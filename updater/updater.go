@@ -31,7 +31,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/kr/binarydist"
@@ -70,8 +69,6 @@ const (
 	plat = runtime.GOOS + "-" + runtime.GOARCH
 )
 
-const devValidTime = 7 * 24 * time.Hour
-
 var errHashMismatch = errors.New("new file hash mismatch after patch")
 var up = update.New()
 
@@ -107,7 +104,12 @@ type Updater struct {
 
 // BackgroundRun starts the update check and apply cycle.
 func (u *Updater) BackgroundRun() error {
-	os.MkdirAll(u.getExecRelativeDir(u.Dir), 0777)
+	err := os.MkdirAll(u.getExecRelativeDir(u.Dir), 0777)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	if err := up.CanUpdate(); err != nil {
 		log.Println(err)
 		return err
@@ -137,7 +139,10 @@ func fetch(url string) (io.ReadCloser, error) {
 
 func verifySha(bin []byte, sha []byte) bool {
 	h := sha256.New()
-	h.Write(bin)
+	_, err := h.Write(bin)
+	if err != nil {
+		return false
+	}
 	return bytes.Equal(h.Sum(nil), sha)
 }
 

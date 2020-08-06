@@ -180,7 +180,12 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		// remember that the imageName should provide also the registry endpoint
 		// i.e 6435543362.dkr.ecr.eu-east-1.amazonaws.com/redis:latest
 		// the default is  docker.io/library/redis:latest
-		pullOpts, authConfig, err := ConfigureRegistryAuth(runParams)
+		pullOpts, authConfig, errConf := ConfigureRegistryAuth(runParams)
+		if errConf != nil {
+			fmt.Println(errConf)
+			break
+		}
+
 		if authConfig != nil {
 			_, err = s.dockerClient.RegistryLogin(ctx, *authConfig)
 			if err != nil {
@@ -189,13 +194,17 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 				return
 			}
 		}
-		out, err := s.dockerClient.ImagePull(ctx, runParams.ImageName, pullOpts)
-		if err != nil {
-			s.Error("/containers/action", fmt.Errorf("image pull result: %s", err))
+		out, errPull := s.dockerClient.ImagePull(ctx, runParams.ImageName, pullOpts)
+		if errPull != nil {
+			s.Error("/containers/action", fmt.Errorf("image pull result: %s", errPull))
 			return
 		}
 		// waiting the complete download of the image
-		io.Copy(ioutil.Discard, out)
+		_, err = io.Copy(ioutil.Discard, out)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		defer out.Close()
 		fmt.Fprintf(os.Stdout, "Successfully downloaded image: %s\n", runParams.ImageName)
 
@@ -207,15 +216,15 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			runParams.ContainerHostConfig.PublishAllPorts = true
 		}
 
-		resp, err := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig,
+		resp, errCreate := s.dockerClient.ContainerCreate(ctx, &runParams.ContainerConfig, &runParams.ContainerHostConfig,
 			&runParams.NetworkNetworkingConfig, runParams.ContainerName)
 
-		if err != nil {
-			s.Error("/containers/action", fmt.Errorf("container create result: %s", err))
+		if errCreate != nil {
+			s.Error("/containers/action", fmt.Errorf("container create result: %s", errCreate))
 			return
 		}
 
-		if err := s.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		if err = s.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container start result: %s", err))
 			return
 		}
@@ -223,14 +232,14 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 		fmt.Fprintf(os.Stdout, "Successfully started container %s from  Image: %s\n", resp.ID, runParams.ImageName)
 
 	case "stop":
-		if err := s.dockerClient.ContainerStop(ctx, runParams.ContainerID, nil); err != nil {
+		if err = s.dockerClient.ContainerStop(ctx, runParams.ContainerID, nil); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
 		fmt.Fprintf(os.Stdout, "Successfully stopped container %s\n", runParams.ContainerID)
 
 	case "start":
-		if err := s.dockerClient.ContainerStart(ctx, runParams.ContainerID, types.ContainerStartOptions{}); err != nil {
+		if err = s.dockerClient.ContainerStart(ctx, runParams.ContainerID, types.ContainerStartOptions{}); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container action result: %s", err))
 			return
 		}
@@ -243,15 +252,15 @@ func (s *Status) ContainersActionEvent(client mqtt.Client, msg mqtt.Message) {
 			RemoveVolumes: true,
 		}
 
-		if err := s.dockerClient.ContainerRemove(ctx, runParams.ContainerID, forceAllOption); err != nil {
+		if err = s.dockerClient.ContainerRemove(ctx, runParams.ContainerID, forceAllOption); err != nil {
 			s.Error("/containers/action", fmt.Errorf("container remove result: %s", err))
 			return
 		}
 		fmt.Fprintf(os.Stdout, "Successfully removed container %s\n", runParams.ContainerID)
 		// implements docker image prune -a that removes all images not associated to a container
 		forceAllImagesArg, _ := filters.FromJSON(`{"dangling": false}`)
-		if _, err := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
-			s.Error("/containers/action", fmt.Errorf("images prune result: %s", err))
+		if _, errPrune := s.dockerClient.ImagesPrune(ctx, forceAllImagesArg); err != nil {
+			s.Error("/containers/action", fmt.Errorf("images prune result: %s", errPrune))
 			return
 		}
 		fmt.Fprintf(os.Stdout, "Successfully pruned container images\n")
@@ -285,35 +294,38 @@ func ConfigureRegistryAuth(runParams RunPayload) (types.ImagePullOptions, *types
 			Password:      runParams.Password,
 			ServerAddress: imageRegistryEndpoint,
 		}
-		encodedJSON, err := json.Marshal(authConfig)
-		if err != nil {
-			return pullOpts, authConfig, err
+		encodedJSON, errMars := json.Marshal(authConfig)
+		if errMars != nil {
+			return pullOpts, authConfig, errMars
 		}
 		authStr := base64.URLEncoding.EncodeToString(encodedJSON)
 		pullOpts = types.ImagePullOptions{RegistryAuth: authStr}
 		// if user requested save, do the save of the credentials in ~/.docker/config.json in the docker standard way
 		if runParams.SaveRegistryCredentials {
-			loadedConfigFile, err := dockerConfig.Load(dockerConfig.Dir())
-			if err != nil {
-				panic(err)
+			loadedConfigFile, errLoad := dockerConfig.Load(dockerConfig.Dir())
+			if errLoad != nil {
+				return pullOpts, authConfig, errLoad
 			}
 			loadedConfigFile.AuthConfigs[authConfig.ServerAddress] = *authConfig
-			loadedConfigFile.Save()
+			err = loadedConfigFile.Save()
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 
 	} else {
 		//user did not provided credentials, search in config
-		loadedConfigFile, err := dockerConfig.Load(dockerConfig.Dir())
-		if err != nil {
+		loadedConfigFile, errLoad := dockerConfig.Load(dockerConfig.Dir())
+		if errLoad != nil {
 			return pullOpts, authConfig, err
 		}
-		loadedAuthConfig, err := loadedConfigFile.GetAuthConfig(imageRegistryEndpoint)
-		if err != nil {
+		loadedAuthConfig, errConf := loadedConfigFile.GetAuthConfig(imageRegistryEndpoint)
+		if errConf != nil {
 			return pullOpts, authConfig, err
 		}
 		authConfig = &loadedAuthConfig
-		encodedJSON, err := json.Marshal(loadedAuthConfig)
-		if err != nil {
+		encodedJSON, errMar := json.Marshal(loadedAuthConfig)
+		if errMar != nil {
 			return pullOpts, authConfig, err
 		}
 		authStr := base64.URLEncoding.EncodeToString(encodedJSON)
@@ -327,18 +339,25 @@ func ConfigureRegistryAuth(runParams RunPayload) (types.ImagePullOptions, *types
 func ClearRegistryAuth(runParams RunPayload) {
 	loadedConfigFile, err := dockerConfig.Load(dockerConfig.Dir())
 	if err != nil {
-		panic(err)
+		return
 	}
 	imageRegistryEndpoint := strings.Split(runParams.ImageName, "/")[0]
 	delete(loadedConfigFile.AuthConfigs, imageRegistryEndpoint)
-	loadedConfigFile.Save()
-
+	err = loadedConfigFile.Save()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // checkAndInstallDocker implements steps from https://docs.docker.com/install/linux/docker-ce/ubuntu/
 func checkAndInstallDocker() {
 	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
-	defer cli.Close()
+	defer func() {
+		err = cli.Close()
+		if err != nil {
+			return
+		}
+	}()
 	if cli != nil {
 		_, err = cli.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err != nil {
@@ -370,7 +389,7 @@ func checkAndInstallDocker() {
 func installDockerCEViaConvenienceScript() {
 	curlString := "curl -fsSL get.docker.com -o get-docker.sh"
 	curlCmd := exec.Command("bash", "-c", curlString)
-	if out, err := curlCmd.CombinedOutput(); err != nil {
+	if out, errCmd := curlCmd.CombinedOutput(); errCmd != nil {
 		fmt.Println("Failed to Download Docker CE Convenience Script Installer:")
 		fmt.Println(string(out))
 	}
@@ -390,7 +409,12 @@ func installDockerCEOnXenialAndNewer() {
 		fmt.Println(string(out))
 	}
 
-	apt.CheckForUpdates()
+	_, err := apt.CheckForUpdates()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	dockerPrerequisitesPackages := []*apt.Package{
 		&apt.Package{Name: "apt-transport-https"},
 		&apt.Package{Name: "ca-certificates"},
@@ -398,7 +422,7 @@ func installDockerCEOnXenialAndNewer() {
 		&apt.Package{Name: "software-properties-common"},
 	}
 	for _, pac := range dockerPrerequisitesPackages {
-		if out, err := apt.Install(pac); err != nil {
+		if out, errInstall := apt.Install(pac); errInstall != nil {
 			fmt.Println("Failed to install: ", pac.Name)
 			fmt.Println(string(out))
 			return
@@ -407,19 +431,24 @@ func installDockerCEOnXenialAndNewer() {
 
 	curlString := "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
 	curlCmd := exec.Command("bash", "-c", curlString)
-	if out, err := curlCmd.CombinedOutput(); err != nil {
+	if out, errCmd := curlCmd.CombinedOutput(); errCmd != nil {
 		fmt.Println("Failed to add Docker’s official GPG key:")
 		fmt.Println(string(out))
 	}
 
 	repoString := `add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"`
 	repoCmd := exec.Command("bash", "-c", repoString)
-	if out, err := repoCmd.CombinedOutput(); err != nil {
+	if out, errCmd := repoCmd.CombinedOutput(); errCmd != nil {
 		fmt.Println("Failed to set up the stable docker repository:")
 		fmt.Println(string(out))
 	}
 
-	apt.CheckForUpdates()
+	_, err = apt.CheckForUpdates()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	toInstall := &apt.Package{Name: "docker-ce"}
 	if out, err := apt.Install(toInstall); err != nil {
 		fmt.Println("Failed to install docker-ce:")

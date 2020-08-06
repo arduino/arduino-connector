@@ -260,8 +260,8 @@ func (c *Config) requestAuth(client *http.Client) (string, cookies, error) {
 		return "", nil, err
 	}
 
-	cookies := cookies{}
-	cookies["hydra"] = res.Cookies()
+	cs := cookies{}
+	cs["hydra"] = res.Cookies()
 
 	// Navigate to auth request page
 	res, err = client.Get(res.Header.Get("Location"))
@@ -269,8 +269,8 @@ func (c *Config) requestAuth(client *http.Client) (string, cookies, error) {
 		return "", nil, err
 	}
 
-	cookies["auth"] = res.Cookies()
-	return res.Request.URL.String(), cookies, err
+	cs["auth"] = res.Cookies()
+	return res.Request.URL.String(), cs, err
 }
 
 var errorRE = regexp.MustCompile(`<div class="error">(?P<error>.*)</div>`)
@@ -367,7 +367,10 @@ func (c *Config) requestToken(client *http.Client, code string) (*Token, error) 
 		data := struct {
 			Error string `json:"error_description"`
 		}{}
-		json.Unmarshal(body, &data)
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return nil, err
+		}
 		return nil, errors.New(data.Error)
 	}
 

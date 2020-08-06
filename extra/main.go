@@ -40,12 +40,15 @@ func main() {
 		var lib DylibMap
 		lib.Name = filepath.Base(arg)
 
-		filepath.Walk(arg, func(path string, f os.FileInfo, err error) error {
+		err := filepath.Walk(arg, func(path string, f os.FileInfo, err error) error {
 			if strings.Contains(f.Name(), ".so") {
 				lib.Provides = append(lib.Provides, f.Name())
 			}
 			return nil
 		})
+		if err != nil {
+			panic(err)
+		}
 		lib.Help = "Please install " + lib.Name + " library from Intel website http://intel.com/"
 		v = append(v, lib)
 	}

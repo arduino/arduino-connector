@@ -23,26 +23,8 @@ linters-settings:
 
 # options for analysis running
 run:
-  # skipping all non-tested file, re-enable linting check along to test coverage on files
-  skip-dirs:
-    - auth
-    - extra
-    - updater
-
-  skip-files:
-    - handlers_apt_packages.go
-    - handlers_apt_repositories.go
-    # - handlers_containers.go
-    - handlers_containers_test.go
-    - handlers.go
-    - handlers_stats.go
-    - handlers_update.go
-    - heartbeat.go
-    # - install.go
-    # - main.go
-    - status.go
-    - utils.go
-    - validate.go
+  build-tags:
+    - functional
 
 linters:
   enable-all: false
