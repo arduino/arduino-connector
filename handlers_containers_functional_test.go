@@ -64,20 +64,22 @@ func setupAndRun(m *testing.M) int {
 	return m.Run()
 }
 
+func execCmd(cmd string) []string {
+	c := exec.Command("bash", "-c", cmd)
+	out, err := c.CombinedOutput()
+	if err != nil {
+		return []string{}
+	}
+
+	lines := strings.Split(string(out), "\n")
+	return lines[1 : len(lines)-1]
+}
+
 func TestDockerPsApi(t *testing.T) {
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/ps/post", ts.appStatus, ts.appStatus.ContainersPsEvent, false)
 	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/ps", "{}", 50*time.Millisecond)
 
-	// ask Docker about containers effectively running
-	cmd := exec.Command("bash", "-c", "docker ps -a")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(out), "\n")
-	// Remove the first line (command output header) and the last line (empty line)
-	lines = lines[1 : len(lines)-1]
+	lines := execCmd("docker ps -a")
 
 	// Take json without INFO tag
 	resp = strings.TrimPrefix(resp, "INFO: ")
@@ -98,16 +100,7 @@ func TestDockerListImagesApi(t *testing.T) {
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/images/post", ts.appStatus, ts.appStatus.ContainersListImagesEvent, false)
 	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/images", "{}", 50*time.Millisecond)
 
-	// ask Docker about images effectively present
-	cmd := exec.Command("bash", "-c", "docker images -a")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(out), "\n")
-	// Remove the first line (command output header) and the last line (empty line)
-	lines = lines[1 : len(lines)-1]
+	lines := execCmd("docker images -a")
 
 	// Take json without INFO tag
 	resp = strings.TrimPrefix(resp, "INFO: ")
@@ -171,16 +164,7 @@ func TestDockerRenameApi(t *testing.T) {
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/rename/post", ts.appStatus, ts.appStatus.ContainersRenameEvent, true)
 	resp := ts.ui.MqttSendAndReceiveTimeout(t, "/containers/rename", string(data), 250*time.Millisecond)
 
-	// ask Docker about containers
-	cmd := exec.Command("bash", "-c", "docker container ls -a")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(out), "\n")
-	// Remove the first line (command output header) and the last line (empty line)
-	lines = lines[1 : len(lines)-1]
+	lines := execCmd("docker container ls -a")
 
 	// Take json without INFO tag
 	resp = strings.TrimPrefix(resp, "INFO: ")
@@ -215,15 +199,7 @@ func TestDockerActionRunApi(t *testing.T) {
 	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
 
 	// Check real container runnig with bash command
-	cmd := exec.Command("bash", "-c", "docker ps")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	lines := strings.Split(string(out), "\n")
-	// Remove the first line (command output header) and the last line (empty line)
-	lines = lines[1 : len(lines)-1]
+	lines := execCmd("docker ps")
 
 	assert.Equal(t, len(lines), 1)
 	assert.True(t, strings.Contains(lines[0], "alpine"))
