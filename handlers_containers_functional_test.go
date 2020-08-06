@@ -196,14 +196,19 @@ func TestDockerActionRunApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 15*time.Second)
 
 	// Check real container runnig with bash command
 	lines := execCmd("docker ps")
 
-	assert.Equal(t, len(lines), 1)
-	assert.True(t, strings.Contains(lines[0], "alpine"))
-	assert.True(t, strings.Contains(lines[0], "test-container"))
+	foundTestContainerRunning := false
+	for _, l := range lines {
+		if strings.Contains(l, "alpine") && strings.Contains(lines[0], "test-container") {
+			foundTestContainerRunning = true
+		}
+	}
+
+	assert.True(t, foundTestContainerRunning)
 
 	// Clean up
 	timeout := 1 * time.Millisecond
