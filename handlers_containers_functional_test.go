@@ -190,7 +190,8 @@ func TestDockerRenameApi(t *testing.T) {
 
 func TestDockerActionRunApi(t *testing.T) {
 	subscribeTopic(ts.appStatus.mqttClient, "0", "/containers/action/post", ts.appStatus, ts.appStatus.ContainersActionEvent, false)
-	payload := map[string]interface{}{"action": "run", "image": "alpine", "name": "test-container"}
+	testContainer := "test-container"
+	payload := map[string]interface{}{"action": "run", "image": "alpine", "name": testContainer}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		t.Error(err)
@@ -203,7 +204,7 @@ func TestDockerActionRunApi(t *testing.T) {
 
 	foundTestContainerRunning := false
 	for _, l := range lines {
-		if strings.Contains(l, "alpine") && strings.Contains(lines[0], "test-container") {
+		if strings.Contains(l, "alpine") && strings.Contains(lines[0], testContainer) {
 			foundTestContainerRunning = true
 		}
 	}
@@ -212,12 +213,12 @@ func TestDockerActionRunApi(t *testing.T) {
 
 	// Clean up
 	timeout := 1 * time.Millisecond
-	err = ts.appStatus.dockerClient.ContainerStop(context.Background(), "test-container", &timeout)
+	err = ts.appStatus.dockerClient.ContainerStop(context.Background(), testContainer, &timeout)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = ts.appStatus.dockerClient.ContainerRemove(context.Background(), "test-container", types.ContainerRemoveOptions{})
+	err = ts.appStatus.dockerClient.ContainerRemove(context.Background(), testContainer, types.ContainerRemoveOptions{})
 	if err != nil {
 		t.Error(err)
 	}
