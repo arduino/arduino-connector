@@ -383,7 +383,8 @@ func TestDockerActionRemoveApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 30*time.Second)
+	// Use a very large timeout to avoid failing the test on GitHub Actions environment
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 300*time.Second)
 
 	lines := execCmd("docker ps -a")
 	foundTestContainer := false
