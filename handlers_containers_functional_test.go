@@ -197,7 +197,7 @@ func TestDockerActionRunApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 15*time.Second)
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 20*time.Second)
 
 	lines := execCmd("docker ps")
 
@@ -267,7 +267,7 @@ func TestDockerActionStopApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 20*time.Second)
 
 	lines := execCmd("docker ps")
 	foundTestContainerRunning := false
@@ -325,7 +325,7 @@ func TestDockerActionStartApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 20*time.Second)
 
 	lines := execCmd("docker ps")
 	foundTestContainerRunning := false
@@ -383,7 +383,7 @@ func TestDockerActionRemoveApi(t *testing.T) {
 		t.Error(err)
 	}
 
-	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 10*time.Second)
+	ts.ui.MqttSendAndReceiveTimeout(t, "/containers/action", string(data), 30*time.Second)
 
 	lines := execCmd("docker ps -a")
 	foundTestContainer := false
