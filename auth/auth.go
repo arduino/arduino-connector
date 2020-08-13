@@ -67,6 +67,7 @@ func Init() {
 	client = &http.Client{}
 }
 
+// StartDeviceAuth request with POST auth using clientID
 func StartDeviceAuth(authURL, clientID string) (data DeviceCode, err error) {
 	url := authURL + "/oauth/device/code"
 

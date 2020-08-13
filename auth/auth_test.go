@@ -1,7 +1,12 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,4 +40,66 @@ func TestStartAuthError(t *testing.T) {
 
 	assert.Equal(t, data, DeviceCode{})
 	assert.NotNil(t, err)
+}
+
+func TestStartAuthData(t *testing.T) {
+	client = &MockClient{}
+
+	d := DeviceCode{
+		DeviceCode:              "0",
+		UserCode:                "test",
+		VerificationURI:         "test",
+		ExpiresIn:               1,
+		Interval:                1,
+		VerificationURIComplete: "test11",
+	}
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		header := req.Header.Values("content-type")
+		if len(header) != 1 {
+			return nil, errors.New("content-type len is wrong")
+		}
+
+		if header[0] != "application/x-www-form-urlencoded" {
+			return nil, errors.New("content-type is wrong")
+		}
+
+		if req.Method != "POST" {
+			return nil, errors.New("Method is wrong")
+		}
+
+		if !strings.Contains(req.URL.Path, "/oauth/device/code") {
+			return nil, errors.New("url is wrong")
+		}
+
+		body, err := req.GetBody()
+		if err != nil {
+			return nil, err
+		}
+		buf := new(strings.Builder)
+		_, err = io.Copy(buf, body)
+		if err != nil {
+			return nil, err
+		}
+
+		if !strings.Contains(buf.String(), "client_id=") ||
+			!strings.Contains(buf.String(), "&audience=https://api.arduino.cc") {
+			return nil, errors.New("Payload is wrong")
+		}
+
+		data, err := json.Marshal(d)
+		if err != nil {
+			return nil, err
+		}
+
+		return &http.Response{
+			Body: ioutil.NopCloser(bytes.NewBufferString(string(data))),
+		}, nil
+	}
+
+	data, err := StartDeviceAuth("", "0")
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, data, d)
 }
