@@ -53,6 +53,20 @@ type DeviceCode struct {
 	VerificationURIComplete string `json:"verification_uri_complete"`
 }
 
+// HTTPClient interface
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+var (
+	client HTTPClient
+)
+
+// Init initialize correctly HTTP client
+func Init() {
+	client = &http.Client{}
+}
+
 func StartDeviceAuth(authURL, clientID string) (data DeviceCode, err error) {
 	url := authURL + "/oauth/device/code"
 
@@ -65,7 +79,7 @@ func StartDeviceAuth(authURL, clientID string) (data DeviceCode, err error) {
 
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return data, err
 	}
@@ -96,7 +110,7 @@ func CheckDeviceAuth(authURL, clientID, deviceCode string) (token string, err er
 
 	req.Header.Add("content-type", "application/x-www-form-urlencoded")
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return token, err
 	}

@@ -148,6 +148,7 @@ func registerDeviceViaMQTT(config Config) {
 
 // Implements Auth0 device authentication flow: https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth
 func deviceAuth(authURL, clientID string) (token string, err error) {
+	auth.Init()
 	code, err := auth.StartDeviceAuth(authURL, clientID)
 	if err != nil {
 		return "", err
