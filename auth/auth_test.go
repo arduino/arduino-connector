@@ -168,3 +168,16 @@ func TestAuthCheck(t *testing.T) {
 
 	assert.Equal(t, "asdf", token)
 }
+
+func TestDefaultConfig(t *testing.T) {
+	c := New()
+	defaultConfig := &Config{
+		CodeURL:     "https://hydra.arduino.cc/oauth2/auth",
+		TokenURL:    "https://hydra.arduino.cc/oauth2/token",
+		ClientID:    "cli",
+		RedirectURI: "http://localhost:5000",
+		Scopes:      "profile:core offline",
+	}
+
+	assert.Equal(t, defaultConfig, c)
+}
