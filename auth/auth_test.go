@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,9 +25,12 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 	return DoFunc(req)
 }
 
-func TestStartAuthError(t *testing.T) {
+func TestMain(m *testing.M) {
 	client = &MockClient{}
+	os.Exit(m.Run())
+}
 
+func TestAuthStartError(t *testing.T) {
 	DoFunc = func(*http.Request) (*http.Response, error) {
 		return nil, errors.New(
 			"Wanted error from mock web server",
@@ -42,9 +46,7 @@ func TestStartAuthError(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestStartAuthData(t *testing.T) {
-	client = &MockClient{}
-
+func TestAuthStartData(t *testing.T) {
 	d := DeviceCode{
 		DeviceCode:              "0",
 		UserCode:                "test",
