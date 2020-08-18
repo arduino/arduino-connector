@@ -18,11 +18,16 @@ import (
 type MockClient struct{}
 
 var (
-	DoFunc func(req *http.Request) (*http.Response, error)
+	DoFunc  func(req *http.Request) (*http.Response, error)
+	GetFunc func(url string) (*http.Response, error)
 )
 
 func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 	return DoFunc(req)
+}
+
+func (m *MockClient) Get(url string) (resp *http.Response, err error) {
+	return GetFunc(url)
 }
 
 func TestMain(m *testing.M) {
@@ -180,4 +185,21 @@ func TestDefaultConfig(t *testing.T) {
 	}
 
 	assert.Equal(t, defaultConfig, c)
+}
+
+func TestRequestAuthError(t *testing.T) {
+	config := Config{
+		CodeURL: "www.test.com",
+	}
+
+	GetFunc = func(url string) (*http.Response, error) {
+		return nil, errors.New("test error")
+	}
+
+	_, _, err := config.requestAuth(client)
+	if err == nil {
+		t.Error(err)
+	}
+
+	assert.True(t, err != nil)
 }

@@ -56,6 +56,7 @@ type DeviceCode struct {
 // HTTPClient interface
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
+	Get(url string) (resp *http.Response, err error)
 }
 
 var (
@@ -255,7 +256,7 @@ func (c *Config) Refresh(token string) (*Token, error) {
 type cookies map[string][]*http.Cookie
 
 // requestAuth calls hydra and follows the redirects until it reaches the authentication page. It saves the cookie it finds so it can apply them to subsequent requests
-func (c *Config) requestAuth(client *http.Client) (string, cookies, error) {
+func (c *Config) requestAuth(client HTTPClient) (string, cookies, error) {
 	uri, err := url.Parse(c.CodeURL)
 	if err != nil {
 		return "", nil, err
