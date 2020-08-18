@@ -203,3 +203,52 @@ func TestRequestAuthError(t *testing.T) {
 
 	assert.True(t, err != nil)
 }
+
+func TestRequestAuth(t *testing.T) {
+	config := Config{
+		ClientID:    "1",
+		CodeURL:     "www.test.com",
+		RedirectURI: "http://localhost:5000",
+		Scopes:      "profile:core offline",
+	}
+
+	coutGetCall := 0
+	GetFunc = func(url string) (*http.Response, error) {
+		coutGetCall++
+
+		if coutGetCall == 1 {
+			if !strings.Contains(url, "www.test.com?client_id=1&redirect_uri=http%3A%2F%2Flocalhost%3A5000&response_type=code&scope=profile%3Acore+offline&state=") {
+				return nil, errors.New("Error in url")
+			}
+
+			return &http.Response{
+				StatusCode: 200,
+			}, nil
+		}
+
+		if url != "" {
+			return nil, errors.New("url should be empty because no Location is provided in Header")
+		}
+
+		r, err := http.NewRequest("GET", "www.test.com", bytes.NewBufferString(""))
+		if err != nil {
+			return nil, err
+		}
+
+		return &http.Response{
+			StatusCode: 200,
+			Request:    r,
+		}, nil
+	}
+
+	res, biscuits, err := config.requestAuth(client)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedCookies := cookies{}
+	expectedCookies["hydra"] = []*http.Cookie{}
+	expectedCookies["auth"] = []*http.Cookie{}
+	assert.Equal(t, expectedCookies, biscuits)
+	assert.Equal(t, "www.test.com", res)
+}
