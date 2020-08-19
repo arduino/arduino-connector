@@ -292,7 +292,7 @@ func (c *Config) requestAuth(client HTTPClient) (string, cookies, error) {
 var errorRE = regexp.MustCompile(`<div class="error">(?P<error>.*)</div>`)
 
 // authenticate uses the user and pass to pass the authentication challenge and returns the authorization_code
-func (c *Config) authenticate(client *http.Client, cookies cookies, uri, user, pass string) (string, error) {
+func (c *Config) authenticate(client HTTPClient, cookies cookies, uri, user, pass string) (string, error) {
 	// Find csrf
 	csrf := ""
 	for _, cookie := range cookies["auth"] {
@@ -324,7 +324,11 @@ func (c *Config) authenticate(client *http.Client, cookies cookies, uri, user, p
 	}
 
 	if res.StatusCode != 302 {
-		body, _ := ioutil.ReadAll(res.Body)
+		body, errRead := ioutil.ReadAll(res.Body)
+		if errRead != nil {
+			return "", errRead
+		}
+
 		errs := errorRE.FindStringSubmatch(string(body))
 		if len(errs) < 2 {
 			return "", errors.New("status = " + res.Status + ", response = " + string(body))

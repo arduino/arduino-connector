@@ -252,3 +252,61 @@ func TestRequestAuth(t *testing.T) {
 	assert.Equal(t, expectedCookies, biscuits)
 	assert.Equal(t, "www.test.com", res)
 }
+
+func TestAuthenticateError(t *testing.T) {
+	config := Config{
+		ClientID:    "1",
+		CodeURL:     "www.test.com",
+		RedirectURI: "http://localhost:5000",
+		Scopes:      "profile:core offline",
+	}
+
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		header := req.Header.Values("content-type")
+		if len(header) != 1 {
+			return nil, errors.New("content-type len is wrong")
+		}
+
+		if header[0] != "application/x-www-form-urlencoded" {
+			return nil, errors.New("content-type is wrong")
+		}
+
+		if req.Method != "POST" {
+			return nil, errors.New("Method is wrong")
+		}
+
+		if !strings.Contains(req.URL.Path, "www.test.io") {
+			return nil, errors.New("url is wrong")
+		}
+
+		body, err := req.GetBody()
+		if err != nil {
+			return nil, err
+		}
+		buf := new(strings.Builder)
+		_, err = io.Copy(buf, body)
+		if err != nil {
+			return nil, err
+		}
+
+		if !strings.Contains(buf.String(), "username=") ||
+			!strings.Contains(buf.String(), "password") ||
+			!strings.Contains(buf.String(), "csrf") ||
+			!strings.Contains(buf.String(), "g-recaptcha-response") {
+			return nil, errors.New("Payload is wrong")
+		}
+
+		return &http.Response{
+			StatusCode: 200,
+			Status:     "200 OK",
+			Body:       ioutil.NopCloser(bytes.NewBufferString(string("testBody"))),
+		}, nil
+	}
+
+	response, err := config.authenticate(client, cookies{}, "www.test.io", "user", "pw")
+	if err == nil {
+		t.Error("This test should return an error")
+	}
+
+	assert.Equal(t, "", response)
+}
