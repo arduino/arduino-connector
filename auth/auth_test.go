@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/textproto"
 	"os"
 	"strings"
 	"testing"
@@ -59,7 +60,7 @@ func TestAuthStartData(t *testing.T) {
 		VerificationURIComplete: "test11",
 	}
 	DoFunc = func(req *http.Request) (*http.Response, error) {
-		header := req.Header.Values("content-type")
+		header := req.Header[textproto.CanonicalMIMEHeaderKey("content-type")]
 		if len(header) != 1 {
 			return nil, errors.New("content-type len is wrong")
 		}
@@ -117,7 +118,7 @@ func TestAuthCheck(t *testing.T) {
 	}
 
 	DoFunc = func(req *http.Request) (*http.Response, error) {
-		header := req.Header.Values("content-type")
+		header := req.Header[textproto.CanonicalMIMEHeaderKey("content-type")]
 		if len(header) != 1 {
 			return nil, errors.New("content-type len is wrong")
 		}
@@ -260,7 +261,7 @@ func TestAuthenticateError(t *testing.T) {
 	}
 
 	DoFunc = func(req *http.Request) (*http.Response, error) {
-		header := req.Header.Values("content-type")
+		header := req.Header[textproto.CanonicalMIMEHeaderKey("content-type")]
 		if len(header) != 1 {
 			return nil, errors.New("content-type len is wrong")
 		}
@@ -321,7 +322,7 @@ func TestAuthenticate(t *testing.T) {
 	DoFunc = func(req *http.Request) (*http.Response, error) {
 		countDo++
 		if countDo == 1 {
-			header := req.Header.Values("content-type")
+			header := req.Header[textproto.CanonicalMIMEHeaderKey("content-type")]
 			if len(header) != 1 {
 				return nil, errors.New("content-type len is wrong")
 			}
