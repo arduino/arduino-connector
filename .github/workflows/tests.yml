@@ -17,3 +17,6 @@ jobs:
 
       - name: run functional tests
         run: ./scripts/functional-tests.sh
+
+      - name: run auth tests
+        run: go test -v ./auth
