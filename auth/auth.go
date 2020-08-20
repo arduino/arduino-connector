@@ -359,7 +359,7 @@ func (c *Config) authenticate(client HTTPClient, cookies cookies, uri, user, pas
 	return redir.Query().Get("code"), nil
 }
 
-func (c *Config) requestToken(client *http.Client, code string) (*Token, error) {
+func (c *Config) requestToken(client HTTPClient, code string) (*Token, error) {
 	query := url.Values{}
 	query.Add("code", code)
 	query.Add("client_id", c.ClientID)

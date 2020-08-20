@@ -36,10 +36,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuthStartError(t *testing.T) {
-	DoFunc = func(*http.Request) (*http.Response, error) {
-		return nil, errors.New(
-			"Wanted error from mock web server",
-		)
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		return nil, errors.New("Wanted error from mock web server")
 	}
 
 	data, err := StartDeviceAuth("", "0")
@@ -193,7 +191,7 @@ func TestRequestAuthError(t *testing.T) {
 	}
 
 	GetFunc = func(url string) (*http.Response, error) {
-		return nil, errors.New("test error")
+		return nil, errors.New("Wanted error from mock web server")
 	}
 
 	_, _, err := config.requestAuth(client)
@@ -381,4 +379,19 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	assert.Equal(t, "", response)
+}
+
+func TestRequestTokenError(t *testing.T) {
+	c := Config{}
+
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+		return nil, errors.New("Wanted error from mock web server")
+	}
+
+	token, err := c.requestToken(client, "9")
+	if err == nil {
+		t.Error("This test should return an error")
+	}
+
+	assert.True(t, token == nil)
 }
