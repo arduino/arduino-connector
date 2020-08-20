@@ -395,3 +395,36 @@ func TestRequestTokenError(t *testing.T) {
 
 	assert.True(t, token == nil)
 }
+
+func TestRequestToken(t *testing.T) {
+	c := Config{}
+
+	expectedToken := Token{
+		Access:  "1234",
+		Refresh: "",
+		TTL:     99,
+		Scopes:  "",
+		Type:    "Bearer",
+	}
+
+	DoFunc = func(req *http.Request) (*http.Response, error) {
+
+		data, errJSON := json.Marshal(expectedToken)
+		if errJSON != nil {
+			return nil, errJSON
+		}
+
+		return &http.Response{
+			StatusCode: 200,
+			Status:     "200 OK",
+			Body:       ioutil.NopCloser(bytes.NewBufferString(string(data))),
+		}, nil
+	}
+
+	token, err := c.requestToken(client, "9")
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, expectedToken, *token)
+}
