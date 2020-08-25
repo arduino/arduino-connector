@@ -28,25 +28,19 @@ import (
 
 // AptRepositoryListEvent sends a list of available repositories
 func (s *Status) AptRepositoryListEvent(client mqtt.Client, msg mqtt.Message) {
-	// Get packages from system
 	all, err := apt.ParseAPTConfigFolder("/etc/apt")
 	if err != nil {
 		s.Error("/apt/repos/list", fmt.Errorf("Retrieving repositories: %s", err))
 		return
 	}
 
-	// Send result
 	data, err := json.Marshal(all)
 	if err != nil {
 		s.Error("/apt/repos/list", fmt.Errorf("Json marshal result: %s", err))
 		return
 	}
 
-	//var out bytes.Buffer
-	//json.Indent(&out, data, "", "  ")
-	//fmt.Println(string(out.Bytes()))
-
-	s.Info("/apt/repos/list", string(data))
+	s.SendInfo(s.topicPertinence+"/apt/repos/list", string(data))
 }
 
 // AptRepositoryAddEvent adds a repository to the apt configuration
