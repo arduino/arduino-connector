@@ -1,7 +1,7 @@
 //
 //  This file is part of arduino-connector
 //
-//  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+//  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ func (s *Status) AptRepositoryAddEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	s.Info("/apt/repos/add", "OK")
+	s.SendInfo(s.topicPertinence+"/apt/repos/add", "OK")
 }
 
 // AptRepositoryRemoveEvent removes a repository from the apt configuration
