@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -27,6 +26,4 @@ func TestAptList(t *testing.T) {
 	if resp == "" {
 		t.Error("response is empty")
 	}
-
-	fmt.Println(resp)
 }
