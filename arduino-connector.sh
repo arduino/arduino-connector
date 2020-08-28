@@ -3,7 +3,7 @@
 #
 #  This file is part of arduino-connector
 #
-#  Copyright (C) 2017-2018  Arduino AG (http://www.arduino.cc/)
+#  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -71,17 +71,17 @@ fi
 echo download connector
 echo ---------
 download https://downloads.arduino.cc/tools/feed/arduino-connector/arduino-connector
-chmod +x arduino-connector
+sudo mv arduino-connector /usr/bin/arduino-connector
+sudo chmod +x /usr/bin/arduino-connector
 
 echo install connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo -E ./arduino-connector -register -install
+	sudo -E arduino-connector -register -install
 else
-	echo $password | sudo -kS -E ./arduino-connector -register -install > arduino-connector.log 2>&1
+	echo $password | sudo -kS -E arduino-connector -register -install > arduino-connector.log 2>&1
 fi
-
 
 echo start connector service
 echo ---------

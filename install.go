@@ -42,7 +42,6 @@ import (
 	"github.com/arduino/arduino-connector/auth"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
-	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
 )
 
@@ -351,14 +350,12 @@ func (p *program) Stop(s service.Service) error {
 
 // createService returns the servcie to be installed
 func createService(config Config, configFile, listenFile string) (service.Service, error) {
-	workingDirectory, _ := osext.ExecutableFolder()
-
 	svcConfig := &service.Config{
 		Name:             "ArduinoConnector",
 		DisplayName:      "Arduino Connector Service",
 		Description:      "Cloud connector and launcher for IoT devices.",
 		Arguments:        []string{"-config", configFile},
-		WorkingDirectory: workingDirectory,
+		WorkingDirectory: "/usr/bin",
 		Dependencies:     []string{"network-online.target"},
 	}
 
