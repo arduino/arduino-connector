@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -69,7 +70,12 @@ func TestAptAdd(t *testing.T) {
 	}
 
 	params.Repository = &apt.Repository{
-		URI: "www.test.io",
+		Enabled:      false,
+		SourceRepo:   true,
+		URI:          "http://ppa.launchpad.net/test/ubuntu",
+		Distribution: "zesty",
+		Components:   "main",
+		Comment:      "",
 	}
 
 	data, err := json.Marshal(params)
@@ -80,8 +86,20 @@ func TestAptAdd(t *testing.T) {
 	resp := ui.MqttSendAndReceiveTimeout(t, "/apt/repos/add", string(data), 1*time.Second)
 	assert.Equal(t, "INFO: OK\n", resp)
 
-	// TODO: check if is it really added on list, I think apt.ParseAPTConfigFolder("/etc/apt") doens't read
-	// all repository
+	defer func() {
+		err = apt.RemoveRepository(params.Repository, "/etc/apt")
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	all, err := apt.ParseAPTConfigFolder("/etc/apt")
+	if err != nil {
+		s.Error("/apt/repos/list", fmt.Errorf("Retrieving repositories: %s", err))
+		return
+	}
+
+	assert.True(t, all.Contains(params.Repository))
 }
 
 func TestAptRemoveError(t *testing.T) {
@@ -121,7 +139,17 @@ func TestAptRemove(t *testing.T) {
 	}
 
 	params.Repository = &apt.Repository{
-		URI: "www.test.io",
+		Enabled:      false,
+		SourceRepo:   true,
+		URI:          "http://ppa.launchpad.net/test/ubuntu",
+		Distribution: "zesty",
+		Components:   "main",
+		Comment:      "",
+	}
+
+	errAdd := apt.AddRepository(params.Repository, "/etc/apt")
+	if errAdd != nil {
+		t.Error(errAdd)
 	}
 
 	data, err := json.Marshal(params)
@@ -132,6 +160,11 @@ func TestAptRemove(t *testing.T) {
 	resp := ui.MqttSendAndReceiveTimeout(t, "/apt/repos/remove", string(data), 1*time.Second)
 	assert.Equal(t, "INFO: OK\n", resp)
 
-	// TODO: check if is it really removed on list, I think apt.ParseAPTConfigFolder("/etc/apt") doens't read
-	// all repository
+	all, err := apt.ParseAPTConfigFolder("/etc/apt")
+	if err != nil {
+		s.Error("/apt/repos/list", fmt.Errorf("Retrieving repositories: %s", err))
+		return
+	}
+
+	assert.False(t, all.Contains(params.Repository))
 }

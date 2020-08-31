@@ -80,7 +80,7 @@ func (s *Status) AptRepositoryRemoveEvent(client mqtt.Client, msg mqtt.Message) 
 		return
 	}
 
-	s.Info("/apt/repos/remove", "OK")
+	s.SendInfo(s.topicPertinence+"/apt/repos/remove", "OK")
 }
 
 // AptRepositoryEditEvent modifies a repository definition in the apt configuration
