@@ -3,7 +3,6 @@ package auth
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/textproto"
@@ -42,12 +41,9 @@ func TestAuthStartError(t *testing.T) {
 	}
 
 	data, err := StartDeviceAuth("", "0")
-	if err == nil {
-		t.Error(err)
-	}
 
+	assert.Error(t, err)
 	assert.Equal(t, data, DeviceCode{})
-	assert.NotNil(t, err)
 }
 
 func TestAuthStartData(t *testing.T) {
@@ -69,7 +65,7 @@ func TestAuthStartData(t *testing.T) {
 			return nil, errors.New("content-type is wrong")
 		}
 
-		if req.Method != "POST" {
+		if req.Method != http.MethodPost {
 			return nil, errors.New("Method is wrong")
 		}
 
@@ -77,36 +73,30 @@ func TestAuthStartData(t *testing.T) {
 			return nil, errors.New("url is wrong")
 		}
 
-		body, err := req.GetBody()
-		if err != nil {
-			return nil, err
-		}
-		buf := new(strings.Builder)
-		_, err = io.Copy(buf, body)
+		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			return nil, err
 		}
 
-		if !strings.Contains(buf.String(), "client_id=") ||
-			!strings.Contains(buf.String(), "&audience=https://api.arduino.cc") {
+		bodyStr := string(body)
+		if !strings.Contains(bodyStr, "client_id=") ||
+			!strings.Contains(bodyStr, "&audience=https://api.arduino.cc") {
 			return nil, errors.New("Payload is wrong")
 		}
 
-		data, err := json.Marshal(d)
-		if err != nil {
+		var data bytes.Buffer
+		if err := json.NewEncoder(&data).Encode(d); err != nil {
 			return nil, err
 		}
 
 		return &http.Response{
-			Body: ioutil.NopCloser(bytes.NewBufferString(string(data))),
+			Body: ioutil.NopCloser(&data),
 		}, nil
 	}
 
 	data, err := StartDeviceAuth("", "0")
-	if err != nil {
-		t.Error(err)
-	}
 
+	assert.NoError(t, err)
 	assert.Equal(t, data, d)
 }
 
@@ -127,7 +117,7 @@ func TestAuthCheck(t *testing.T) {
 			return nil, errors.New("content-type is wrong")
 		}
 
-		if req.Method != "POST" {
+		if req.Method != http.MethodPost {
 			return nil, errors.New("Method is wrong")
 		}
 
@@ -135,55 +125,46 @@ func TestAuthCheck(t *testing.T) {
 			return nil, errors.New("url is wrong")
 		}
 
-		body, err := req.GetBody()
-		if err != nil {
-			return nil, err
-		}
-		buf := new(strings.Builder)
-		_, err = io.Copy(buf, body)
+		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			return nil, err
 		}
 
-		if !strings.Contains(buf.String(), "client_id=") ||
-			!strings.Contains(buf.String(), "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=") {
+		bodyStr := string(body)
+		if !strings.Contains(bodyStr, "client_id=") ||
+			!strings.Contains(bodyStr, "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=") {
 			return nil, errors.New("Payload is wrong")
 		}
 
-		data, err := json.Marshal(AuthAccess{
+		var data bytes.Buffer
+		if err := json.NewEncoder(&data).Encode(AuthAccess{
 			AccessToken: "asdf",
 			ExpiresIn:   999,
 			TokenType:   "testType",
-		})
-		if err != nil {
+		}); err != nil {
 			return nil, err
 		}
 
 		return &http.Response{
 			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(string(data))),
+			Body:       ioutil.NopCloser(&data),
 		}, nil
 	}
 
 	token, err := CheckDeviceAuth("", "0", "")
-	if err != nil {
-		t.Error(err)
-	}
 
+	assert.NoError(t, err)
 	assert.Equal(t, "asdf", token)
 }
 
 func TestDefaultConfig(t *testing.T) {
-	c := New()
-	defaultConfig := &Config{
+	assert.Equal(t, New(), &Config{
 		CodeURL:     "https://hydra.arduino.cc/oauth2/auth",
 		TokenURL:    "https://hydra.arduino.cc/oauth2/token",
 		ClientID:    "cli",
 		RedirectURI: "http://localhost:5000",
 		Scopes:      "profile:core offline",
-	}
-
-	assert.Equal(t, defaultConfig, c)
+	})
 }
 
 func TestRequestAuthError(t *testing.T) {
@@ -196,11 +177,7 @@ func TestRequestAuthError(t *testing.T) {
 	}
 
 	_, _, err := config.requestAuth(client)
-	if err == nil {
-		t.Error(err)
-	}
-
-	assert.True(t, err != nil)
+	assert.Error(t, err)
 }
 
 func TestRequestAuth(t *testing.T) {
@@ -211,11 +188,11 @@ func TestRequestAuth(t *testing.T) {
 		Scopes:      "profile:core offline",
 	}
 
-	coutGetCall := 0
+	countGetCall := 0
 	GetFunc = func(url string) (*http.Response, error) {
-		coutGetCall++
+		countGetCall++
 
-		if coutGetCall == 1 {
+		if countGetCall == 1 {
 			if !strings.Contains(url, "www.test.com?client_id=1&redirect_uri=http%3A%2F%2Flocalhost%3A5000&response_type=code&scope=profile%3Acore+offline&state=") {
 				return nil, errors.New("Error in url")
 			}
@@ -229,7 +206,7 @@ func TestRequestAuth(t *testing.T) {
 			return nil, errors.New("url should be empty because no Location is provided in Header")
 		}
 
-		r, err := http.NewRequest("GET", "www.test.com", bytes.NewBufferString(""))
+		r, err := http.NewRequest("GET", "www.test.com", nil)
 		if err != nil {
 			return nil, err
 		}
@@ -241,14 +218,12 @@ func TestRequestAuth(t *testing.T) {
 	}
 
 	res, biscuits, err := config.requestAuth(client)
-	if err != nil {
-		t.Error(err)
-	}
 
-	expectedCookies := cookies{}
-	expectedCookies["hydra"] = []*http.Cookie{}
-	expectedCookies["auth"] = []*http.Cookie{}
-	assert.Equal(t, expectedCookies, biscuits)
+	assert.NoError(t, err)
+	assert.Equal(t, biscuits, cookies{
+		"hydra": []*http.Cookie{},
+		"auth":  []*http.Cookie{},
+	})
 	assert.Equal(t, "www.test.com", res)
 }
 
@@ -270,7 +245,7 @@ func TestAuthenticateError(t *testing.T) {
 			return nil, errors.New("content-type is wrong")
 		}
 
-		if req.Method != "POST" {
+		if req.Method != http.MethodPost {
 			return nil, errors.New("Method is wrong")
 		}
 
@@ -278,35 +253,29 @@ func TestAuthenticateError(t *testing.T) {
 			return nil, errors.New("url is wrong")
 		}
 
-		body, err := req.GetBody()
-		if err != nil {
-			return nil, err
-		}
-		buf := new(strings.Builder)
-		_, err = io.Copy(buf, body)
+		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			return nil, err
 		}
 
-		if !strings.Contains(buf.String(), "username=") ||
-			!strings.Contains(buf.String(), "password") ||
-			!strings.Contains(buf.String(), "csrf") ||
-			!strings.Contains(buf.String(), "g-recaptcha-response") {
+		bodyStr := string(body)
+		if !strings.Contains(bodyStr, "username=") ||
+			!strings.Contains(bodyStr, "password") ||
+			!strings.Contains(bodyStr, "csrf") ||
+			!strings.Contains(bodyStr, "g-recaptcha-response") {
 			return nil, errors.New("Payload is wrong")
 		}
 
 		return &http.Response{
 			StatusCode: 200,
 			Status:     "200 OK",
-			Body:       ioutil.NopCloser(bytes.NewBufferString(string("testBody"))),
+			Body:       ioutil.NopCloser(strings.NewReader("testBody")),
 		}, nil
 	}
 
 	response, err := config.authenticate(client, cookies{}, "www.test.io", "user", "pw")
-	if err == nil {
-		t.Error("This test should return an error")
-	}
 
+	assert.Error(t, err)
 	assert.Equal(t, "", response)
 }
 
@@ -331,7 +300,7 @@ func TestAuthenticate(t *testing.T) {
 				return nil, errors.New("content-type is wrong")
 			}
 
-			if req.Method != "POST" {
+			if req.Method != http.MethodPost {
 				return nil, errors.New("Method is wrong")
 			}
 
@@ -339,46 +308,48 @@ func TestAuthenticate(t *testing.T) {
 				return nil, errors.New("url is wrong")
 			}
 
-			body, err := req.GetBody()
-			if err != nil {
-				return nil, err
-			}
-			buf := new(strings.Builder)
-			_, err = io.Copy(buf, body)
+			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
 				return nil, err
 			}
 
-			if !strings.Contains(buf.String(), "username=") ||
-				!strings.Contains(buf.String(), "password") ||
-				!strings.Contains(buf.String(), "csrf") ||
-				!strings.Contains(buf.String(), "g-recaptcha-response") {
+			bodyStr := string(body)
+			if !strings.Contains(bodyStr, "username=") ||
+				!strings.Contains(bodyStr, "password") ||
+				!strings.Contains(bodyStr, "csrf") ||
+				!strings.Contains(bodyStr, "g-recaptcha-response") {
 				return nil, errors.New("Payload is wrong")
 			}
 
-			return &http.Response{
+			resp := &http.Response{
 				StatusCode: 302,
 				Status:     "302 OK",
-				Body:       ioutil.NopCloser(bytes.NewBufferString(string("testBody"))),
-			}, nil
+				Header:     http.Header{},
+				Body:       ioutil.NopCloser(strings.NewReader("testBody")),
+			}
+			resp.Header.Set("Location", "www.redirect.io")
+
+			return resp, nil
 		}
 
-		if req.Method != "GET" {
+		if req.Method != http.MethodGet {
 			return nil, errors.New("Method is wrong")
+		}
+
+		if !strings.Contains(req.URL.Path, "www.redirect.io") {
+			return nil, errors.New("redirect url is wrong")
 		}
 
 		return &http.Response{
 			StatusCode: 200,
 			Status:     "200 OK",
-			Body:       ioutil.NopCloser(bytes.NewBufferString(string("testBody"))),
+			Body:       ioutil.NopCloser(strings.NewReader("testBody")),
 		}, nil
 	}
 
 	response, err := config.authenticate(client, cookies{}, "www.test.io", "user", "pw")
-	if err != nil {
-		t.Error(err)
-	}
 
+	assert.NoError(t, err)
 	assert.Equal(t, "", response)
 }
 
@@ -390,10 +361,8 @@ func TestRequestTokenError(t *testing.T) {
 	}
 
 	token, err := c.requestToken(client, "9")
-	if err == nil {
-		t.Error("This test should return an error")
-	}
 
+	assert.Error(t, err)
 	assert.True(t, token == nil)
 }
 
@@ -409,23 +378,20 @@ func TestRequestToken(t *testing.T) {
 	}
 
 	DoFunc = func(req *http.Request) (*http.Response, error) {
-
-		data, errJSON := json.Marshal(expectedToken)
-		if errJSON != nil {
-			return nil, errJSON
+		var data bytes.Buffer
+		if err := json.NewEncoder(&data).Encode(expectedToken); err != nil {
+			return nil, err
 		}
 
 		return &http.Response{
 			StatusCode: 200,
 			Status:     "200 OK",
-			Body:       ioutil.NopCloser(bytes.NewBufferString(string(data))),
+			Body:       ioutil.NopCloser(&data),
 		}, nil
 	}
 
 	token, err := c.requestToken(client, "9")
-	if err != nil {
-		t.Error(err)
-	}
 
+	assert.NoError(t, err)
 	assert.Equal(t, expectedToken, *token)
 }

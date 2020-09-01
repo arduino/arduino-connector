@@ -59,9 +59,7 @@ type HTTPClient interface {
 	Get(url string) (resp *http.Response, err error)
 }
 
-var (
-	client HTTPClient
-)
+var client HTTPClient
 
 // Init initialize correctly HTTP client
 func Init() {
