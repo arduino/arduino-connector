@@ -101,5 +101,5 @@ func (s *Status) AptRepositoryEditEvent(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	s.Info("/apt/repos/edit", "OK")
+	s.SendInfo(s.topicPertinence+"/apt/repos/edit", "OK")
 }
