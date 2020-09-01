@@ -1,0 +1,16 @@
+FROM    ubuntu
+LABEL   maintainer="guerinoni.federico@gmail.com"
+
+RUN     apt-get update
+RUN     apt-get -y install     \
+        curl                   \
+        gcc                    \
+        mosquitto                   
+
+RUN     curl -O https://dl.google.com/go/go1.15.linux-amd64.tar.gz
+RUN     tar xvf go1.15.linux-amd64.tar.gz
+RUN     mv go /usr/local
+
+ENV     PATH=$PATH:/usr/local/go/bin
+
+WORKDIR /home
