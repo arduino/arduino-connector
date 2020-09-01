@@ -28,9 +28,7 @@ func TestAptList(t *testing.T) {
 
 	resp := ui.MqttSendAndReceiveTimeout(t, "/apt/repos/list", "{}", 1*time.Second)
 
-	if resp == "" {
-		t.Error("response is empty")
-	}
+	assert.NotEmpty(t, resp)
 }
 
 func TestAptAddError(t *testing.T) {
