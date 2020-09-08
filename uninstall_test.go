@@ -47,3 +47,48 @@ func TestUninstallSketches(t *testing.T) {
 	assert.True(t, resp == "INFO: OK\n")
 	assert.True(t, err != nil)
 }
+
+func TestUninstallCerts(t *testing.T) {
+	dashboard := newMqttTestClientLocal()
+	defer dashboard.Close()
+
+	c := Config{
+		CertPath: "/home/",
+	}
+	s := NewStatus(c, nil, nil, "")
+	s.mqttClient = mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector"))
+	if token := s.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(token.Error())
+	}
+	defer s.mqttClient.Disconnect(100)
+
+	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
+
+	file1, errFile1 := os.Create(s.config.CertPath + "/certificate.pem")
+	if errFile1 != nil {
+		t.Error(errFile1)
+	}
+
+	file2, errFile2 := os.Create(s.config.CertPath + "/certificate.key")
+	if errFile2 != nil {
+		t.Error(errFile2)
+	}
+
+	file1.WriteString("test")
+	file2.WriteString("test")
+	file1.Close()
+	file2.Close()
+
+	_, err := os.Stat(s.config.CertPath + "/certificate.pem")
+	assert.True(t, err == nil)
+	_, err = os.Stat(s.config.CertPath + "/certificate.key")
+	assert.True(t, err == nil)
+
+	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 50*time.Millisecond)
+	assert.True(t, resp == "INFO: OK\n")
+
+	_, err = os.Stat(s.config.CertPath + "/certificate.pem")
+	assert.True(t, err != nil)
+	_, err = os.Stat(s.config.CertPath + "/certificate.key")
+	assert.True(t, err != nil)
+}

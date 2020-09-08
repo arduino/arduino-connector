@@ -12,6 +12,7 @@ func (s *Status) Uninstall(client mqtt.Client, msg mqtt.Message) {
 	data := "OK"
 
 	removeSketches(s)
+	removeCerts(s)
 
 	s.SendInfo(s.topicPertinence+"/status/uninstall", string(data))
 }
@@ -23,6 +24,20 @@ func removeSketches(s *Status) error {
 	}
 
 	err = os.RemoveAll(folder)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeCerts(s *Status) error {
+	err := os.Remove(s.config.CertPath + "/certificate.pem")
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(s.config.CertPath + "/certificate.key")
 	if err != nil {
 		return err
 	}
