@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupAndRun(m *testing.M) int {
-	ts.ui = NewMqttTestClientLocal()
+	ts.ui = newMqttTestClientLocal()
 	defer ts.ui.Close()
 
 	ts.appStatus = NewStatus(program{}.Config, nil, nil, "")

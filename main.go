@@ -352,6 +352,8 @@ func subscribeTopics(mqttClient mqtt.Client, id string, status *Status) {
 	subscribeTopic(mqttClient, id, "/containers/images/post", status, status.ContainersListImagesEvent, false)
 	subscribeTopic(mqttClient, id, "/containers/action/post", status, status.ContainersActionEvent, true)
 	subscribeTopic(mqttClient, id, "/containers/rename/post", status, status.ContainersRenameEvent, true)
+
+	subscribeTopic(mqttClient, id, "/status/uninstall/post", status, status.Uninstall, true)
 }
 
 func subscribeTopic(client mqtt.Client, id, topic string, s *Status, statusHandler mqtt.MessageHandler, isWriteFsRequiredForTopic bool) {
