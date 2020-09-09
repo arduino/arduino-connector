@@ -14,5 +14,8 @@ jobs:
       - name: run mqtt tests
         run: ./scripts/mqtt-tests.sh
 
+      - name: run install tests
+        run: ./scripts/install-tests.sh
+
       - name: run auth tests
         run: go test -v ./auth
