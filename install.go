@@ -150,7 +150,7 @@ func registerDeviceViaMQTT(config Config) {
 	err = registerDevice(client, config.ID)
 	check(err, "RegisterDevice")
 
-	client.Disconnect(0)
+	client.Disconnect(100)
 	fmt.Println("MQTT connection successful")
 
 }
