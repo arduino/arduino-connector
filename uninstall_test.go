@@ -7,6 +7,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/kardianos/osext"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -91,4 +92,25 @@ func TestUninstallCerts(t *testing.T) {
 	assert.True(t, err != nil)
 	_, err = os.Stat(s.config.CertPath + "/certificate.key")
 	assert.True(t, err != nil)
+}
+
+func TestUninstallGenerateScript(t *testing.T) {
+	dashboard := newMqttTestClientLocal()
+	defer dashboard.Close()
+
+	s := NewStatus(Config{}, nil, nil, "")
+	s.mqttClient = mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector"))
+	if token := s.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(token.Error())
+	}
+	defer s.mqttClient.Disconnect(100)
+
+	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
+
+	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 50*time.Millisecond)
+	assert.True(t, resp == "INFO: OK\n")
+
+	dir, _ := osext.ExecutableFolder()
+	_, err := os.Stat(dir + "/uninstall-arduino-connector.sh")
+	assert.True(t, err == nil)
 }
