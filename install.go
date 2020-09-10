@@ -78,12 +78,12 @@ func createConfig() error {
 		}
 	}
 
-	str, err := createDockerConfig()
+	value, err := isDockerInstalled()
 	if err != nil {
 		return err
 	}
 
-	viper.Set("docker", str)
+	viper.Set("docker-installed", value)
 	err = viper.WriteConfigAs(dir + string(os.PathSeparator) + "arduino-connector.yml")
 	if err != nil {
 		return err
@@ -92,13 +92,13 @@ func createConfig() error {
 	return nil
 }
 
-func createDockerConfig() (string, error) {
+func isDockerInstalled() (bool, error) {
 	_, err := exec.LookPath("docker")
 	if err == nil {
-		return "installed", nil
+		return true, nil
 	}
 
-	return "empty", nil
+	return false, nil
 }
 
 func createConfigFolder() error {
