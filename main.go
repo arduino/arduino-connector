@@ -175,8 +175,10 @@ func main() {
 	}
 
 	if *doInstall {
-		install(s)
-		// install should return cleanly if succeeded
+		if err := install(s); err != nil {
+			panic(err)
+		}
+
 		os.Exit(0)
 	}
 

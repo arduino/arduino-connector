@@ -35,6 +35,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -44,6 +45,7 @@ import (
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -51,11 +53,52 @@ const (
 )
 
 // Install installs the program as a service
-func install(s service.Service) {
-	// InstallService
+func install(s service.Service) error {
 	err := s.Install()
 	// TODO: implement a fallback strtegy if service installation fails
 	check(err, "InstallService")
+
+	if err := createConfig(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createConfig() error {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(dir); err != nil {
+		err = os.Mkdir(dir, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	str, err := createDockerConfig()
+	if err != nil {
+		return err
+	}
+
+	viper.Set("docker", str)
+	err = viper.WriteConfigAs(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createDockerConfig() (string, error) {
+	_, err := exec.LookPath("docker")
+	if err == nil {
+		return "installed", nil
+	}
+
+	return "empty", nil
 }
 
 func createConfigFolder() error {
