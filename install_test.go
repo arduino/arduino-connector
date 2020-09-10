@@ -49,6 +49,7 @@ func TestInstallCheckCreateConfig(t *testing.T) {
 	assert.True(t, err == nil)
 }
 
+<<<<<<< HEAD
 func TestInstallRegister(t *testing.T) {
 
 	// mock the OAuth server
@@ -397,4 +398,10 @@ func TestInstallNetworkManager(t *testing.T) {
 		assert.False(t, isNetManagerInstalled())
 	}()
 	assert.True(t, isNetManagerInstalled())
+}
+
+func TestInstallDockerPath(t *testing.T) {
+	str, err := createDockerConfig()
+	assert.True(t, str == "installed")
+	assert.True(t, err == nil)
 }
