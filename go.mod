@@ -32,7 +32,6 @@ require (
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/kr/binarydist v0.1.0
 	github.com/kr/pty v1.1.2
-	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/namsral/flag v1.7.4-pre
 	github.com/nats-io/gnatsd v1.2.0
 	github.com/nats-io/go-nats v1.5.0
