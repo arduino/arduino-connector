@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/docker/docker/api/types"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
+	"github.com/spf13/viper"
+	"golang.org/x/net/context"
 )
 
 // Uninstall removes all service installed and creates script to
@@ -22,6 +26,11 @@ func (s *Status) Uninstall(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	err = removeCerts(s)
+	if err != nil {
+		panic(err)
+	}
+
+	err = removeContainers(s)
 	if err != nil {
 		panic(err)
 	}
@@ -75,6 +84,29 @@ func removeCerts(s *Status) error {
 	err = os.Remove(key)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func removeContainers(s *Status) error {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	containers := viper.GetStringSlice("docker-container")
+	if len(containers) == 0 {
+		return nil
+	}
+
+	for _, v := range containers {
+		err = s.dockerClient.ContainerRemove(context.Background(), v, types.ContainerRemoveOptions{})
+		time.Sleep(5 * time.Second)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
