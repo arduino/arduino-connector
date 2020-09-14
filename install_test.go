@@ -495,3 +495,7 @@ func TestInstallAlpineDockerContainers(t *testing.T) {
 	assert.True(t, len(values) == 1)
 	assert.True(t, reflect.DeepEqual(values, []string{createContResp.ID}))
 }
+
+func TestInstallUbuntuNetworkManager(t *testing.T) {
+	assert.False(t, isNetManagerInstalled())
+}

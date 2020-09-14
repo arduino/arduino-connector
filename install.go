@@ -100,6 +100,9 @@ func createConfig() error {
 		viper.Set("docker-container", values)
 	}
 
+	value = isNetManagerInstalled()
+	viper.Set("network-manager-installed", value)
+
 	err = viper.WriteConfigAs(dir + string(os.PathSeparator) + "arduino-connector.yml")
 	if err != nil {
 		return err
@@ -154,6 +157,12 @@ func retrieveDockerContainer() ([]string, error) {
 	}
 
 	return cs, nil
+}
+
+func isNetManagerInstalled() bool {
+	cmd := exec.Command("dpkg-query -l network-manager; echo $?")
+	_, err := cmd.CombinedOutput()
+	return err == nil
 }
 
 // Register creates the necessary certificates and configuration files
