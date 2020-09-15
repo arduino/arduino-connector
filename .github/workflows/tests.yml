@@ -1,12 +1,11 @@
-name: tests
+name: Tests
 
 on: [push, pull_request]
 
 jobs:
-  CI:
-    name: tests
+  Tests:
     runs-on: ubuntu-latest
-    container: guerra1994/go-mqtt-docker-env
+    container: ghcr.io/guerinoni/go-docker-mqtt-ubuntu-env:latest
 
     steps:
       - name: check out code
