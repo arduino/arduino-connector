@@ -35,6 +35,11 @@ func (s *Status) Uninstall(client mqtt.Client, msg mqtt.Message) {
 		panic(err)
 	}
 
+	err = removeImages(s)
+	if err != nil {
+		panic(err)
+	}
+
 	err = generateScriptUninstall()
 	if err != nil {
 		panic(err)
@@ -106,6 +111,29 @@ func removeContainers(s *Status) error {
 		time.Sleep(5 * time.Second)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func removeImages(s *Status) error {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	images := viper.GetStringSlice("docker-images")
+	if len(images) == 0 {
+		return nil
+	}
+
+	for _, v := range images {
+		_, err = s.dockerClient.ImageRemove(context.Background(), v, types.ImageRemoveOptions{})
+		time.Sleep(5 * time.Second)
+		if err != nil {
+			fmt.Println(err)
 		}
 	}
 
