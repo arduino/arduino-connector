@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/arduino/arduino-connector)](https://goreportcard.com/report/github.com/arduino/arduino-connector)
 ![Build](https://github.com/arduino/arduino-connector/workflows/Build/badge.svg)
 ![lint](https://github.com/arduino/arduino-connector/workflows/lint/badge.svg)
-![tests](https://github.com/arduino/arduino-connector/workflows/tests/badge.svg)
+![Tests](https://github.com/arduino/arduino-connector/workflows/Tests/badge.svg)
 
 The Arduino Connector allows your device to connect to the Arduino Cloud, and push and receive messages through the [MQTT protocol](http://mqtt.org/). You can see and control all your cloud-enabled devices via a web app called [My Devices](https://create.arduino.cc/devices).
 
