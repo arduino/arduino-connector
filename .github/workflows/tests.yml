@@ -11,11 +11,8 @@ jobs:
       - name: check out code
         uses: actions/checkout@v2
 
-      - name: run docker tests
-        run: ./scripts/docker-tests.sh
+      - name: run mqtt tests
+        run: ./scripts/mqtt-tests.sh
 
       - name: run auth tests
         run: go test -v ./auth
-
-      - name: run apt tests
-        run: ./scripts/apt-tests.sh
