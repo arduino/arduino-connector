@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arduino/go-apt-client"
+
 	"github.com/docker/docker/api/types"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
@@ -36,6 +38,11 @@ func (s *Status) Uninstall(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	err = removeImages(s)
+	if err != nil {
+		panic(err)
+	}
+
+	err = removeNetworkManager()
 	if err != nil {
 		panic(err)
 	}
@@ -107,6 +114,8 @@ func removeContainers(s *Status) error {
 	}
 
 	for _, v := range containers {
+		timeout := 10 * time.Second
+		s.dockerClient.ContainerStop(context.Background(), v, &timeout)
 		err = s.dockerClient.ContainerRemove(context.Background(), v, types.ContainerRemoveOptions{})
 		time.Sleep(5 * time.Second)
 		if err != nil {
@@ -140,6 +149,25 @@ func removeImages(s *Status) error {
 	return nil
 }
 
+func removeNetworkManager() error {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	net := viper.GetBool("network-manager")
+	if net {
+		toRemove := append([]*apt.Package{}, &apt.Package{Name: "network-manager"})
+		_, err = apt.Remove(toRemove...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func generateScriptUninstall() error {
 	dir, errDir := osext.ExecutableFolder()
 	if errDir != nil {
@@ -161,7 +189,6 @@ func generateScriptUninstall() error {
 	data += "sudo systemctl daemon-reload\n"
 	data += "sudo systemctl reset-failed\n"
 	data += "sudo rm -f arduino-connector\n"
-	file.WriteString(data)
-
-	return nil
+	_, err := file.WriteString(data)
+	return err
 }

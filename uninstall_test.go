@@ -39,7 +39,8 @@ func TestUninstallSketches(t *testing.T) {
 		t.Error(errFile)
 	}
 
-	file.WriteString("test")
+	_, err = file.WriteString("test")
+	assert.True(t, err == nil)
 	file.Close()
 
 	_, err = os.Stat(folder + "/fakeSketch")
@@ -79,12 +80,14 @@ func TestUninstallCerts(t *testing.T) {
 		t.Error(errFile2)
 	}
 
-	file1.WriteString("test")
-	file2.WriteString("test")
+	_, err := file1.WriteString("test")
+	assert.True(t, err == nil)
+	_, err = file2.WriteString("test")
+	assert.True(t, err == nil)
 	file1.Close()
 	file2.Close()
 
-	_, err := os.Stat(s.config.CertPath + "/certificate.pem")
+	_, err = os.Stat(s.config.CertPath + "/certificate.pem")
 	assert.True(t, err == nil)
 	_, err = os.Stat(s.config.CertPath + "/certificate.key")
 	assert.True(t, err == nil)
@@ -224,4 +227,37 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 		}
 	}
 	assert.True(t, found)
+}
+
+func TestUninstallAllImages(t *testing.T) {
+	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
+	assert.True(t, err == nil)
+
+	dashboard := newMqttTestClientLocal()
+	defer dashboard.Close()
+
+	s := NewStatus(Config{}, nil, nil, "")
+	s.dockerClient = cli
+	s.mqttClient = mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("arduino-connector"))
+	if token := s.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(token.Error())
+	}
+	defer s.mqttClient.Disconnect(100)
+
+	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
+
+	ctx := context.Background()
+	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
+	time.Sleep(5 * time.Second)
+	assert.True(t, err == nil)
+
+	err = createConfig()
+	assert.True(t, err == nil)
+
+	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
+	assert.True(t, resp == "INFO: OK\n")
+
+	imgs, errImages := cli.ImageList(ctx, types.ImageListOptions{})
+	assert.True(t, errImages == nil)
+	assert.True(t, len(imgs) == 0)
 }

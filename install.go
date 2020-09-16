@@ -72,7 +72,7 @@ func createConfig() error {
 		return err
 	}
 
-	if _, err := os.Stat(dir); err != nil {
+	if _, err = os.Stat(dir); err != nil {
 		err = os.Mkdir(dir, 0755)
 		if err != nil {
 			return err
@@ -160,7 +160,7 @@ func retrieveDockerContainer() ([]string, error) {
 }
 
 func isNetManagerInstalled() bool {
-	cmd := exec.Command("dpkg-query -l network-manager; echo $?")
+	cmd := exec.Command("dpkg-query", "-l network-manager; echo $?")
 	_, err := cmd.CombinedOutput()
 	return err == nil
 }
