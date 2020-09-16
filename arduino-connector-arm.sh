@@ -1,5 +1,23 @@
 #!/bin/bash -e
 
+#
+#  This file is part of arduino-connector
+#
+#  Copyright (C) 2017-2020  Arduino AG (http://www.arduino.cc/)
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
 has() {
 	type "$1" > /dev/null 2>&1
 	return $?
@@ -53,18 +71,17 @@ fi
 echo download connector
 echo ---------
 download https://downloads.arduino.cc/tools/feed/arduino-connector/arduino-connector-arm
-mv arduino-connector-arm arduino-connector
-chmod +x arduino-connector
+sudo mv arduino-connector-arm /usr/bin/arduino-connector
+sudo chmod +x /usr/bin/arduino-connector
 
 echo install connector
 echo ---------
 if [ "$password" == "" ]
 then
-	sudo -E ./arduino-connector -register -install
+	sudo -E arduino-connector -register -install
 else
-	echo $password | sudo -kS -E ./arduino-connector -register -install > arduino-connector.log 2>&1
+	echo $password | sudo -kS -E arduino-connector -register -install > arduino-connector.log 2>&1
 fi
-
 
 echo start connector service
 echo ---------
