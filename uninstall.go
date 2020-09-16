@@ -114,8 +114,6 @@ func removeContainers(s *Status) error {
 	}
 
 	for _, v := range containers {
-		timeout := 10 * time.Second
-		s.dockerClient.ContainerStop(context.Background(), v, &timeout)
 		err = s.dockerClient.ContainerRemove(context.Background(), v, types.ContainerRemoveOptions{})
 		time.Sleep(5 * time.Second)
 		if err != nil {
