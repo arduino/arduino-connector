@@ -111,6 +111,7 @@ func main() {
 	flag.StringVar(&config.HTTPSProxy, "https_proxy", "", "URL of HTTPS proxy to use")
 	flag.StringVar(&config.ALLProxy, "all_proxy", "", "URL of SOCKS proxy to use")
 	flag.StringVar(&config.AuthURL, "authurl", "https://login.arduino.cc", "Url of authentication server")
+	flag.StringVar(&config.AuthClientID, "auth_client_id", "", "Authentication client ID")
 	flag.StringVar(&config.APIURL, "apiurl", "https://api2.arduino.cc", "Url of api server")
 	flag.BoolVar(&config.CheckRoFs, "check_ro_fs", false, "Check for Read Only file system and remount if necessary")
 	flag.BoolVar(&debugMqtt, "debug-mqtt", false, "Output all received/sent messages")
