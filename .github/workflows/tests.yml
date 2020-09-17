@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   Tests:
     runs-on: ubuntu-latest
-    container: ghcr.io/guerinoni/go-docker-mqtt-ubuntu-env:latest
+    container: guerra1994/go-docker-mqtt-ubuntu-env
 
     steps:
       - name: check out code
