@@ -50,7 +50,7 @@ echo ---------
 
 echo remove old files
 echo ---------
-rm -f /usr/bin/arduino-connector* /usr/bin/certificate*
+sudo rm -f /usr/bin/arduino-connector* /usr/bin/certificate*
 
 echo uninstall previous installations of connector
 echo ---------
