@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	defaultConfigFile = "/usr/bin/arduino-connector.cfg"
+	defaultConfigFile = "/etc/arduino-connector/arduino-connector.cfg"
 )
 
 var (
@@ -103,7 +103,7 @@ func main() {
 	flag.StringVar(&config.appName, "appName", "arduino-connector", "")
 
 	var configFile = flag.String(flag.DefaultConfigFlagname, "", "path to config file")
-	flag.StringVar(&config.CertPath, "cert_path", "/usr/bin/", "path to store certificates")
+	flag.StringVar(&config.CertPath, "cert_path", "/etc/arduino-connector/", "path to store certificates")
 	flag.StringVar(&config.SketchesPath, "sketches_path", "", "path to store sketches")
 	flag.StringVar(&config.ID, "id", "", "id of the thing in aws iot")
 	flag.StringVar(&config.URL, "url", "", "url of the thing in aws iot")
@@ -151,7 +151,10 @@ func main() {
 	}
 
 	if *doRegister {
-		createConfigFolder()
+		err = createConfigFolder()
+		if err != nil {
+			panic(err)
+		}
 		register(config, *configFile, *token)
 	}
 
