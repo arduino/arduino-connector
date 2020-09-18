@@ -18,6 +18,14 @@
 #  limitations under the License.
 #
 
+architecture=$(uname -m)
+if [ "$architecture" == "x86_64" ] 
+then
+	architecture=""
+else
+	architecture="-arm"
+fi
+
 has() {
 	type "$1" > /dev/null 2>&1
 	return $?
@@ -70,8 +78,8 @@ fi
 
 echo download connector
 echo ---------
-download https://downloads.arduino.cc/tools/feed/arduino-connector/arduino-connector
-sudo mv arduino-connector /usr/bin/arduino-connector
+download https://downloads.arduino.cc/tools/feed/arduino-connector/arduino-connector$architecture
+sudo mv arduino-connector$architecture /usr/bin/arduino-connector
 sudo chmod +x /usr/bin/arduino-connector
 
 echo install connector
