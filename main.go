@@ -151,6 +151,7 @@ func main() {
 	}
 
 	if *doRegister {
+		createConfigFolder()
 		register(config, *configFile, *token)
 	}
 

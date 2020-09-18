@@ -58,6 +58,15 @@ func install(s service.Service) {
 	check(err, "InstallService")
 }
 
+func createConfigFolder() error {
+	err := os.Mkdir("/etc/arduino-connector/", 0755)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Register creates the necessary certificates and configuration files
 func register(config Config, configFile, token string) {
 	// Request token
