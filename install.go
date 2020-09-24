@@ -85,23 +85,9 @@ func createConfig() error {
 	}
 
 	viper.Set("docker-installed", value)
-
-	if value {
-		values, errDocker := retrieveDockerImages()
-		if errDocker != nil {
-			return errDocker
-		}
-		viper.Set("docker-images", values)
-
-		values, errDocker = retrieveDockerContainer()
-		if errDocker != nil {
-			return errDocker
-		}
-		viper.Set("docker-container", values)
-	}
-
-	value = isNetManagerInstalled()
-	viper.Set("network-manager-installed", value)
+	viper.Set("docker-images", []string{})
+	viper.Set("docker-container", []string{})
+	viper.Set("network-manager-installed", isNetManagerInstalled())
 
 	err = viper.WriteConfigAs(dir + string(os.PathSeparator) + "arduino-connector.yml")
 	if err != nil {
@@ -165,6 +151,18 @@ func isNetManagerInstalled() bool {
 	cmd := exec.Command("dpkg-query", "-l network-manager; echo $?")
 	_, err := cmd.CombinedOutput()
 	return err == nil
+}
+
+func updateConfigWithContainer(c string) {
+	cs := viper.GetStringSlice("docker-container")
+	cs = append(cs, c)
+	viper.Set("docker-container", cs)
+}
+
+func updateConfigWithImage(i string) {
+	is := viper.GetStringSlice("docker-images")
+	is = append(is, i)
+	viper.Set("docker-images", is)
 }
 
 // Register creates the necessary certificates and configuration files

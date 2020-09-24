@@ -113,8 +113,6 @@ func removeContainers(s *Status) error {
 		return nil
 	}
 
-	fmt.Println("containers when uninstall : ", containers)
-
 	for _, v := range containers {
 		err = s.dockerClient.ContainerRemove(context.Background(), v, types.ContainerRemoveOptions{Force: true})
 		time.Sleep(5 * time.Second)

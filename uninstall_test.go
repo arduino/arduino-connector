@@ -149,19 +149,30 @@ func TestUninstallDockerAllContainer(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
 
-	_, err = cli.ContainerCreate(ctx, &container.Config{
-		Image: "alpine",
-		Cmd:   []string{"echo", "hello world"},
-	}, nil, nil, "")
-
-	time.Sleep(5 * time.Second)
-	assert.True(t, err == nil)
-
 	err = createConfig()
 	assert.True(t, err == nil)
 
+	c, errCreate := cli.ContainerCreate(ctx, &container.Config{
+		Image: "alpine",
+		Cmd:   []string{"echo", "hello world"},
+	}, nil, nil, "")
+	time.Sleep(5 * time.Second)
+	assert.True(t, errCreate == nil)
+
+	updateConfigWithContainer(c.ID)
+
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
 	assert.True(t, resp == "INFO: OK\n")
+	containers, errList := cli.ContainerList(ctx, types.ContainerListOptions{})
+	assert.True(t, errList == nil)
+	found := false
+	for _, v := range containers {
+		if v.ID == c.ID {
+			found = true
+			break
+		}
+	}
+	assert.False(t, found)
 }
 
 func TestUninstallNotAllDockerContainer(t *testing.T) {
@@ -181,39 +192,35 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 
 	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
 
+	err = createConfig()
+	assert.True(t, err == nil)
+
 	ctx := context.Background()
 	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
 	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
 
-	_, err = cli.ContainerCreate(ctx, &container.Config{
+	containerMustKeep, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: "alpine",
+		Cmd:   []string{"echo", "hello world"},
+	}, nil, nil, "")
+	time.Sleep(5 * time.Second)
+	assert.True(t, err == nil)
+
+	containerMustRemove, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"echo", "hello world"},
 	}, nil, nil, "")
 
 	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
-
-	err = createConfig()
-	assert.True(t, err == nil)
-
-	idMustKeep, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "alpine",
-		Cmd:   []string{"echo", "hello world"},
-	}, nil, nil, "")
+	updateConfigWithContainer(containerMustRemove.ID)
 
 	defer func() {
-		err = cli.ContainerRemove(ctx, idMustKeep.ID, types.ContainerRemoveOptions{})
-		time.Sleep(5 * time.Second)
-		assert.True(t, err == nil)
-
-		_, err = cli.ImageRemove(ctx, "alpine", types.ImageRemoveOptions{})
+		err = cli.ContainerRemove(ctx, containerMustKeep.ID, types.ContainerRemoveOptions{})
 		time.Sleep(5 * time.Second)
 		assert.True(t, err == nil)
 	}()
-
-	time.Sleep(5 * time.Second)
-	assert.True(t, err == nil)
 
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
 	assert.True(t, resp == "INFO: OK\n")
@@ -221,7 +228,7 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 	assert.True(t, err == nil)
 	found := false
 	for _, v := range containers {
-		if v.ID == idMustKeep.ID {
+		if v.ID == containerMustKeep.ID {
 			found = true
 			break
 		}
@@ -246,18 +253,16 @@ func TestUninstallAllImages(t *testing.T) {
 
 	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
 
+	err = createConfig()
+	assert.True(t, err == nil)
+
 	ctx := context.Background()
 	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
 	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
 
-	err = createConfig()
-	assert.True(t, err == nil)
+	updateConfigWithImage("alpine")
 
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
 	assert.True(t, resp == "INFO: OK\n")
-
-	imgs, errImages := cli.ImageList(ctx, types.ImageListOptions{})
-	assert.True(t, errImages == nil)
-	assert.True(t, len(imgs) == 0)
 }
