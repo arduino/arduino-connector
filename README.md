@@ -71,10 +71,10 @@ See [API](./API.md)
 
 ## Functional tests
 
-This type of tests are executed all locally and you need to configure a dedicated docker container:
-- `docker pull guerra1994/go-mqtt-docker-env`
-- follow the steps [here](https://hub.docker.com/r/guerra1994/go-mqtt-docker-env) to run it
-- run mosquitto broker in background mode using `mosquitto > /dev/null 2>&1 &`
+These tests can be executed locally. To do that, you need to configure a dedicated docker container:
+- get the image `docker pull guerra1994/go-docker-mqtt-ubuntu-env`
+- enter the container `docker run -it -v $(pwd):/home --privileged --name gmd guerra1994/go-docker-mqtt-ubuntu-env`
+- run the mosquitto MQTT broker in background mode `mosquitto > /dev/null 2>&1 &`
 - then run your test, for example `go test -v --tags=functional --run="TestDockerPsApi"`
 
 
