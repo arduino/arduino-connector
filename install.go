@@ -148,9 +148,9 @@ func retrieveDockerContainer() ([]string, error) {
 }
 
 func isNetManagerInstalled() bool {
-	cmd := exec.Command("dpkg-query", "-l network-manager; echo $?")
-	_, err := cmd.CombinedOutput()
-	return err == nil
+	cmd := exec.Command("bash", "-c", "dpkg --get-selections | grep network-manager")
+	out, _ := cmd.CombinedOutput()
+	return !strings.Contains(string(out), "deinstall") && len(out) != 0
 }
 
 func updateConfigWithContainer(c string) {

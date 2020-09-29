@@ -6,8 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arduino/go-apt-client"
-
+	apt "github.com/arduino/go-apt-client"
 	"github.com/docker/docker/api/types"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/kardianos/osext"
@@ -154,8 +153,9 @@ func removeNetworkManager() error {
 	}
 
 	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
-	net := viper.GetBool("network-manager")
-	if net {
+	beforeNotInstalled := viper.GetBool("network-manager-installed")
+	nowInstalled := isNetManagerInstalled()
+	if !beforeNotInstalled && nowInstalled {
 		toRemove := append([]*apt.Package{}, &apt.Package{Name: "network-manager"})
 		_, err = apt.Remove(toRemove...)
 		if err != nil {
