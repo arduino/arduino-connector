@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,35 +21,27 @@ import (
 func (s *Status) Uninstall(client mqtt.Client, msg mqtt.Message) {
 	data := "OK"
 
-	var err error
-
-	err = removeSketches(s)
-	if err != nil {
+	if err := removeSketches(s); err != nil {
 		panic(err)
 	}
 
-	err = removeCerts(s)
-	if err != nil {
+	if err := removeCerts(s); err != nil {
 		panic(err)
 	}
 
-	err = removeContainers(s)
-	if err != nil {
+	if err := removeContainers(s); err != nil {
 		panic(err)
 	}
 
-	err = removeImages(s)
-	if err != nil {
+	if err := removeImages(s); err != nil {
 		panic(err)
 	}
 
-	err = removeNetworkManager()
-	if err != nil {
+	if err := removeNetworkManager(); err != nil {
 		panic(err)
 	}
 
-	err = generateScriptUninstall()
-	if err != nil {
+	if err := generateScriptUninstall(); err != nil {
 		panic(err)
 	}
 
@@ -60,13 +54,7 @@ func removeSketches(s *Status) error {
 		return err
 	}
 
-	_, err = os.Stat(folder)
-	if err != nil {
-		return nil
-	}
-
-	err = os.RemoveAll(folder)
-	if err != nil {
+	if err := os.RemoveAll(folder); err != nil {
 		return err
 	}
 
@@ -76,24 +64,12 @@ func removeSketches(s *Status) error {
 func removeCerts(s *Status) error {
 	pem := strings.Join([]string{s.config.CertPath, "certificate.pem"}, "/")
 
-	_, err := os.Stat(pem)
-	if err != nil {
-		return nil
-	}
-
-	err = os.Remove(pem)
-	if err != nil {
+	if err := os.Remove(pem); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
 	key := strings.Join([]string{s.config.CertPath, "certificate.key"}, "/")
-	_, err = os.Stat(key)
-	if err != nil {
-		return nil
-	}
-
-	err = os.Remove(key)
-	if err != nil {
+	if err := os.Remove(key); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
@@ -106,15 +82,17 @@ func removeContainers(s *Status) error {
 		return err
 	}
 
-	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	viper.SetConfigFile(filepath.Join(dir, "arduino-connector.yml"))
 	containers := viper.GetStringSlice("docker-container")
 	if len(containers) == 0 {
 		return nil
 	}
 
 	for _, v := range containers {
-		err = s.dockerClient.ContainerRemove(context.Background(), v, types.ContainerRemoveOptions{Force: true})
-		time.Sleep(5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		defer cancel()
+		err = s.dockerClient.ContainerRemove(ctx, v, types.ContainerRemoveOptions{Force: true})
+		time.Sleep(5 * time.Second) // FIXME: fix this with testcontainers
 		if err != nil {
 			return err
 		}
@@ -129,7 +107,7 @@ func removeImages(s *Status) error {
 		return err
 	}
 
-	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	viper.SetConfigFile(filepath.Join(dir, "arduino-connector.yml"))
 	images := viper.GetStringSlice("docker-images")
 	if len(images) == 0 {
 		return nil
@@ -152,10 +130,10 @@ func removeNetworkManager() error {
 		return err
 	}
 
-	viper.SetConfigFile(dir + string(os.PathSeparator) + "arduino-connector.yml")
-	beforeNotInstalled := viper.GetBool("network-manager-installed")
-	nowInstalled := isNetManagerInstalled()
-	if !beforeNotInstalled && nowInstalled {
+	viper.SetConfigFile(filepath.Join(dir, "arduino-connector.yml"))
+	before := viper.GetBool("network-manager-installed")
+	now := isNetManagerInstalled()
+	if !before && now {
 		toRemove := append([]*apt.Package{}, &apt.Package{Name: "network-manager"})
 		_, err = apt.Remove(toRemove...)
 		if err != nil {
@@ -172,21 +150,18 @@ func generateScriptUninstall() error {
 		return errDir
 	}
 
-	fmt.Println(dir)
-
-	file, errFile := os.Create(dir + "/uninstall-arduino-connector.sh")
+	file, errFile := os.Create(filepath.Join(dir + "/uninstall-arduino-connector.sh"))
 	if errFile != nil {
 		return errFile
 	}
 
 	defer file.Close()
-	data := ""
-	data += "sudo systemctl stop ArduinoConnector.service\n"
-	data += "sudo systemctl disable ArduinoConnector.service\n"
-	data += "sudo rm /etc/systemd/system/ArduinoConnector.service\n"
-	data += "sudo systemctl daemon-reload\n"
-	data += "sudo systemctl reset-failed\n"
-	data += "sudo rm -f arduino-connector\n"
+	data := `sudo systemctl stop ArduinoConnector.service
+sudo systemctl disable ArduinoConnector.service
+sudo rm /etc/systemd/system/ArduinoConnector.service
+sudo systemctl daemon-reload
+sudo systemctl reset-failed
+sudo rm -f arduino-connector`
 	_, err := file.WriteString(data)
 	return err
 }

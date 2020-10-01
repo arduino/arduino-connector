@@ -364,26 +364,11 @@ func connectTestClient(crtPath, keyPath string) (mqtt.Client, error) {
 	return mqttClient, nil
 }
 
-func isDockerInstalled() (bool, error) {
-	_, err := exec.LookPath("docker")
-	if err == nil {
-		return true, nil
-	}
-
-	return false, nil
-}
-
 func TestInstallDocker(t *testing.T) {
 	checkAndInstallDocker()
 	installed, err := isDockerInstalled()
 	assert.True(t, err == nil)
 	assert.True(t, installed)
-}
-
-func isNetManagerInstalled() bool {
-	cmd := exec.Command("bash", "-c", "dpkg --get-selections | grep network-manager")
-	out, _ := cmd.CombinedOutput()
-	return !strings.Contains(string(out), "deinstall") && len(out) != 0
 }
 
 func TestInstallNetworkManager(t *testing.T) {
@@ -397,12 +382,6 @@ func TestInstallNetworkManager(t *testing.T) {
 		assert.False(t, isNetManagerInstalled())
 	}()
 	assert.True(t, isNetManagerInstalled())
-}
-
-func TestInstallUbuntuDockerPath(t *testing.T) {
-	value, err := isDockerInstalled()
-	assert.False(t, value)
-	assert.True(t, err == nil)
 }
 
 func TestInstallAlpineDockerPath(t *testing.T) {

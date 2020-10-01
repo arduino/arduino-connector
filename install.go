@@ -35,13 +35,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/arduino/arduino-connector/auth"
-	"github.com/docker/docker/api/types"
-	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/facchinm/service"
 	"github.com/kardianos/osext"
@@ -89,7 +88,7 @@ func createConfig() error {
 	viper.Set("docker-container", []string{})
 	viper.Set("network-manager-installed", isNetManagerInstalled())
 
-	err = viper.WriteConfigAs(dir + string(os.PathSeparator) + "arduino-connector.yml")
+	err = viper.WriteConfigAs(filepath.Join(dir, "arduino-connector.yml"))
 	if err != nil {
 		return err
 	}
@@ -106,45 +105,13 @@ func createConfigFolder() error {
 	return nil
 }
 
-func retrieveDockerImages() ([]string, error) {
-	imageListOptions := types.ImageListOptions{All: true}
-
-	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
-	if err != nil {
-		return []string{}, err
+func isDockerInstalled() (bool, error) {
+	_, err := exec.LookPath("docker")
+	if err == nil {
+		return true, nil
 	}
 
-	images, err := cli.ImageList(context.Background(), imageListOptions)
-	if err != nil {
-		return []string{}, err
-	}
-
-	imgs := []string{}
-	for _, v := range images {
-		imgs = append(imgs, v.RepoTags[0])
-	}
-	return imgs, nil
-}
-
-func retrieveDockerContainer() ([]string, error) {
-	cli, err := docker.NewClientWithOpts(docker.WithVersion("1.38"))
-	if err != nil {
-		return []string{}, err
-	}
-
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
-	if err != nil {
-		return []string{}, err
-	}
-
-	cs := []string{}
-	for _, v := range containers {
-		cs = append(cs, v.ID)
-	}
-
-	fmt.Println("containers when create config: ", cs)
-
-	return cs, nil
+	return false, nil
 }
 
 func isNetManagerInstalled() bool {

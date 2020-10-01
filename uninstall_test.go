@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -120,11 +121,11 @@ func TestUninstallGenerateScript(t *testing.T) {
 
 	dir, _ := osext.ExecutableFolder()
 	defer func() {
-		err := os.Remove(dir + "/uninstall-arduino-connector.sh")
+		err := os.Remove(filepath.Join(dir + "/uninstall-arduino-connector.sh"))
 		assert.True(t, err == nil)
 	}()
 
-	_, err := os.Stat(dir + "/uninstall-arduino-connector.sh")
+	_, err := os.Stat(filepath.Join(dir, "/uninstall-arduino-connector.sh"))
 	assert.True(t, err == nil)
 }
 
@@ -229,9 +230,11 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 	assert.True(t, err == nil)
 	found := false
 	for _, v := range containers {
-		if v.ID == containerMustKeep.ID {
+		switch v.ID {
+		case containerMustKeep.ID:
 			found = true
-			break
+		case containerMustRemove.ID:
+			assert.Fail(t, "Container ID %s found, but should have been removed", containerMustRemove.ID)
 		}
 	}
 	assert.True(t, found)
