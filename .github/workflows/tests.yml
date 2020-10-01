@@ -12,10 +12,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: run mqtt tests
-        run: ./scripts/mqtt-tests.sh
+        run: ./scripts/functional-tests.sh
 
       - name: run install tests
         run: ./scripts/install-tests.sh
-
-      - name: run auth tests
-        run: go test -v ./auth
