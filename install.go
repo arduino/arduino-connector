@@ -35,7 +35,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -66,15 +65,6 @@ func createConfigFolder() error {
 	}
 
 	return nil
-}
-
-func isDockerInstalled() (bool, error) {
-	_, err := exec.LookPath("docker")
-	if err == nil {
-		return true, nil
-	}
-
-	return false, nil
 }
 
 // Register creates the necessary certificates and configuration files
