@@ -73,4 +73,4 @@ log_dest none" \
 mosquitto -c mosquitto.conf > /dev/null &
 
 # see https://github.com/golang/go/issues/39568 about why we need to set that GODEBUG value
-GODEBUG=x509ignoreCN=0 go test -v --tags=register --run="TestRegister" --timeout=15s
+GODEBUG=x509ignoreCN=0 go test -v --tags=register --run="TestInstall" --timeout=15s

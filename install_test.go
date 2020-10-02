@@ -38,7 +38,7 @@ const (
 	URL          = "localhost"
 )
 
-func TestCheckCreateConfig(t *testing.T) {
+func TestInstallCheckCreateConfig(t *testing.T) {
 	err := createConfigFolder()
 	assert.True(t, err == nil)
 	defer func() {
@@ -48,7 +48,7 @@ func TestCheckCreateConfig(t *testing.T) {
 	assert.True(t, err == nil)
 }
 
-func TestRegister(t *testing.T) {
+func TestInstallRegister(t *testing.T) {
 
 	// mock the OAuth server
 	oauthTestServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
