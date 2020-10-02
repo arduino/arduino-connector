@@ -362,3 +362,10 @@ func connectTestClient(crtPath, keyPath string) (mqtt.Client, error) {
 
 	return mqttClient, nil
 }
+
+func TestInstallDocker(t *testing.T) {
+	checkAndInstallDocker()
+	installed, err := isDockerInstalled()
+	assert.True(t, err == nil)
+	assert.True(t, installed)
+}
