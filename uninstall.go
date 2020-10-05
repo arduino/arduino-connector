@@ -92,7 +92,6 @@ func removeContainers(s *Status) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 		defer cancel()
 		err = s.dockerClient.ContainerRemove(ctx, v, types.ContainerRemoveOptions{Force: true})
-		time.Sleep(5 * time.Second) // FIXME: fix this with testcontainers
 		if err != nil {
 			return err
 		}
@@ -115,7 +114,6 @@ func removeImages(s *Status) error {
 
 	for _, v := range images {
 		_, err = s.dockerClient.ImageRemove(context.Background(), v, types.ImageRemoveOptions{})
-		time.Sleep(5 * time.Second)
 		if err != nil {
 			fmt.Println(err)
 		}

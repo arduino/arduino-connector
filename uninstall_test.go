@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -147,9 +148,15 @@ func TestUninstallDockerAllContainer(t *testing.T) {
 	subscribeTopic(s.mqttClient, "0", "/status/uninstall/post", s, s.Uninstall, false)
 
 	ctx := context.Background()
-	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
-	time.Sleep(5 * time.Second)
+	reader, err := cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
 	assert.True(t, err == nil)
+	_, err = io.Copy(os.Stdout, reader)
+	assert.True(t, err == nil)
+
+	defer func() {
+		_, err = s.dockerClient.ImageRemove(ctx, "alpine", types.ImageRemoveOptions{})
+		assert.True(t, err == nil)
+	}()
 
 	err = createConfig()
 	assert.True(t, err == nil)
@@ -157,8 +164,7 @@ func TestUninstallDockerAllContainer(t *testing.T) {
 	c, errCreate := cli.ContainerCreate(ctx, &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"echo", "hello world"},
-	}, nil, nil, "")
-	time.Sleep(5 * time.Second)
+	}, nil, nil, "myContainer")
 	assert.True(t, errCreate == nil)
 
 	updateConfigWithContainer(c.ID)
@@ -198,15 +204,19 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 	assert.True(t, err == nil)
 
 	ctx := context.Background()
-	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
-	time.Sleep(5 * time.Second)
+	reader, err := cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
 	assert.True(t, err == nil)
+	_, err = io.Copy(os.Stdout, reader)
+	assert.True(t, err == nil)
+	defer func() {
+		_, err = s.dockerClient.ImageRemove(ctx, "alpine", types.ImageRemoveOptions{})
+		assert.True(t, err == nil)
+	}()
 
 	containerMustKeep, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"echo", "hello world"},
 	}, nil, nil, "")
-	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
 
 	containerMustRemove, err := cli.ContainerCreate(ctx, &container.Config{
@@ -214,13 +224,11 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 		Cmd:   []string{"echo", "hello world"},
 	}, nil, nil, "")
 
-	time.Sleep(5 * time.Second)
 	assert.True(t, err == nil)
 	updateConfigWithContainer(containerMustRemove.ID)
 
 	defer func() {
 		err = cli.ContainerRemove(ctx, containerMustKeep.ID, types.ContainerRemoveOptions{})
-		time.Sleep(5 * time.Second)
 		assert.True(t, err == nil)
 	}()
 
@@ -261,14 +269,24 @@ func TestUninstallAllImages(t *testing.T) {
 	assert.True(t, err == nil)
 
 	ctx := context.Background()
-	_, err = cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
-	time.Sleep(5 * time.Second)
+	reader, err := cli.ImagePull(ctx, "docker.io/library/alpine", types.ImagePullOptions{})
+	assert.True(t, err == nil)
+	_, err = io.Copy(os.Stdout, reader)
 	assert.True(t, err == nil)
 
 	updateConfigWithImage("alpine")
 
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
 	assert.True(t, resp == "INFO: OK\n")
+	list, err := cli.ImageList(ctx, types.ImageListOptions{})
+	assert.True(t, err == nil)
+	found := false
+	for _, v := range list {
+		if v.ID == "alpine" {
+			found = true
+		}
+	}
+	assert.False(t, found)
 }
 
 func TestUninstallNetworkManagerNotRemove(t *testing.T) {
@@ -292,7 +310,6 @@ func TestUninstallNetworkManagerNotRemove(t *testing.T) {
 		c := exec.Command("bash", "-c", "apt-get remove -y network-manager")
 		_, err := c.CombinedOutput()
 		assert.True(t, err == nil)
-
 		assert.False(t, isNetManagerInstalled())
 	}()
 
