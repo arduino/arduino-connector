@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -120,11 +119,11 @@ func TestUninstallGenerateScript(t *testing.T) {
 	assert.True(t, resp == "INFO: OK\n")
 
 	defer func() {
-		err := os.Remove(filepath.Join(configDirectory + "uninstall-arduino-connector.sh"))
+		err := os.Remove("/opt/uninstall-arduino-connector.sh")
 		assert.True(t, err == nil)
 	}()
 
-	_, err := os.Stat(filepath.Join(configDirectory, "uninstall-arduino-connector.sh"))
+	_, err := os.Stat("/opt/uninstall-arduino-connector.sh")
 	assert.True(t, err == nil)
 }
 
