@@ -50,6 +50,8 @@ import (
 
 const (
 	rsaBits = 2048
+
+	configDirectory = "/opt/arduino-connector/"
 )
 
 // Install installs the program as a service
@@ -65,14 +67,10 @@ func install(s service.Service) error {
 	return nil
 }
 
+// createConfig creates yml file where will be stored what arduino-connector install
 func createConfig() error {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return err
-	}
-
-	if _, err = os.Stat(dir); err != nil {
-		err = os.Mkdir(dir, 0755)
+	if _, err := os.Stat(configDirectory); err != nil {
+		err = os.Mkdir(configDirectory, 0755)
 		if err != nil {
 			return err
 		}
@@ -88,7 +86,7 @@ func createConfig() error {
 	viper.Set("docker-container", []string{})
 	viper.Set("network-manager-installed", isNetManagerInstalled())
 
-	err = viper.WriteConfigAs(filepath.Join(dir, "arduino-connector.yml"))
+	err = viper.WriteConfigAs(filepath.Join(configDirectory, "arduino-connector.yml"))
 	if err != nil {
 		return err
 	}
@@ -96,8 +94,9 @@ func createConfig() error {
 	return nil
 }
 
+// createConfigFolder creates folder where config yml are stored
 func createConfigFolder() error {
-	err := os.Mkdir("/etc/arduino-connector/", 0755)
+	err := os.Mkdir(configDirectory, 0755)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/kardianos/osext"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -120,13 +119,12 @@ func TestUninstallGenerateScript(t *testing.T) {
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 500*time.Millisecond)
 	assert.True(t, resp == "INFO: OK\n")
 
-	dir, _ := osext.ExecutableFolder()
 	defer func() {
-		err := os.Remove(filepath.Join(dir + "/uninstall-arduino-connector.sh"))
+		err := os.Remove(filepath.Join(configDirectory + "uninstall-arduino-connector.sh"))
 		assert.True(t, err == nil)
 	}()
 
-	_, err := os.Stat(filepath.Join(dir, "/uninstall-arduino-connector.sh"))
+	_, err := os.Stat(filepath.Join(configDirectory, "uninstall-arduino-connector.sh"))
 	assert.True(t, err == nil)
 }
 

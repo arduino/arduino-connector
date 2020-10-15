@@ -43,9 +43,9 @@ func TestInstallCheckCreateConfig(t *testing.T) {
 	err := createConfigFolder()
 	assert.True(t, err == nil)
 	defer func() {
-		os.RemoveAll("/etc/arduino-connector")
+		os.RemoveAll("/opt/arduino-connector/")
 	}()
-	_, err = os.Stat("/etc/arduino-connector")
+	_, err = os.Stat("/opt/arduino-connector/")
 	assert.True(t, err == nil)
 }
 
