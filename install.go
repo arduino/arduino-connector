@@ -69,11 +69,10 @@ func install(s service.Service) error {
 
 // createConfig creates yml file where will be stored what arduino-connector install
 func createConfig() error {
-	if _, err := os.Stat(configDirectory); err != nil {
-		err = os.Mkdir(configDirectory, 0755)
-		if err != nil {
-			return err
-		}
+	err := createConfigFolder()
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
 
 	value, err := isDockerInstalled()
@@ -98,6 +97,7 @@ func createConfig() error {
 func createConfigFolder() error {
 	err := os.Mkdir(configDirectory, 0755)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 

@@ -35,7 +35,7 @@ func TestUninstallSketches(t *testing.T) {
 		t.Error(err)
 	}
 
-	file, errFile := os.Create(folder + "/fakeSketch")
+	file, errFile := os.Create(folder + "/sketches")
 	if errFile != nil {
 		t.Error(errFile)
 	}
@@ -44,12 +44,12 @@ func TestUninstallSketches(t *testing.T) {
 	assert.True(t, err == nil)
 	file.Close()
 
-	_, err = os.Stat(folder + "/fakeSketch")
+	_, err = os.Stat(folder + "/sketches")
 	assert.True(t, err == nil)
 
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 50*time.Millisecond)
 
-	_, err = os.Stat(folder + "/fakeSketch")
+	_, err = os.Stat(folder + "/sketches")
 
 	assert.True(t, resp == "INFO: OK\n")
 	assert.True(t, err != nil)
@@ -158,6 +158,11 @@ func TestUninstallDockerAllContainer(t *testing.T) {
 	err = createConfig()
 	assert.True(t, err == nil)
 
+	defer func() {
+		err = os.RemoveAll(configDirectory)
+		assert.True(t, err == nil)
+	}()
+
 	c, errCreate := cli.ContainerCreate(ctx, &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"echo", "hello world"},
@@ -199,6 +204,11 @@ func TestUninstallNotAllDockerContainer(t *testing.T) {
 
 	err = createConfig()
 	assert.True(t, err == nil)
+
+	defer func() {
+		err = os.RemoveAll(configDirectory)
+		assert.True(t, err == nil)
+	}()
 
 	ctx := context.Background()
 	reader, err := cli.ImagePull(ctx, "alpine", types.ImagePullOptions{})
@@ -265,6 +275,11 @@ func TestUninstallAllImages(t *testing.T) {
 	err = createConfig()
 	assert.True(t, err == nil)
 
+	defer func() {
+		err = os.RemoveAll(configDirectory)
+		assert.True(t, err == nil)
+	}()
+
 	ctx := context.Background()
 	reader, err := cli.ImagePull(ctx, "docker.io/library/alpine", types.ImagePullOptions{})
 	assert.True(t, err == nil)
@@ -313,6 +328,11 @@ func TestUninstallNetworkManagerNotRemove(t *testing.T) {
 	errConfig := createConfig()
 	assert.True(t, errConfig == nil)
 
+	defer func() {
+		err := os.RemoveAll(configDirectory)
+		assert.True(t, err == nil)
+	}()
+
 	assert.True(t, isNetManagerInstalled())
 
 	resp := dashboard.MqttSendAndReceiveTimeout(t, "/status/uninstall", "{}", 5*time.Minute)
@@ -335,6 +355,11 @@ func TestUninstallNetworkManager(t *testing.T) {
 
 	err := createConfig()
 	assert.True(t, err == nil)
+
+	defer func() {
+		err = os.RemoveAll(configDirectory)
+		assert.True(t, err == nil)
+	}()
 
 	assert.False(t, isNetManagerInstalled())
 

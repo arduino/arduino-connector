@@ -148,10 +148,6 @@ func main() {
 	}
 
 	if *doRegister {
-		err = createConfigFolder()
-		if err != nil {
-			panic(err)
-		}
 		register(config, *configFile, *token)
 	}
 

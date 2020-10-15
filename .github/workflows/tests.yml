@@ -11,7 +11,7 @@ jobs:
       - name: check out code
         uses: actions/checkout@v2
 
-      - name: run mqtt tests
+      - name: run functional test
         run: ./scripts/functional-tests.sh
 
       - name: run install tests
